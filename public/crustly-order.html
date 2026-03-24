@@ -1406,18 +1406,11 @@
 
       <!-- Betalning -->
       <div style="margin-bottom:20px;">
-        <label style="display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;">BETALNINGSSÄTT</label>
-        <div class="delivery-tabs">
-          <div class="delivery-tab active" onclick="setBetalning('card')" id="tab-card">💳 Kortbetalning</div>
-          <div class="delivery-tab" onclick="setBetalning('klarna')" id="tab-klarna">🛍️ Klarna</div>
-        </div>
-        <!-- Stripe Payment Element panel -->
-        <div id="stripePanel" style="display:none;margin-top:12px;">
-          <div style="background:#f8f7f5;border:1.5px solid #e0ddd5;border-radius:12px;padding:16px 18px;">
-            <div id="stripe-loading" style="text-align:center;padding:16px;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:1px;">LADDAR BETALNING...</div>
-            <div id="payment-element"></div>
-            <div id="stripe-errors" style="display:none;color:#e74c3c;font-family:var(--font-mono);font-size:11px;margin-top:8px;padding:8px 12px;background:#fff0f0;border-radius:6px;"></div>
-          </div>
+        <label style="display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;">BETALNING</label>
+        <div style="background:#f8f7f5;border:1.5px solid #e0ddd5;border-radius:12px;padding:16px 18px;">
+          <div id="stripe-loading" style="text-align:center;padding:16px;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:1px;">LADDAR BETALNING...</div>
+          <div id="payment-element"></div>
+          <div id="stripe-errors" style="display:none;color:#e74c3c;font-family:var(--font-mono);font-size:11px;margin-top:8px;padding:8px 12px;background:#fff0f0;border-radius:6px;"></div>
         </div>
       </div>
 
@@ -2081,6 +2074,9 @@ window.acceptUpsell = acceptUpsell;
     document.getElementById('checkoutForm').style.display = 'block';
     document.getElementById('orderSuccess').classList.remove('show');
     document.getElementById('modalOverlay').classList.add('show');
+
+    // Initiera Stripe Payment Element direkt
+    initStripePaymentElement(subtotal, 'card');
   }
 
   function closeModal() {
@@ -2139,8 +2135,6 @@ window.acceptUpsell = acceptUpsell;
       if (!data.clientSecret) throw new Error(data.error || 'Kunde inte starta betalning');
 
       // Välj betalningsmetod baserat på vad kunden valde
-      const paymentMethodTypes = method === 'klarna' ? ['klarna'] : ['card'];
-
       _stripeElements = _stripe.elements({
         clientSecret: data.clientSecret,
         appearance: {
@@ -2154,8 +2148,7 @@ window.acceptUpsell = acceptUpsell;
       });
 
       const paymentEl = _stripeElements.create('payment', {
-        layout: { type: 'tabs', defaultCollapsed: false },
-        paymentMethodOrder: paymentMethodTypes
+        layout: { type: 'tabs', defaultCollapsed: false }
       });
       paymentEl.mount('#payment-element');
       if (loadEl) loadEl.style.display = 'none';
@@ -2169,23 +2162,8 @@ window.acceptUpsell = acceptUpsell;
   }
 
   function setBetalning(method) {
-    _currentPaymentMethod = method;
-    paymentMethod = method;
-    document.getElementById('tab-card').classList.toggle('active', method === 'card');
-    document.getElementById('tab-klarna').classList.toggle('active', method === 'klarna');
-    document.getElementById('stripePanel').style.display = 'block';
-
-    if (method === 'card') {
-      document.getElementById('placeOrderBtn').textContent = '💳 Betala med kort →';
-    } else {
-      document.getElementById('placeOrderBtn').textContent = '🛍️ Betala med Klarna →';
-    }
-
-    // Hämta aktuellt belopp och initiera Stripe
-    const subtotal = Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
-    _stripeReady = false;
-    _stripeInitializing = false;
-    initStripePaymentElement(subtotal || 1, method);
+    // Stripe Payment Element hanterar alla betalningsmetoder automatiskt
+    paymentMethod = method || 'card';
   }
 
   async function placeOrder() {
