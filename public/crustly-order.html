@@ -1,0 +1,2567 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order — Crustly</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+  const { createClient } = supabase;
+  const _sb = createClient(
+    'https://febybrpterkybwzhigte.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
+  );
+
+  async function getRestaurantBySlug(slug) {
+    const { data, error } = await _sb.from('restaurants').select('*').eq('slug', slug).single();
+    if (error) return null;
+    return data;
+  }
+
+  async function saveOrderToSupabase(orderData) {
+    const crustlyCut = 7; // Fast serviceavgift per order
+    const { data, error } = await _sb.from('orders').insert({
+      ...orderData,
+      crustly_cut: crustlyCut,
+      status: 'new',
+      payment_status: 'pending',
+    }).select().single();
+    if (error) return { success: false, error: error.message };
+    return { success: true, order: data };
+  }
+
+  async function upsertCustomer(customerData) {
+    try {
+      // Hämta befintlig kund
+      const { data: existing } = await _sb.from('customers')
+        .select('id,name,total_orders,total_spent,loyalty_points')
+        .eq('restaurant_id', customerData.restaurant_id)
+        .eq('phone', customerData.phone)
+        .single();
+
+      // Poäng: 1 poäng per 10 kr
+      const earnedPoints = Math.floor((customerData.order_total || 0) / 10);
+
+      if (existing) {
+        // Behåll första namnet — skriv INTE över om det redan finns
+        const keepName = existing.name || customerData.name;
+
+        await _sb.from('customers').update({
+          name:           keepName,
+          birthday_day:   customerData.birthday_day   || null,
+          birthday_month: customerData.birthday_month || null,
+          total_orders:   (existing.total_orders || 0) + 1,
+          total_spent:    parseFloat(((existing.total_spent || 0) + (customerData.order_total || 0)).toFixed(2)),
+          loyalty_points: (existing.loyalty_points || 0) + earnedPoints,
+          last_order_at:  new Date().toISOString(),
+        }).eq('id', existing.id);
+
+      } else {
+        // Ny kund
+        await _sb.from('customers').insert({
+          restaurant_id:   customerData.restaurant_id,
+          restaurant_slug: customerData.restaurant_slug,
+          name:            customerData.name,
+          phone:           customerData.phone,
+          birthday_month:  customerData.birthday_month || null,
+          birthday_day:    customerData.birthday_day   || null,
+          total_orders:    1,
+          total_spent:     customerData.order_total || 0,
+          loyalty_points:  earnedPoints,
+          last_order_at:   new Date().toISOString(),
+        });
+      }
+    } catch(e) {
+      console.error('upsertCustomer error:', e);
+    }
+  }
+
+  window.__supabase = { saveOrderToSupabase, upsertCustomer, getRestaurantBySlug };
+  window.__supabaseReady = true;
+  document.dispatchEvent(new Event('supabaseReady'));
+</script>
+
+<style>
+  /* ---- CSS VARIABLES SET BY RESTAURANT BRANDING ---- */
+  :root {
+    --primary: #2c2420;
+    --accent: #c8380a;
+    --accent-dim: rgba(200,56,10,0.08);
+    --accent-light: #fff3ee;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --border: #eeeeee;
+    --text: #1a1a1a;
+    --muted: #999999;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+  }
+
+  /* ---- HERO ---- */
+  .hero {
+    background: #2c2420;
+    position: relative; overflow: hidden;
+    min-height: 360px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 0% 100%, rgba(200,56,10,0.45) 0%, transparent 60%),
+      radial-gradient(ellipse at 85% -10%, rgba(255,255,255,0.06) 0%, transparent 50%);
+    opacity: 1;
+  }
+  .hero-texture {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .hero-noise {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.5; mix-blend-mode: overlay;
+  }
+  .hero-vignette {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.55) 100%);
+    pointer-events: none;
+  }
+  .hero-lines {
+    position: absolute; inset: 0;
+    pointer-events: none; overflow: hidden;
+  }
+  .hero-lines::before {
+    content: ''; position: absolute;
+    top: -60px; right: -60px;
+    width: 420px; height: 420px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .hero-lines::after {
+    content: ''; position: absolute;
+    top: -120px; right: -120px;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.03);
+  }
+  .hero-inner {
+    position: relative;
+    max-width: 900px; margin: 0 auto; width: 100%;
+    padding: 52px 48px 48px;
+    display: flex; align-items: flex-end; gap: 28px;
+  }
+  .hero-logo-wrap {
+    flex-shrink: 0; width: 88px; height: 88px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+    margin-bottom: 4px;
+  }
+  .hero-logo { width: 100%; height: 100%; object-fit: cover; border-radius: 18px; }
+  .hero-logo-placeholder {
+    font-family: var(--font-display);
+    font-size: 36px; color: #fff;
+    font-weight: 600; font-style: italic;
+  }
+  .hero-text { flex: 1; min-width: 0; }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 30px; padding: 5px 14px;
+    font-family: var(--font-mono);
+    font-size: 9px; letter-spacing: 2.5px;
+    color: rgba(255,255,255,0.6); margin-bottom: 14px;
+  }
+  .hero-tag::before {
+    content: '';
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #4ecb71;
+    box-shadow: 0 0 8px #4ecb71, 0 0 16px #4ecb7160;
+    animation: pulse-green 2s infinite;
+  }
+  @keyframes pulse-green {
+    0%,100% { box-shadow: 0 0 6px #4ecb71, 0 0 12px #4ecb7160; }
+    50% { box-shadow: 0 0 10px #4ecb71, 0 0 24px #4ecb7180; }
+  }
+  .hero-name {
+    font-family: var(--font-display);
+    font-size: clamp(42px, 6vw, 76px);
+    font-weight: 600; font-style: italic;
+    color: #fff; line-height: 0.92;
+    margin-bottom: 14px; letter-spacing: -1px;
+    text-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  .hero-desc {
+    font-size: 14px; color: rgba(255,255,255,0.45);
+    max-width: 440px; line-height: 1.7;
+    margin-bottom: 20px; font-weight: 300;
+  }
+  .hero-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hero-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px; padding: 6px 14px;
+    font-family: var(--font-mono); font-size: 10px;
+    color: rgba(255,255,255,0.5); letter-spacing: 0.5px;
+  }
+  .hero-badge-icon { font-size: 12px; opacity: 0.9; }
+
+  /* ---- STICKY CAT NAV ---- */
+  .cat-nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+    padding: 0 48px;
+    box-shadow: 0 1px 0 #eeeeee, 0 2px 12px rgba(0,0,0,0.03);
+  }
+  .cat-nav-inner {
+    max-width: 900px; margin: 0 auto;
+    display: flex; gap: 0;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .cat-nav-inner::-webkit-scrollbar { display: none; }
+  .cat-btn {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 2px;
+    padding: 17px 20px;
+    background: none; border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--muted); cursor: pointer;
+    white-space: nowrap; transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .cat-btn:hover { color: var(--text); }
+  .cat-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ---- MAIN LAYOUT ---- */
+  .page-body {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 48px 120px;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 40px;
+    align-items: start;
+  }
+
+  /* ---- MENU ---- */
+  .menu-section { margin-bottom: 48px; }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 30px; font-weight: 600; font-style: italic;
+    color: var(--text); margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #eeeeee;
+    letter-spacing: -0.5px;
+  }
+
+  .menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .menu-card {
+    background: var(--surface);
+    border: 1px solid #f0f0f0;
+    border-radius: 14px;
+    padding: 18px;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+    animation: fadeUp 0.3s ease both;
+    min-height: 110px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  .menu-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 6px 24px rgba(200,56,10,0.1);
+    transform: translateY(-2px);
+  }
+
+  .menu-card-info { flex: 1; }
+
+  .menu-card-name {
+    font-family: var(--font-display);
+    font-size: 17px; font-weight: 600; font-style: italic;
+    color: var(--text); margin-bottom: 5px; line-height: 1.2;
+  }
+
+  .menu-card-desc {
+    font-size: 11.5px; color: var(--muted);
+    line-height: 1.55;
+  }
+  .menu-card-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 8px; letter-spacing: 1.5px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border-radius: 4px;
+    padding: 3px 8px;
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+
+  .menu-card-right {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+
+  .menu-card-price {
+    font-family: var(--font-mono);
+    font-size: 15px; font-weight: 500; color: var(--text);
+  }
+
+  .btn-add {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s, opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .btn-add:hover { opacity: 0.85; transform: scale(1.08); }
+  .btn-add:active { transform: scale(0.95); }
+
+  /* Qty control */
+  .qty-control {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--bg);
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .qty-btn {
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s;
+  }
+
+  .qty-btn:hover { background: var(--border); }
+
+  .qty-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 24px;
+    text-align: center;
+  }
+
+  /* ---- CART SIDEBAR ---- */
+  .cart-sidebar {
+    position: sticky;
+    top: 65px;
+  }
+
+  .cart-box {
+    background: #2c2420;
+    border-radius: 16px;
+    padding: 28px;
+    color: #f0ece0;
+  }
+
+  .cart-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .cart-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: #6a6560;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .cart-items { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; min-height: 60px; }
+
+  .cart-empty {
+    text-align: center;
+    padding: 24px 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #5a5550;
+    letter-spacing: 1px;
+  }
+
+  .cart-rätt {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    animation: fadeUp 0.2s ease both;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .cart-rätt:last-child { border-bottom: none; }
+
+  .cart-rätt-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .cart-rätt-qty {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #6a6560;
+    background: #ffffff10;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .cart-rätt-price {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+    min-width: 50px;
+    text-align: right;
+  }
+
+  .cart-divider { border: none; border-top: 1px solid #2a2520; margin: 16px 0; }
+
+  .cart-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #8a8278;
+    margin-bottom: 8px;
+    font-family: var(--font-mono);
+  }
+
+  .cart-total {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 20px;
+  }
+
+  /* AI Upsell */
+  .upsell-box {
+    background: #ffffff08;
+    border: 1px solid #ffffff15;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .upsell-box.show { display: block; }
+
+  .upsell-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .upsell-text { font-size: 12px; color: #c0bbb0; line-height: 1.5; }
+
+  .upsell-btn {
+    margin-top: 8px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .upsell-btn:hover { opacity: 0.85; }
+
+  .btn-checkout {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn-checkout:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-checkout:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  /* ---- CHECKOUT MODAL ---- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #00000080;
+    z-index: 200;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    padding: 36px 36px 48px;
+    width: 100%;
+    max-width: 520px;
+    animation: slideUp 0.3s ease both;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .modal-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-bottom: 28px;
+  }
+
+  .modal-field { margin-bottom: 16px; }
+
+  .modal-field label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 7px;
+  }
+
+  .modal-field input, .modal-field textarea, .modal-field select {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .modal-field input:focus, .modal-field textarea:focus, .modal-field select:focus {
+    border-color: var(--accent);
+  }
+
+  .modal-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+  .delivery-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .delivery-tab {
+    padding: 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  .delivery-tab.active {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .order-summary {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .order-summary-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .summary-rätt {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .summary-total {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 16px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-place-order {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-place-order:hover { opacity: 0.9; }
+
+  .modal-close {
+    float: right;
+    background: var(--bg);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    margin-bottom: 12px;
+  }
+
+  /* ---- ORDER SUCCESS ---- */
+  .order-success {
+    display: none;
+    text-align: center;
+    padding: 48px 36px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .order-success.show { display: block; }
+
+  .success-emoji { font-size: 56px; margin-bottom: 16px; }
+
+  .success-h { font-family: var(--font-display); font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+  .success-p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+
+  .order-num {
+    background: var(--primary);
+    color: #f0ece0;
+    border-radius: 10px;
+    padding: 16px 24px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    display: inline-block;
+  }
+
+  /* ---- PHONE LOOKUP FAB ---- */
+  .phone-fab {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .phone-fab-btn {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 50px;
+    padding: 10px 18px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+  }
+  .phone-fab-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .phone-fab-panel {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    width: 280px;
+    display: none;
+  }
+  .phone-fab-panel.open { display: block; }
+  .phone-fab-panel-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .phone-fab-row {
+    display: flex;
+    gap: 8px;
+  }
+  .phone-lookup-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    min-width: 0;
+  }
+  .phone-lookup-input:focus { border-color: var(--accent); }
+  .phone-lookup-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .phone-lookup-msg {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    display: none;
+  }
+  .phone-lookup-msg.show { display: block; }
+  .phone-lookup-msg.error { color: #e84040; }
+
+  /* ---- RECEIPT ---- */
+  .receipt-wrap {
+    display: none;
+    padding: 0 0 40px;
+    animation: fadeUp 0.4s ease both;
+  }
+  .receipt-wrap.show { display: block; }
+
+  .receipt-header {
+    text-align: center;
+    padding: 32px 24px 24px;
+    border-bottom: 1px dashed var(--border);
+    margin-bottom: 24px;
+  }
+  .receipt-restaurant {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .receipt-addr {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .receipt-num {
+    display: inline-block;
+    background: var(--primary);
+    color: #f0ece0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 6px 14px;
+    border-radius: 6px;
+  }
+
+  .receipt-section {
+    padding: 0 24px;
+    margin-bottom: 20px;
+  }
+  .receipt-section-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .receipt-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .receipt-row:last-child { border-bottom: none; }
+  .receipt-row-name { flex: 1; color: var(--text); }
+  .receipt-row-qty  { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin: 0 12px; }
+  .receipt-row-price { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+
+  .receipt-divider {
+    border: none;
+    border-top: 1px dashed var(--border);
+    margin: 4px 24px 20px;
+  }
+
+  .receipt-total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 24px 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .receipt-total-row.grand {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top: 2px solid var(--text);
+  }
+
+  .receipt-meta {
+    padding: 20px 24px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .receipt-meta-item {}
+  .receipt-meta-key {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .receipt-meta-val {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .receipt-actions {
+    display: flex;
+    gap: 10px;
+    padding: 24px 24px 0;
+  }
+  .btn-print {
+    flex: 1;
+    background: var(--primary);
+    color: #f0ece0;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .btn-back-menu {
+    flex: 1;
+    background: transparent;
+    color: var(--text);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+
+  @media print {
+    body * { visibility: hidden; }
+    .receipt-wrap, .receipt-wrap * { visibility: visible; }
+    .receipt-wrap { position: absolute; top: 0; left: 0; width: 100%; }
+    .receipt-actions { display: none; }
+  }
+
+  /* ---- ORDER TRACKING ---- */
+  .tracking-wrap {
+    display: none;
+    padding: 40px 24px 48px;
+    text-align: center;
+    animation: fadeUp 0.4s ease both;
+  }
+  .tracking-wrap.show { display: block; }
+
+  .tracking-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .tracking-sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 36px;
+  }
+
+  .tracking-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 36px;
+  }
+
+  .tracking-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 110px;
+  }
+
+  .step-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    background: var(--border);
+    color: var(--muted);
+    transition: all 0.4s ease;
+    border: 2px solid transparent;
+  }
+
+  .step-icon.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 6px var(--accent-light);
+  }
+
+  .step-icon.done {
+    background: #22c55e20;
+    color: #22c55e;
+    border-color: #22c55e;
+  }
+
+  .step-label {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .step-label.active { color: var(--accent); font-weight: 600; }
+  .step-label.done   { color: #22c55e; }
+
+  .step-connector {
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+    margin-bottom: 28px;
+    transition: background 0.4s ease;
+    max-width: 40px;
+  }
+  .step-connector.done { background: #22c55e; }
+
+  .tracking-info {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: left;
+    margin-bottom: 16px;
+  }
+  .tracking-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tracking-info-row:last-child { border-bottom: none; }
+  .tracking-info-key { color: var(--muted); }
+  .tracking-info-val { font-weight: 600; color: var(--text); }
+
+  .tracking-status-msg {
+    background: var(--accent-light);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+
+  /* ---- LOADING ---- */
+  .loading-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    background: var(--bg);
+  }
+
+  .loading-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--accent);
+  }
+
+  .loading-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: bounce 1.2s infinite;
+  }
+
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---- POWERED BY ---- */
+  .powered-by {
+    text-align: center;
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  .powered-by span { color: var(--accent); }
+
+  /* Mobile */
+  @media (max-width: 700px) {
+    .hero { padding: 32px 20px 40px; }
+    .page-body { grid-template-columns: 1fr; padding: 24px 20px 100px; }
+    .cart-sidebar { position: fixed; bottom: 0; left: 0; right: 0; top: auto; z-index: 40; }
+    .cart-box { border-radius: 16px 16px 0 0; padding: 20px; }
+    .cat-nav { padding: 0 16px; }
+  }
+
+  /* ---- TILLVALS MODAL ---- */
+  .extras-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 180;
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .extras-overlay.open { opacity: 1; pointer-events: auto; }
+  .extras-modal {
+    background: #fff;
+    border-radius: 24px 24px 0 0;
+    padding: 28px 28px 40px;
+    width: 100%; max-width: 520px;
+    max-height: 85vh; overflow-y: auto;
+    transform: translateY(30px);
+    transition: transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    scrollbar-width: none;
+  }
+  .extras-overlay.open .extras-modal { transform: translateY(0); }
+  .extras-modal::-webkit-scrollbar { display: none; }
+  .extras-handle {
+    width: 40px; height: 4px;
+    background: #e0e0e0; border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .extras-dish-name {
+    font-family: var(--font-display);
+    font-size: 26px; font-weight: 600; font-style: italic;
+    color: var(--text); margin-bottom: 4px;
+  }
+  .extras-dish-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+  .extras-section-title {
+    font-family: var(--font-mono);
+    font-size: 9px; letter-spacing: 2px;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 10px; margin-top: 20px;
+  }
+  .extras-section-title:first-of-type { margin-top: 0; }
+  .extras-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+  .extras-option {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px;
+    border: 1.5px solid #eeeeee;
+    border-radius: 12px; cursor: pointer;
+    transition: all 0.15s; background: #fafafa;
+  }
+  .extras-option:hover { border-color: var(--accent); background: #fff; }
+  .extras-option.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .extras-option-left { display: flex; align-items: center; gap: 10px; }
+  .extras-option-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid #ddd;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #fff; transition: all 0.15s; flex-shrink: 0;
+  }
+  .extras-option.selected .extras-option-check { background: var(--accent); border-color: var(--accent); }
+  .extras-option-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .extras-option-price { font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+  .extras-option.selected .extras-option-price { color: var(--accent); }
+  .extras-footer {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-top: 24px; gap: 12px;
+  }
+  .extras-qty {
+    display: flex; align-items: center; gap: 0;
+    background: #f5f5f5; border-radius: 20px; overflow: hidden;
+  }
+  .extras-qty-btn {
+    width: 36px; height: 36px; background: none; border: none;
+    font-size: 20px; cursor: pointer; color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.1s;
+  }
+  .extras-qty-btn:hover { background: #e8e8e8; }
+  .extras-qty-num {
+    font-family: var(--font-mono);
+    font-size: 15px; font-weight: 600;
+    min-width: 32px; text-align: center;
+  }
+  .extras-add-btn {
+    flex: 1; background: var(--accent); color: #fff;
+    border: none; border-radius: 12px;
+    padding: 14px 20px; font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 2px;
+    cursor: pointer; text-transform: uppercase;
+    transition: opacity 0.15s, transform 0.1s;
+    box-shadow: 0 4px 16px rgba(200,56,10,0.3);
+  }
+  .extras-add-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-logo">🍕</div>
+  <div class="loading-dots">
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+</div>
+
+<!-- Main page (hidden until loaded) -->
+<div id="mainPage" style="display:none">
+
+  <!-- Phone lookup FAB -->
+  <div class="phone-fab" id="phoneLookup" style="display:none">
+    <div class="phone-fab-panel" id="phoneFabPanel">
+      <div class="phone-fab-panel-title">Hitta din order</div>
+      <div class="phone-fab-row">
+        <input class="phone-lookup-input" id="phoneLookupInput" type="tel" placeholder="07X XXX XX XX" onkeydown="if(event.key==='Enter')lookupByPhone()">
+        <button class="phone-lookup-btn" onclick="lookupByPhone()">→</button>
+      </div>
+      <div class="phone-lookup-msg" id="phoneLookupMsg"></div>
+    </div>
+    <button class="phone-fab-btn" onclick="document.getElementById('phoneFabPanel').classList.toggle('open')">
+      🔍 <span>Hitta din order</span>
+    </button>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero" id="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-texture"></div>
+    <div class="hero-noise"></div>
+    <div class="hero-vignette"></div>
+    <div class="hero-lines"></div>
+    <div class="hero-inner">
+      <div class="hero-logo-wrap" id="heroLogo"></div>
+      <div class="hero-text">
+        <div class="hero-tag">BESTÄLL ONLINE</div>
+        <div class="hero-name" id="heroName">Restaurang</div>
+        <div class="hero-desc" id="heroDesc"></div>
+        <div class="hero-meta">
+          <div class="hero-badge"><span class="hero-badge-icon">📍</span><span id="heroAddress"></span></div>
+          <div class="hero-badge"><span class="hero-badge-icon">🕐</span> Öppet nu</div>
+          <div class="hero-badge"><span class="hero-badge-icon">⚡</span> 20–35 min</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kategori nav -->
+  <nav class="cat-nav">
+    <div class="cat-nav-inner" id="catNavInner"></div>
+  </nav>
+
+  <!-- Body -->
+  <div class="page-body">
+
+    <!-- Meny -->
+    <div id="menuContainer"></div>
+
+    <!-- Cart -->
+    <div class="cart-sidebar">
+      <div class="cart-box">
+        <div class="cart-title">Din Order</div>
+        <div class="cart-count" id="cartCount">0 ITEMS</div>
+        <div class="cart-items" id="cartItems">
+          <div class="cart-empty">No rätter yet.<br>Add something delicious!</div>
+        </div>
+
+        <!-- AI Upsell -->
+        <div class="upsell-box" id="upsellBox">
+          <div class="upsell-label">🤖 SUGGESTED FOR YOU</div>
+          <div class="upsell-text" id="upsellText"></div>
+          <button class="upsell-btn" id="upsellBtn" onclick="acceptUpsell()">Lägg till i order</button>
+        </div>
+
+        <hr class="cart-divider">
+        <div class="cart-row"><span>Delsumma</span><span id="subtotalVal">0 kr</span></div>
+        <div class="cart-row"><span>Leverans</span><span>0 kr</span></div>
+        <div class="cart-row" style="color:var(--muted)"><span>Serviceavgift</span><span>7 kr</span></div>
+        <div class="cart-total"><span>Totalt</span><span id="totalVal">0 kr</span></div>
+        <button class="btn-checkout" id="checkoutBtn" onclick="openCheckout()" disabled>Lägg Beställning</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="powered-by">Powered by <span>CRUSTLY</span></div>
+</div>
+
+<!-- Tillvals Modal -->
+<div class="extras-overlay" id="extrasOverlay" onclick="closeExtrasOutside(event)">
+  <div class="extras-modal">
+    <div class="extras-handle"></div>
+    <div class="extras-dish-name" id="extrasDishName"></div>
+    <div class="extras-dish-desc" id="extrasDishDesc"></div>
+    <div id="extrasSections"></div>
+    <div class="extras-footer">
+      <div class="extras-qty">
+        <button class="extras-qty-btn" onclick="extrasQtyChange(-1)">−</button>
+        <span class="extras-qty-num" id="extrasQty">1</span>
+        <button class="extras-qty-btn" onclick="extrasQtyChange(1)">+</button>
+      </div>
+      <button class="extras-add-btn" id="extrasAddBtn" onclick="confirmExtras()">
+        LÄGG TILL · <span id="extrasTotalPrice"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Till Kassan Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+
+    <div id="checkoutForm">
+      <div class="modal-title">Almost there!</div>
+      <div class="modal-sub">YOUR DETAILS · DELIVERY OR PICKUP</div>
+
+      <div class="delivery-tabs">
+        <div class="delivery-tab active" onclick="setLeverans('delivery')" id="tab-delivery">🛵 Leverans</div>
+        <div class="delivery-tab" onclick="setLeverans('pickup')" id="tab-pickup">🏠 Avhämtning</div>
+      </div>
+
+      <div class="modal-field-row">
+        <div class="modal-field">
+          <label>Förnamn</label>
+          <input type="text" id="custFirst" placeholder="Anna">
+        </div>
+        <div class="modal-field">
+          <label>Efternamn</label>
+          <input type="text" id="custLast" placeholder="Svensson">
+        </div>
+      </div>
+
+      <div class="modal-field">
+        <label>Telefonnummer</label>
+        <input type="text" id="custPhone" placeholder="+46 70 123 45 67">
+      </div>
+
+      <div id="deliveryFields">
+        <div class="modal-field">
+          <label>Leveransadress</label>
+          <input type="text" id="custAddress" placeholder="Storgatan 12, Stockholm">
+        </div>
+      </div>
+
+      <div class="modal-field">
+        <label>Notes for Kitchen (optional)</label>
+        <input type="text" id="custNotes" placeholder="Extra sauce, no onions...">
+      </div>
+
+      <div class="modal-field">
+        <label>🎂 Birthday (optional — get a birthday avfer!)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <select id="custBdayMonth" style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;font-family:var(--font-body);font-size:14px;color:var(--text);outline:none;">
+            <option value="">Månad</option>
+            <option value="1">Januari</option><option value="2">Februari</option>
+            <option value="3">Mars</option><option value="4">April</option>
+            <option value="5">Maj</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Augusti</option>
+            <option value="9">September</option><option value="10">Oktober</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+          <input type="number" id="custBdayDay" placeholder="Day (1-31)" min="1" max="31"
+            style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;font-family:var(--font-body);font-size:14px;color:var(--text);outline:none;">
+        </div>
+      </div>
+
+      <!-- Betalning method -->
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;">PAYMENT METHOD</label>
+        <div class="delivery-tabs">
+          <div class="delivery-tab active" onclick="setBetalning('swish')" id="tab-swish">📱 Swish</div>
+          <div class="delivery-tab" onclick="setBetalning('stripe')" id="tab-stripe">💳 Kort / Klarna</div>
+        </div>
+        <!-- Swish panel -->
+        <div id="swishPanel" style="margin-top:12px;">
+          <div style="background:#edfaf3;border:1.5px solid #28c06040;border-radius:12px;padding:16px 18px;">
+            <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:#1a7a48;margin-bottom:8px;">BETALNING VIA SWISH</div>
+            <div style="font-size:13px;color:#1c1812;line-height:1.65;margin-bottom:12px;">
+              När du klickar "Lägg order" öppnas Swish-appen automatiskt med rätt belopp och mottagare ifyllt.
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e0f0e8;border-radius:8px;padding:10px 14px;">
+              <div style="font-size:22px;">📱</div>
+              <div>
+                <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:#7a8070;">SWISH-NUMMER</div>
+                <div style="font-family:var(--font-mono);font-size:16px;font-weight:600;color:#1c1812;" id="swishNumber">123 456 78 90</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Stripe Payment Element panel (kort + Klarna) -->
+        <div id="stripePanel" style="display:none;margin-top:12px;">
+          <div style="background:#f8f7f5;border:1.5px solid #e0ddd5;border-radius:12px;padding:16px 18px;">
+            <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:#555;margin-bottom:12px;">KORT / KLARNA / FLER ALTERNATIV</div>
+            <div id="payment-element"></div>
+            <div id="stripe-errors" style="display:none;color:#e74c3c;font-family:var(--font-mono);font-size:11px;margin-top:8px;padding:8px 12px;background:#fff0f0;border-radius:6px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="order-summary" id="orderSummary"></div>
+
+      <button class="btn-place-order" onclick="placeOrder()" id="placeOrderBtn">📱 Betala med Swish →</button>
+    </div>
+
+    <div class="order-success" id="orderSuccess">
+
+      <!-- Tracking view -->
+      <div class="tracking-wrap show" id="trackingWrap">
+        <div class="tracking-title">Din order är på väg! 🍕</div>
+        <div class="tracking-sub" id="trackingSub">Order <span id="trackingNum"></span></div>
+
+        <div class="tracking-status-msg" id="trackingMsg">Restaurangen har tagit emot din order.</div>
+
+        <div class="tracking-steps">
+          <div class="tracking-step">
+            <div class="step-icon" id="step0">✅</div>
+            <div class="step-label" id="stepLbl0">Mottagen</div>
+          </div>
+          <div class="step-connector" id="conn0"></div>
+          <div class="tracking-step">
+            <div class="step-icon" id="step1">🍕</div>
+            <div class="step-label" id="stepLbl1">Tillagas</div>
+          </div>
+          <div class="step-connector" id="conn1"></div>
+          <div class="tracking-step">
+            <div class="step-icon" id="step2">🛵</div>
+            <div class="step-label" id="stepLbl2">Redo</div>
+          </div>
+        </div>
+
+        <div class="tracking-info" id="trackingInfo"></div>
+
+        <!-- Lojalitetspoäng -->
+        <div id="loyaltyMsg" style="display:none;background:var(--accent-dim);border:1px solid var(--accent);border-radius:10px;padding:14px 16px;margin-top:12px;text-align:center;">
+          <div style="font-size:20px;margin-bottom:4px;">⭐</div>
+          <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--accent);margin-bottom:4px;">DINA LOJALITETSPOÄNG</div>
+          <div id="loyaltyPoints" style="font-family:var(--font-display);font-size:28px;font-weight:600;font-style:italic;color:var(--text);">0</div>
+          <div id="loyaltyNext" style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:4px;"></div>
+          <a href="crustly-loyalty-customer.html" style="display:inline-block;margin-top:10px;font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:20px;padding:6px 14px;">SE ALLA POÄNG & BELÖNINGAR →</a>
+        </div>
+
+        <button class="btn-place-order" onclick="closeModal(); resetCart()" style="margin-top:8px;">Tillbaka till menyn</button>
+        <button class="btn-back-menu" onclick="showReceipt()" style="margin-top:8px;background:transparent;color:var(--text);border:1.5px solid var(--border);border-radius:10px;padding:12px 24px;font-family:var(--font-mono);font-size:11px;letter-spacing:1.5px;cursor:pointer;width:100%;">🧾 VISA KVITTO</button>
+      </div>
+
+      <!-- Receipt view -->
+      <div class="receipt-wrap" id="receiptWrap">
+        <div class="receipt-header">
+          <div class="receipt-restaurant" id="rcptRestaurant"></div>
+          <div class="receipt-addr" id="rcptAddr"></div>
+          <div class="receipt-num" id="rcptNum"></div>
+        </div>
+
+        <div class="receipt-section">
+          <div class="receipt-section-title">Din beställning</div>
+          <div id="rcptItems"></div>
+        </div>
+
+        <hr class="receipt-divider">
+
+        <div class="receipt-total-row" id="rcptDeliveryRow" style="display:none;">
+          <span>Leveransavgift</span><span id="rcptDeliveryFee">0 kr</span>
+        </div>
+        <div class="receipt-total-row">
+          <span>Serviceavgift</span><span>7 kr</span>
+        </div>
+        <div class="receipt-total-row grand">
+          <span>Totalt</span><span id="rcptTotal"></span>
+        </div>
+
+        <div class="receipt-meta">
+          <div class="receipt-meta-item">
+            <div class="receipt-meta-key">Kund</div>
+            <div class="receipt-meta-val" id="rcptName"></div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="receipt-meta-key">Telefon</div>
+            <div class="receipt-meta-val" id="rcptPhone"></div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="receipt-meta-key">Leveranssätt</div>
+            <div class="receipt-meta-val" id="rcptDelivery"></div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="receipt-meta-key">Betalning</div>
+            <div class="receipt-meta-val" id="rcptPayment"></div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="receipt-meta-key">Datum</div>
+            <div class="receipt-meta-val" id="rcptDate"></div>
+          </div>
+        </div>
+
+        <div class="receipt-actions">
+          <button class="btn-print" onclick="window.print()">🖨️ SKRIV UT</button>
+          <button class="btn-back-menu" onclick="hideReceipt()">← TILLBAKA</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // STATE
+  // ============================================================
+  let restaurant = null;
+  let cart = {};
+  let deliveryType = 'delivery';
+  let upsellItem = null;
+
+  // Demo restaurant data (used when Firebase not configured)
+  const DEMO_RESTAURANT = {
+    name: "Pizza Roma",
+    slug: "pizza-roma",
+    swishNumber: "123 456 78 90",
+    description: "Authentic Neapolitan pizza, wood-fired with fresh imported ingredients.",
+    address: "Storgatan 12, Stockholm",
+    phone: "+46 70 123 45 67",
+    primaryColor: "#1c1812",
+    accentColor: "#c8380a",
+    logoUrl: "",
+    menu: [
+      { id: 1, name: "Margherita", cat: "PIZZA", price: 135 },
+      { id: 2, name: "Pepperoni", cat: "PIZZA", price: 149 },
+      { id: 3, name: "Quattro Formaggi", cat: "PIZZA", price: 155 },
+      { id: 4, name: "Diavola", cat: "PIZZA", price: 149 },
+      { id: 5, name: "Spaghetti Bolognese", cat: "PASTA", price: 129 },
+      { id: 6, name: "Penne Arrabbiata", cat: "PASTA", price: 119 },
+      { id: 7, name: "Garlic Bread", cat: "SIDES", price: 49 },
+      { id: 8, name: "Burrata Salad", cat: "SIDES", price: 89 },
+      { id: 9, name: "Tiramisu", cat: "DESSERTER", price: 79 },
+      { id: 10, name: "Panna Cotta", cat: "DESSERTER", price: 69 },
+      { id: 11, name: "San Pellegrino", cat: "DRYCKER", price: 35 },
+      { id: 12, name: "Husets rödvin", cat: "DRYCKER", price: 89 },
+    ]
+  };
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  function getSlugFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    // Support ?r=pizza-roma OR path /pizza-roma
+    const fromQuery = params.get('r');
+    const fromPath = window.location.pathname.replace(/^\//, '').replace('.html', '');
+    const slug = fromQuery || (fromPath && !fromPath.includes('crustly-order') ? fromPath : '');
+    return slug || null; // null = no slug, load demo
+  }
+
+  async function init() {
+    const slug = getSlugFromUrl();
+    console.log('Slug detected:', slug);
+
+    if (!slug) {
+      console.log('No slug, loading demo');
+      loadRestaurant(DEMO_RESTAURANT);
+      return;
+    }
+
+    await loadFromSupabase(slug);
+
+    // Visa telefonsökning
+    document.getElementById('phoneLookup').style.display = 'flex';
+
+    // Om kunden återvänder med ?order= i URL — visa spårning direkt
+    // Men bara om det är ett nytt sidladdning (inte direkt efter att order lagts)
+    const params = new URLSearchParams(window.location.search);
+    const savedOrder = params.get('order');
+    if (savedOrder && restaurant && !window._orderJustPlaced) {
+      resumeOrderTracking(savedOrder);
+    }
+  }
+
+  // Run after DOM + Firebase both ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  async function loadFromSupabase(slug) {
+    try {
+      const data = await getRestaurantBySlug(slug);
+      if (data) {
+        console.log('Restaurang hittad:', data.name);
+        loadRestaurant(data);
+      } else {
+        console.log('Ingen restaurang hittad för slug:', slug, '— laddar demo');
+        loadRestaurant(DEMO_RESTAURANT);
+      }
+    } catch (e) {
+      console.error('Supabase-fel:', e);
+      loadRestaurant(DEMO_RESTAURANT);
+    }
+  }
+
+  function loadRestaurant(data) {
+    try {
+      restaurant = data;
+
+      // Apply branding
+      document.documentElement.style.setProperty('--primary', data.primaryColor || '#1c1812');
+      document.documentElement.style.setProperty('--accent', data.accentColor || '#c8380a');
+      document.title = `Order — ${data.name}`;
+
+      // Hero
+      document.getElementById('heroName').textContent = data.name;
+      document.getElementById('heroDesc').textContent = data.description || '';
+      document.getElementById('heroAddress').textContent = data.address || '';
+
+      if (data.logoUrl) {
+        document.getElementById('heroLogo').innerHTML = `<img src="${data.logoUrl}" class="hero-logo" alt="Logo">`;
+      } else {
+        document.getElementById('heroLogo').innerHTML = `<div class="hero-logo-placeholder">${data.name[0]}</div>`;
+      }
+
+      // Swish number
+      if (data.swishNumber) {
+        document.getElementById('swishNumber').textContent = data.swishNumber;
+      }
+
+      // Säkerställ settings är mappat
+      restaurant.settings = data.settings || {};
+
+      // Build menu
+      buildMeny(data.menu || []);
+
+      // Leverans options
+      const hasLeverans = data.orderOptions?.delivery !== false && !!data.orderOptions?.delivery;
+      const hasPickup = data.orderOptions?.pickup !== false && !!data.orderOptions?.pickup;
+      const showLeverans = !data.orderOptions || hasLeverans;
+      const showAvhämtning = !data.orderOptions || hasPickup;
+
+      const deliveryTab = document.getElementById('tab-delivery');
+      const pickupTab = document.getElementById('tab-pickup');
+
+      if (!showLeverans) { deliveryTab.style.display = 'none'; setLeverans('pickup'); }
+      if (!showAvhämtning) { pickupTab.style.display = 'none'; }
+      if (!showLeverans && !showAvhämtning) { deliveryTab.style.display = ''; pickupTab.style.display = ''; }
+
+    } catch(e) {
+      console.error('loadRestaurant error:', e);
+    } finally {
+      // Always show the page — no matter what
+      document.getElementById('loadingScreen').style.display = 'none';
+      document.getElementById('mainPage').style.display = 'block';
+    }
+  }
+
+  // ============================================================
+  // MENU
+  // ============================================================
+  function buildMeny(rätter) {
+    const cats = [...new Set(rätter.map(i => i.cat))].filter(Boolean);
+    const container = document.getElementById('menuContainer');
+    const nav = document.getElementById('catNavInner');
+
+    // Nav
+    nav.innerHTML = cats.map((c, i) =>
+      `<button class="cat-btn ${i === 0 ? 'active' : ''}" onclick="scrollToCat('${c}', this)">${c}</button>`
+    ).join('');
+
+    // Sections
+    container.innerHTML = cats.map(cat => {
+      const catItems = rätter.filter(i => i.cat === cat);
+      return `
+        <div class="menu-section" id="cat-${cat}">
+          <div class="section-title">${cat}</div>
+          <div class="menu-grid">
+            ${catItems.map((rätt, idx) => `
+              <div class="menu-card" style="animation-delay:${idx * 0.04}s">
+                <div class="menu-card-info">
+                  <div class="menu-card-name">${rätt.name}</div>
+                  ${rätt.description ? `<div class="menu-card-desc">${rätt.description}</div>` : ''}
+                  ${rätt.subcategory ? `<div class="menu-card-tag">${rätt.subcategory}</div>` : ''}
+                </div>
+                <div class="menu-card-right">
+                  <div class="menu-card-price">${Number(rätt.price).toFixed(0)} kr</div>
+                  <div id="ctrl-${rätt.id}">
+                    <button class="btn-add" onclick="openExtras('${rätt.id}')">+</button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function scrollToCat(cat, btn) {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const el = document.getElementById(`cat-${cat}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ============================================================
+  // CART
+  // ============================================================
+  // ── TILLVAL ──────────────────────────────────────────
+  let _extrasCurrent = null; // { rätt, qty, selected }
+
+  // Default extras per category (ägaren kan utöka via settings.extras)
+  function getExtrasForCategory(cat) {
+    const c = (cat || '').toLowerCase();
+    const base = restaurant.settings?.extras || {};
+
+    // Kolla om ägaren definierat extras för denna kategori
+    for (const key of Object.keys(base)) {
+      if (c.includes(key.toLowerCase())) return base[key];
+    }
+
+    // Fallback-defaults per kategori
+    if (c.includes('pizza')) return [
+      { group: 'Extratoppings', options: [
+        { name: 'Extra ost', price: 15 },
+        { name: 'Extra skinka', price: 20 },
+        { name: 'Extra champinjoner', price: 15 },
+        { name: 'Extra räkor', price: 25 },
+        { name: 'Extra jalapeño', price: 10 },
+        { name: 'Ruccola', price: 15 },
+      ]},
+      { group: 'Sås vid sidan', options: [
+        { name: 'Vitlökssås', price: 10 },
+        { name: 'Bearnaisesås', price: 10 },
+        { name: 'Kebabsås', price: 10 },
+        { name: 'Tacosås', price: 10 },
+      ]}
+    ];
+    if (c.includes('pasta')) return [
+      { group: 'Tillbehör', options: [
+        { name: 'Parmesan', price: 10 },
+        { name: 'Extra sås', price: 15 },
+        { name: 'Bröd', price: 15 },
+      ]}
+    ];
+    if (c.includes('sallad')) return [
+      { group: 'Protein', options: [
+        { name: 'Extra kyckling', price: 25 },
+        { name: 'Extra räkor', price: 30 },
+        { name: 'Extra halloumi', price: 25 },
+      ]},
+      { group: 'Dressing', options: [
+        { name: 'Vitlökssås', price: 0 },
+        { name: 'Caesardressing', price: 0 },
+        { name: 'Olivolja', price: 0 },
+      ]}
+    ];
+    if (c.includes('burger') || c.includes('burgare')) return [
+      { group: 'Extras', options: [
+        { name: 'Extra bacon', price: 20 },
+        { name: 'Extra ost', price: 15 },
+        { name: 'Pommes', price: 35 },
+      ]}
+    ];
+    if (c.includes('kebab')) return [
+      { group: 'Sås', options: [
+        { name: 'Vitlökssås', price: 0 },
+        { name: 'Stark sås', price: 0 },
+        { name: 'Kebabsås', price: 0 },
+      ]},
+      { group: 'Tillbehör', options: [
+        { name: 'Extra kött', price: 25 },
+        { name: 'Pommes', price: 35 },
+      ]}
+    ];
+    return []; // inga extras för denna kategori
+  }
+
+  function openExtras(id) {
+    const rätt = restaurant.menu.find(i => i.id == id);
+    if (!rätt) return;
+
+    const extras = getExtrasForCategory(rätt.cat || rätt.category);
+
+    // Om inga extras — lägg till direkt
+    if (!extras || extras.length === 0) {
+      addItem(id);
+      return;
+    }
+
+    _extrasCurrent = { rätt, qty: 1, selected: {} };
+
+    document.getElementById('extrasDishName').textContent = rätt.name;
+    document.getElementById('extrasDishDesc').textContent = rätt.description || '';
+    document.getElementById('extrasQty').textContent = '1';
+
+    // Bygg sektioner
+    const sections = document.getElementById('extrasSections');
+    sections.innerHTML = extras.map((group, gi) => `
+      <div class="extras-section-title">${group.group}</div>
+      <div class="extras-grid">
+        ${group.options.map((opt, oi) => `
+          <div class="extras-option" id="eopt-${gi}-${oi}" onclick="toggleExtra(${gi},${oi})">
+            <div class="extras-option-left">
+              <div class="extras-option-check">✓</div>
+              <span class="extras-option-name">${opt.name}</span>
+            </div>
+            <span class="extras-option-price">${opt.price > 0 ? '+' + opt.price + ' kr' : 'Ingår'}</span>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+
+    updateExtrasTotalPrice();
+    document.getElementById('extrasOverlay').classList.add('open');
+  }
+
+  function toggleExtra(gi, oi) {
+    const key = gi + '-' + oi;
+    const el = document.getElementById('eopt-' + key);
+    if (_extrasCurrent.selected[key]) {
+      delete _extrasCurrent.selected[key];
+      el.classList.remove('selected');
+    } else {
+      _extrasCurrent.selected[key] = true;
+      el.classList.add('selected');
+    }
+    updateExtrasTotalPrice();
+  }
+
+  function extrasQtyChange(delta) {
+    _extrasCurrent.qty = Math.max(1, _extrasCurrent.qty + delta);
+    document.getElementById('extrasQty').textContent = _extrasCurrent.qty;
+    updateExtrasTotalPrice();
+  }
+
+  function updateExtrasTotalPrice() {
+    if (!_extrasCurrent) return;
+    const extras = getExtrasForCategory(_extrasCurrent.rätt.cat || _extrasCurrent.rätt.category);
+    let extraCost = 0;
+    for (const key of Object.keys(_extrasCurrent.selected)) {
+      const [gi, oi] = key.split('-').map(Number);
+      extraCost += extras[gi]?.options[oi]?.price || 0;
+    }
+    const total = (_extrasCurrent.rätt.price + extraCost) * _extrasCurrent.qty;
+    document.getElementById('extrasTotalPrice').textContent = total + ' kr';
+  }
+
+  function confirmExtras() {
+    if (!_extrasCurrent) return;
+    const { rätt, qty, selected } = _extrasCurrent;
+    const extras = getExtrasForCategory(rätt.cat || rätt.category);
+
+    // Samla valda extras som text
+    const selectedExtras = Object.keys(selected).map(key => {
+      const [gi, oi] = key.split('-').map(Number);
+      return extras[gi]?.options[oi]?.name || '';
+    }).filter(Boolean);
+
+    // Beräkna extra kostnad
+    let extraCost = 0;
+    for (const key of Object.keys(selected)) {
+      const [gi, oi] = key.split('-').map(Number);
+      extraCost += extras[gi]?.options[oi]?.price || 0;
+    }
+
+    // Lägg till i kundvagn — unik nyckel per kombination av rätt+extras
+    const cartKey = String(rätt.id) + (selectedExtras.length > 0 ? '|' + selectedExtras.sort().join('|') : '');
+    if (!cart[cartKey]) {
+      cart[cartKey] = { qty: 0, rätt, extras: selectedExtras, extraCost };
+    }
+    cart[cartKey].qty += qty;
+    // Uppdatera +/- knappen i menyn
+    updateQtyCtrl(rätt.id);
+
+    closeExtras();
+    updateCartFromObjects();
+  }
+
+  function closeExtras() {
+    document.getElementById('extrasOverlay').classList.remove('open');
+    _extrasCurrent = null;
+  }
+
+  function closeExtrasOutside(e) {
+    if (e.target === document.getElementById('extrasOverlay')) closeExtras();
+  }
+
+  // ── Uppdaterad cart-hantering för extras ──────────────────
+  function updateCartFromObjects() {
+    const entries = Object.entries(cart);
+    const count = entries.reduce((s, [, v]) => s + v.qty, 0);
+    const subtotal = entries.reduce((s, [, v]) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
+    const serviceFee = 7;
+    const total = subtotal + serviceFee;
+    const vatAmount = (subtotal / 1.12 * 0.12).toFixed(2);
+
+    const _set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    _set('cartCount', count + (count === 1 ? ' ITEM' : ' ITEMS'));
+    _set('cartBadge', count);
+    _set('cartBarTotal', total + ' kr');
+    _set('subtotalVal', subtotal.toFixed(0) + ' kr');
+    _set('vatVal', vatAmount + ' kr');
+    _set('totalVal', total + ' kr');
+
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    if (checkoutBtn) checkoutBtn.disabled = count === 0;
+
+    const itemsEl = document.getElementById('cartItems');
+    if (count === 0) {
+      itemsEl.innerHTML = '<div class="cart-empty">Inga rätter valda ännu.<br>Lägg till något gott!</div>';
+      return;
+    }
+
+    itemsEl.innerHTML = entries.map(([key, v]) => {
+      const extrasStr = v.extras && v.extras.length > 0
+        ? `<div style="font-size:11px;color:#6a6560;margin-top:3px;line-height:1.4;">${v.extras.join(', ')}</div>` : '';
+      const itemTotal = (v.rätt.price + v.extraCost) * v.qty;
+      return `<div class="cart-rätt">
+        <div style="flex:1;min-width:0;">
+          <div class="cart-rätt-name">${v.rätt.name}</div>
+          ${extrasStr}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.06);border-radius:14px;padding:2px 4px;">
+            <button onclick="cartQtyChange('${key}',-1)" style="background:none;border:none;color:#c4bfb0;cursor:pointer;font-size:14px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;">−</button>
+            <span style="font-family:var(--font-mono);font-size:12px;min-width:16px;text-align:center;color:#f0ece0;">${v.qty}</span>
+            <button onclick="cartQtyChange('${key}',1)" style="background:none;border:none;color:#c4bfb0;cursor:pointer;font-size:14px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;">+</button>
+          </div>
+          <span class="cart-rätt-price">${itemTotal.toFixed(0)} kr</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function cartQtyChange(key, delta) {
+    if (!cart[key]) return;
+    cart[key].qty += delta;
+    if (cart[key].qty <= 0) {
+      // Uppdatera +/- knappen i menyn om det är en enkel item (ingen extras)
+      const rättId = cart[key].rätt.id;
+      delete cart[key];
+      updateQtyCtrl(rättId);
+    }
+    updateCartFromObjects();
+  }
+
+  function addItem(id) {
+    const rätt = restaurant.menu.find(i => i.id == id);
+    if (!rätt) return;
+    const key = String(id);
+    if (!cart[key]) cart[key] = { qty: 0, rätt, extras: [], extraCost: 0 };
+    cart[key].qty++;
+    updateQtyCtrl(id);
+    updateCartFromObjects();
+    triggerUpsell(rätt);
+  }
+
+  function removeItem(id) {
+    const key = String(id);
+    if (!cart[key]) return;
+    cart[key].qty--;
+    if (cart[key].qty <= 0) delete cart[key];
+    updateQtyCtrl(id);
+    updateCartFromObjects();
+  }
+
+
+
+  function updateQtyCtrl(id) {
+    const ctrl = document.getElementById(`ctrl-${id}`);
+    if (!ctrl) return;
+    // Räkna total qty för denna rätt (kan finnas med och utan extras)
+    const qty = Object.entries(cart)
+      .filter(([k]) => k === String(id) || k.startsWith(String(id) + '|'))
+      .reduce((s, [, v]) => s + v.qty, 0);
+    if (qty === 0) {
+      ctrl.innerHTML = `<button class="btn-add" onclick="addItem('${id}')">+</button>`;
+    } else {
+      ctrl.innerHTML = `
+        <div class="qty-control">
+          <button class="qty-btn" onclick="removeItem('${id}')">−</button>
+          <span class="qty-num">${qty}</span>
+          <button class="qty-btn" onclick="addItem('${id}')">+</button>
+        </div>
+      `;
+    }
+  }
+
+
+  function triggerUpsell(addedItem) {
+    const rule = upsellRules[addedItem.cat];
+    if (!rule) return;
+    const suggestion = restaurant.menu.find(i => i.cat === rule.suggest && !cart[i.id]);
+    if (!suggestion) return;
+
+    upsellItem = suggestion;
+    document.getElementById('upsellText').textContent = rule.msg;
+    document.getElementById('upsellBox').classList.add('show');
+  }
+
+  function acceptUpsell() {
+    if (upsellItem) {
+      addItem(upsellItem.id);
+      document.getElementById('upsellBox').classList.remove('show');
+      upsellItem = null;
+    }
+  }
+
+  // ============================================================
+  // CHECKOUT
+  // ============================================================
+  function openCheckout() {
+    // Build summary
+    const subtotal = Object.values(cart).reduce((s, v) => {
+      return s + (v.rätt.price + v.extraCost) * v.qty;
+    }, 0);
+    const serviceFee = 7;
+    const total = subtotal + serviceFee;
+
+    document.getElementById('orderSummary').innerHTML = `
+      <div class="order-summary-title">ORDERSAMMANFATTNING</div>
+      ${Object.values(cart).map(v => {
+        const extrasStr = v.extras.length > 0 ? ` <span style="font-size:11px;opacity:0.6">(${v.extras.join(', ')})</span>` : '';
+        return `<div class="summary-rätt"><span>${v.rätt.name} ×${v.qty}${extrasStr}</span><span>${((v.rätt.price + v.extraCost) * v.qty).toFixed(0)} kr</span></div>`;
+      }).join('')}
+      <div class="summary-rätt" style="color:var(--muted)"><span>Leverans</span><span>0 kr</span></div>
+      <div class="summary-rätt" style="color:var(--muted)"><span>Serviceavgift</span><span>7 kr</span></div>
+      <div class="summary-total"><span>Totalt</span><span>${total.toFixed(0)} kr</span></div>
+    `;
+
+    document.getElementById('checkoutForm').style.display = 'block';
+    document.getElementById('orderSuccess').classList.remove('show');
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('show');
+  }
+
+  function closeModalOutside(e) {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  }
+
+  function setLeverans(type) {
+    deliveryType = type;
+    document.getElementById('tab-delivery').classList.toggle('active', type === 'delivery');
+    document.getElementById('tab-pickup').classList.toggle('active', type === 'pickup');
+    document.getElementById('deliveryFields').style.display = type === 'delivery' ? 'block' : 'none';
+  }
+
+  let paymentMethod = 'swish';
+
+  // ── STRIPE PAYMENT ELEMENT SETUP ─────────────────────────
+  const STRIPE_PK = 'pk_test_51TDR7bPMlGmjneRoNljUyHlcsRCGP5JtWLG7M9n2Tn8wANDNUg6k4AvxesxFh7uUlgxeiiNoxHlujo6NHUQwPkV100uafPUr95';
+  const WORKER_URL = 'https://damp-violet-0f15.burrebarca.workers.dev';
+  let _stripe = null;
+  let _stripeElements = null;
+  let _stripeReady = false;
+  let _stripeInitializing = false;
+
+  async function initStripePaymentElement(amount) {
+    if (_stripeInitializing) return;
+    _stripeInitializing = true;
+
+    const errEl = document.getElementById('stripe-errors');
+    errEl.style.display = 'none';
+
+    try {
+      if (!_stripe) _stripe = Stripe(STRIPE_PK);
+
+      // Skapa PaymentIntent via Worker
+      const res = await fetch(WORKER_URL + '/stripe/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amount || 1,
+          currency: 'sek',
+          restaurantName: restaurant?.name || '',
+          orderId: ''
+        })
+      });
+
+      const data = await res.json();
+      if (!data.clientSecret) throw new Error(data.error || 'Kunde inte starta betalning');
+
+      _stripeElements = _stripe.elements({
+        clientSecret: data.clientSecret,
+        appearance: {
+          theme: 'stripe',
+          variables: {
+            colorPrimary: '#f05a1a',
+            fontFamily: 'Plus Jakarta Sans, sans-serif',
+            borderRadius: '8px',
+          }
+        }
+      });
+
+      const paymentEl = _stripeElements.create('payment');
+      paymentEl.mount('#payment-element');
+      _stripeReady = true;
+    } catch(e) {
+      errEl.textContent = 'Kunde inte ladda betalning: ' + e.message;
+      errEl.style.display = 'block';
+    }
+    _stripeInitializing = false;
+  }
+
+  function setBetalning(method) {
+    paymentMethod = method;
+    document.getElementById('tab-swish').classList.toggle('active', method === 'swish');
+    document.getElementById('tab-stripe').classList.toggle('active', method === 'stripe');
+
+    document.getElementById('swishPanel').style.display = method === 'swish' ? 'block' : 'none';
+    document.getElementById('stripePanel').style.display = method === 'stripe' ? 'block' : 'none';
+
+    if (method === 'stripe') {
+      const subtotal = Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
+      initStripePaymentElement(subtotal || 1);
+      document.getElementById('placeOrderBtn').textContent = '💳 Betala med kort / Klarna →';
+    } else {
+      document.getElementById('placeOrderBtn').textContent = '📱 Betala med Swish →';
+    }
+  }
+
+  async function placeOrder() {
+    const first = document.getElementById('custFirst').value.trim();
+    const phone = document.getElementById('custPhone').value.trim();
+    if (!first || !phone) { alert('Fyll i ditt namn och telefonnummer.'); return; }
+
+    // ── STRIPE BETALNING ────────────────────────────────────
+    if (paymentMethod === 'stripe') {
+      if (!_stripeReady || !_stripe || !_stripeElements) {
+        alert('Betalning är inte redo än. Vänta ett ögonblick och försök igen.');
+        return;
+      }
+      const btn = document.getElementById('placeOrderBtn');
+      btn.textContent = 'BEARBETAR...'; btn.disabled = true;
+
+      const { error } = await _stripe.confirmPayment({
+        elements: _stripeElements,
+        confirmParams: {
+          return_url: window.location.href + '?payment=success',
+          payment_method_data: {
+            billing_details: { name: first }
+          }
+        },
+        redirect: 'if_required'
+      });
+
+      if (error) {
+        document.getElementById('stripe-errors').textContent = error.message;
+        document.getElementById('stripe-errors').style.display = 'block';
+        btn.textContent = '💳 Betala med kort / Klarna →'; btn.disabled = false;
+        return;
+      }
+      // Betalning lyckades — fortsätt med orderläggning nedan
+    }
+
+
+
+    const subtotal = Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
+    const total = subtotal;
+    const crustlyCut = 7; // Fast serviceavgift per order
+
+    const orderData = {
+      restaurantId: restaurant._id || 'demo',
+      restaurantSlug: restaurant.slug,
+      restaurantName: restaurant.name,
+      customer: {
+        name: `${first} ${document.getElementById('custLast').value.trim()}`,
+        phone,
+        address: deliveryType === 'delivery' ? document.getElementById('custAddress').value.trim() : 'PICKUP',
+        notes: document.getElementById('custNotes').value.trim(),
+      },
+      rätter: Object.values(cart).map(v => ({
+        name: v.rätt.name, quantity: v.qty,
+        price: v.rätt.price + v.extraCost,
+        total: (v.rätt.price + v.extraCost) * v.qty,
+        extras: v.extras
+      })),
+      deliveryType,
+      paymentMethod,
+      subtotal,
+      deliveryFee: 0,
+      serviceFee: 7,
+      total,
+      crustlyCut: Math.round(crustlyCut * 100) / 100,
+      status: 'new',
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      let result = null;
+      if (restaurant.id) {
+        // Spara order i Supabase
+        result = await saveOrderToSupabase({
+          restaurant_id:    restaurant.id,
+          restaurant_name:  restaurant.name,
+          restaurant_slug:  restaurant.slug,
+          customer_name:    orderData.customer.name,
+          customer_phone:   orderData.customer.phone,
+          items:            orderData.rätter,
+          total:            orderData.total,
+          delivery_type:    orderData.deliveryType,
+          delivery_address: orderData.customer.address,
+          payment_method:   orderData.paymentMethod,
+          special_instructions: orderData.customer.notes,
+        });
+
+        if (result && !result.success) console.error('Order-fel:', result.error);
+
+        // Spara kund + födelsedag
+        const bdayMonth = parseInt(document.getElementById('custBdayMonth').value);
+        const bdayDay   = parseInt(document.getElementById('custBdayDay').value);
+        await upsertCustomer({
+          restaurant_id:   restaurant.id,
+          restaurant_slug: restaurant.slug,
+          name:            orderData.customer.name,
+          phone:           orderData.customer.phone,
+          birthday_month:  bdayMonth || null,
+          birthday_day:    bdayDay   || null,
+          order_total:     orderData.total || 0,
+        });
+      }
+
+      const orderNum = 'ORD-' + Math.random().toString(36).substr(2,6).toUpperCase();
+
+      // Öppet Swish if chosen
+      if (paymentMethod === 'swish') {
+        const swishNum = (restaurant.swishNumber || '1234567890').replace(/\s/g,'');
+        const swishAmt = total.toFixed(2).replace('.','');
+        const msg = encodeURIComponent(restaurant.name + ' ' + orderNum);
+        const swishUrl = `swish://payment?data={"version":1,"payee":{"value":"${swishNum}"},"amount":{"value":${total.toFixed(0)}},"message":{"value":"${decodeURIComponent(msg)}"}}`;
+        setTimeout(() => { window.location.href = swishUrl; }, 200);
+      }
+
+      // Visa tracking
+      document.getElementById('checkoutForm').style.display = 'none';
+      document.getElementById('orderSuccess').classList.add('show');
+      document.getElementById('trackingNum').textContent = '#' + orderNum;
+
+      // Visa lojalitetspoäng
+      (async () => {
+        try {
+          const custPhone = orderData.customer.phone;
+          const { data: custRows } = await _sb.from('customers')
+            .select('loyalty_points,total_orders')
+            .eq('restaurant_id', restaurant.id)
+            .eq('phone', custPhone)
+            .single();
+          if (custRows) {
+            const pts = custRows.loyalty_points || 0;
+            const orders = custRows.total_orders || 0;
+            const nextReward = 50 - (pts % 50);
+            document.getElementById('loyaltyMsg').style.display = 'block';
+            document.getElementById('loyaltyPoints').textContent = pts + ' p';
+            document.getElementById('loyaltyNext').textContent =
+              nextReward <= 0
+                ? '🎉 Du har en belöning att använda!'
+                : nextReward + ' poäng till nästa belöning  •  ' + orders + ' orders totalt';
+          }
+        } catch(e) { /* tyst fel */ }
+      })();
+
+      window._orderJustPlaced = true;
+      // Spara order i URL så kunden kan komma tillbaka
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('order', result?.order?.id || orderNum);
+      window.history.replaceState({}, '', newUrl.toString());
+
+      // Bygg orderinfo
+      const dtype = deliveryType === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
+      const ptype = paymentMethod === 'swish' ? '📱 Swish' : '💵 Kontant';
+      document.getElementById('trackingInfo').innerHTML = `
+        <div class="tracking-info-row"><span class="tracking-info-key">Namn</span><span class="tracking-info-val">${first}</span></div>
+        <div class="tracking-info-row"><span class="tracking-info-key">Leveranssätt</span><span class="tracking-info-val">${dtype}</span></div>
+        <div class="tracking-info-row"><span class="tracking-info-key">Betalning</span><span class="tracking-info-val">${ptype}</span></div>
+        <div class="tracking-info-row"><span class="tracking-info-key">Totalt</span><span class="tracking-info-val">${total.toFixed(0)} kr</span></div>
+      `;
+
+      // Bygg kvitto
+      buildReceipt({
+        restaurantName: restaurant.name,
+        orderNum: orderNum,
+        items: orderData.rätter,
+        total: total,
+        customerName: orderData.customer.name,
+        customerPhone: orderData.customer.phone,
+        deliveryType: deliveryType,
+        paymentMethod: paymentMethod,
+      });
+
+      // Starta polling
+      if (result && result.order) {
+        startOrderTracking(result.order.id, deliveryType);
+      } else {
+        updateTrackingUI('new', deliveryType);
+      }
+
+    } catch (e) {
+      alert('Something went wrong: ' + e.message);
+    }
+  }
+
+
+
+
+  // ============================================================
+  // HITTA ORDER VIA TELEFONNUMMER
+  // ============================================================
+  async function lookupByPhone() {
+    const phone = document.getElementById('phoneLookupInput').value.trim().replace(/\s+/g,'');
+    const msg = document.getElementById('phoneLookupMsg');
+    msg.className = 'phone-lookup-msg show';
+
+    if (!phone || phone.length < 8) {
+      msg.textContent = 'Ange ett giltigt telefonnummer.';
+      msg.classList.add('error');
+      return;
+    }
+
+    msg.textContent = 'Söker...';
+    msg.classList.remove('error');
+
+    try {
+      const restaurantId = restaurant?.id;
+      if (!restaurantId) return;
+
+      // Prova både med och utan mellanslag/bindestreck
+      const phoneClean = phone.replace(/[\s\-]/g,'');
+      const res = await fetch(
+        'https://febybrpterkybwzhigte.supabase.co/rest/v1/orders?restaurant_id=eq.' + restaurantId +
+        '&order=created_at.desc&limit=20',
+        { headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
+        } }
+      );
+      const data = await res.json();
+
+      const match = (data||[]).find(o => {
+        const saved = (o.customer_phone||'').replace(/[\s\-]/g,'');
+        return saved === phoneClean;
+      });
+
+      if (!match) {
+        msg.textContent = 'Ingen aktiv order hittades för detta nummer.';
+        msg.classList.add('error');
+        return;
+      }
+
+      msg.style.display = 'none';
+      const order = match;
+
+      // Uppdatera URL
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('order', order.id);
+      window.history.replaceState({}, '', newUrl.toString());
+
+      // Visa spårning
+      resumeOrderTracking(order.id);
+
+    } catch(e) {
+      msg.textContent = 'Något gick fel, försök igen.';
+      msg.classList.add('error');
+    }
+  }
+
+
+  // ============================================================
+  // ÅTERUPPTA SPÅRNING VID ÅTERBESÖK
+  // ============================================================
+  async function resumeOrderTracking(orderId) {
+    try {
+      const res = await fetch(
+        'https://febybrpterkybwzhigte.supabase.co/rest/v1/orders?id=eq.' + orderId + '&select=*',
+        { headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
+        }}
+      );
+      const data = await res.json();
+      if (!data || !data[0]) return;
+
+      const order = data[0];
+
+      // Visa spårningssidan
+      document.getElementById('modalOverlay').classList.add('show');
+      document.getElementById('checkoutForm').style.display = 'none';
+      document.getElementById('orderSuccess').classList.add('show');
+      document.getElementById('trackingNum').textContent = '#' + order.id.slice(-6).toUpperCase();
+
+      // Bygg orderinfo
+      const dtype = order.delivery_type === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
+      const ptype = order.payment_method === 'swish' ? '📱 Swish' : '💵 Kontant';
+      document.getElementById('trackingInfo').innerHTML = `
+        <div class="tracking-info-row"><span class="tracking-info-key">Namn</span><span class="tracking-info-val">${order.customer_name||'—'}</span></div>
+        <div class="tracking-info-row"><span class="tracking-info-key">Leveranssätt</span><span class="tracking-info-val">${dtype}</span></div>
+        <div class="tracking-info-row"><span class="tracking-info-key">Betalning</span><span class="tracking-info-val">${ptype}</span></div>
+        <div class="tracking-info-row"><span class="tracking-info-key">Totalt</span><span class="tracking-info-val">${(order.total||0).toFixed(0)} kr</span></div>
+      `;
+
+      // Bygg kvitto
+      buildReceipt({
+        restaurantName: order.restaurant_name,
+        orderNum: order.id.slice(-6).toUpperCase(),
+        items: order.items || [],
+        total: order.total || 0,
+        customerName: order.customer_name,
+        customerPhone: order.customer_phone,
+        deliveryType: order.delivery_type,
+        paymentMethod: order.payment_method,
+      });
+
+      // Starta polling
+      updateTrackingUI(order.status, order.delivery_type);
+      startOrderTracking(order.id, order.delivery_type);
+
+    } catch(e) {
+      console.log('Kunde inte återuppta order:', e);
+    }
+  }
+
+  // ============================================================
+  // RECEIPT
+  // ============================================================
+  let receiptData = null;
+
+  function buildReceipt(orderInfo) {
+    receiptData = orderInfo;
+    // Restaurant info
+    document.getElementById('rcptRestaurant').textContent = orderInfo.restaurantName || restaurant.name;
+    document.getElementById('rcptAddr').textContent = restaurant.address || '';
+    document.getElementById('rcptNum').textContent = 'Order #' + orderInfo.orderNum;
+
+    // Items
+    const itemsHtml = (orderInfo.items || []).map(i => `
+      <div class="receipt-row">
+        <span class="receipt-row-name">${i.name}</span>
+        <span class="receipt-row-qty">${i.quantity || i.qty || 1}×</span>
+        <span class="receipt-row-price">${((i.price||0) * (i.quantity||i.qty||1)).toFixed(0)} kr</span>
+      </div>
+    `).join('');
+    document.getElementById('rcptItems').innerHTML = itemsHtml;
+
+    // Total
+    document.getElementById('rcptTotal').textContent = orderInfo.total.toFixed(0) + ' kr';
+
+    // Meta
+    document.getElementById('rcptName').textContent = orderInfo.customerName || '—';
+    document.getElementById('rcptPhone').textContent = orderInfo.customerPhone || '—';
+    document.getElementById('rcptDelivery').textContent = orderInfo.deliveryType === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
+    document.getElementById('rcptPayment').textContent = orderInfo.paymentMethod === 'swish' ? '📱 Swish' : '💵 Kontant';
+    document.getElementById('rcptDate').textContent = new Date().toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  function showReceipt() {
+    document.getElementById('trackingWrap').style.display = 'none';
+    document.getElementById('receiptWrap').classList.add('show');
+  }
+
+  function hideReceipt() {
+    document.getElementById('receiptWrap').classList.remove('show');
+    document.getElementById('trackingWrap').style.display = 'block';
+  }
+
+  // ============================================================
+  // ORDER TRACKING
+  // ============================================================
+  let trackingInterval = null;
+
+  function updateTrackingUI(status, dtype) {
+    const isDelivery = dtype === 'delivery';
+    const steps = [
+      { id: 0, statuses: ['new', 'progress', 'done'], icon: '✅', label: 'Mottagen' },
+      { id: 1, statuses: ['progress', 'done'],         icon: '🍕', label: 'Tillagas' },
+      { id: 2, statuses: ['done'],                     icon: isDelivery ? '🛵' : '🏠', label: isDelivery ? 'Ute för leverans' : 'Redo för avhämtning' },
+    ];
+
+    const msgs = {
+      new:      'Restaurangen har tagit emot din order och börjar snart.',
+      progress: '🍕 Din mat tillagas just nu!',
+      done:     isDelivery ? '🛵 Din order är på väg till dig!' : '🏠 Din order är redo för avhämtning!',
+    };
+
+    document.getElementById('trackingMsg').textContent = msgs[status] || msgs['new'];
+
+    steps.forEach(step => {
+      const icon = document.getElementById('step' + step.id);
+      const lbl  = document.getElementById('stepLbl' + step.id);
+      const isActive = status === (['new','progress','done'][step.id]);
+      const isDone   = step.statuses.includes(status) && !isActive;
+
+      icon.className = 'step-icon' + (isActive ? ' active' : isDone ? ' done' : '');
+      lbl.className  = 'step-label' + (isActive ? ' active' : isDone ? ' done' : '');
+      lbl.textContent = step.label;
+    });
+
+    // Connectors
+    const conn0 = document.getElementById('conn0');
+    const conn1 = document.getElementById('conn1');
+    if (conn0) conn0.className = 'step-connector' + (['progress','done'].includes(status) ? ' done' : '');
+    if (conn1) conn1.className = 'step-connector' + (['done'].includes(status) ? ' done' : '');
+
+    // Stop polling when done
+    if (status === 'done' && trackingInterval) {
+      clearInterval(trackingInterval);
+      trackingInterval = null;
+    }
+  }
+
+  function startOrderTracking(orderId, dtype) {
+    updateTrackingUI('new', dtype);
+
+    trackingInterval = setInterval(async () => {
+      try {
+        const { data } = await _sb.from('orders').select('status').eq('id', orderId).single();
+        if (data) updateTrackingUI(data.status, dtype);
+      } catch(e) {}
+    }, 10000); // var 10:e sekund
+  }
+
+  function resetCart() {
+    cart = {};
+    restaurant.menu.forEach(rätt => updateQtyCtrl(rätt.id));
+    updateCartFromObjects();
+    document.getElementById('upsellBox').classList.remove('show');
+  }
+</script>
+</body>
+</html>

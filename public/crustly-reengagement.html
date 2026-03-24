@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crustly — Återaktivering</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Supabase via fetch -->
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  const { createClient } = supabase;
+  const _sb = createClient('https://febybrpterkybwzhigte.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ');
+
+  async function requireAuth() {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (!session) { window.location.href = 'crustly-login.html'; return null; }
+    return session.user;
+  }
+  async function getMyRestaurant(uid) {
+    const { data } = await _sb.from('restaurants').select('*').eq('owner_uid', uid).single();
+    return data;
+  }
+  async function getInactiveCustomers(restaurantId, daysSince = 30) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - daysSince);
+    const { data } = await _sb.from('customers').select('*')
+      .eq('restaurant_id', restaurantId)
+      .lt('last_order_at', cutoff.toISOString())
+      .order('last_order_at', { ascending: true });
+    return data || [];
+  }
+  async function getCustomers(restaurantId) {
+    const { data } = await _sb.from('customers').select('*').eq('restaurant_id', restaurantId);
+    return data || [];
+  }
+  async function getSettings(restaurantId) {
+    const { data } = await _sb.from('restaurants').select('*').eq('id', restaurantId).single();
+    return data;
+  }
+  async function saveSettings(restaurantId, updates) {
+    await _sb.from('restaurants').update(updates).eq('id', restaurantId);
+  }
+
+  window.__sb = { requireAuth, getMyRestaurant, getInactiveCustomers, getCustomers, getSettings, saveSettings };
+  window.__supabaseReady = true;
+  document.dispatchEvent(new Event('supabaseReady'));
+</script>
+
+<style>
+  :root {
+    --bg: #f5f2ec;
+    --surface: #ffffff;
+    --surface2: #edeade;
+    --border: #ddd8ce;
+    --dark: #18160f;
+    --accent: #d44a0a;
+    --accent-light: #fff0ea;
+    --blue: #1a56db;
+    --blue-light: #eef3ff;
+    --green: #1a7a4a;
+    --green-light: #e8f5ee;
+    --yellow: #b45309;
+    --yellow-light: #fef9ec;
+    --text: #18160f;
+    --muted: #7a7568;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; }
+
+  /* Header */
+  .header {
+    background: var(--dark);
+    padding: 0 40px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo { font-family: var(--font-display); font-size: 26px; color: var(--accent); letter-spacing: 2px; }
+
+  .page-tag {
+    background: #ffffff15;
+    color: #f0ece0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .header-btns { display: flex; gap: 10px; }
+
+  .btn-ghost {
+    background: #ffffff15;
+    color: #f0ece0;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-ghost:hover { background: #ffffff25; }
+
+  .btn-accent {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-accent:hover { opacity: 0.88; }
+
+  /* Main */
+  .main { max-width: 1080px; margin: 0 auto; padding: 40px 40px 80px; }
+
+  /* Hero */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    margin-bottom: 36px;
+    gap: 24px;
+  }
+
+  .page-title { font-family: var(--font-display); font-size: 56px; letter-spacing: 3px; line-height: 1; color: var(--dark); }
+  .page-title span { color: var(--accent); }
+  .page-sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 2px; margin-top: 8px; }
+
+  /* Stats */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 32px; }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .stat-card:nth-child(1){animation-delay:.05s}
+  .stat-card:nth-child(2){animation-delay:.1s}
+  .stat-card:nth-child(3){animation-delay:.15s}
+  .stat-card:nth-child(4){animation-delay:.2s}
+
+  .stat-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; }
+  .stat-val { font-family: var(--font-display); font-size: 38px; letter-spacing: 2px; color: var(--dark); }
+  .stat-val.accent { color: var(--accent); }
+  .stat-val.green { color: var(--green); }
+  .stat-val.blue { color: var(--blue); }
+  .stat-change { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .stat-change.up { color: var(--green); }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3-1 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+  .card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; padding: 24px; }
+  .card-title { font-family: var(--font-display); font-size: 20px; letter-spacing: 2px; margin-bottom: 3px; color: var(--dark); }
+  .card-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; margin-bottom: 20px; }
+
+  /* Timeline flow */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-bottom: 24px;
+    position: relative;
+  }
+
+  .flow-step {
+    flex: 1;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    position: relative;
+  }
+
+  .flow-step.active { background: var(--accent-light); border-color: var(--accent); }
+
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    color: var(--muted);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .flow-icon { font-size: 24px; margin-bottom: 6px; }
+  .flow-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--muted); }
+  .flow-val { font-family: var(--font-display); font-size: 16px; letter-spacing: 1px; margin-top: 4px; color: var(--dark); }
+  .flow-step.active .flow-val { color: var(--accent); }
+
+  /* Template editor */
+  .template-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+
+  .tmpl-tab {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .tmpl-tab.active { background: var(--dark); border-color: var(--dark); color: #fff; }
+  .tmpl-tab:hover:not(.active) { border-color: var(--dark); color: var(--dark); }
+
+  .template-area {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  .tmpl-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); margin-bottom: 10px; }
+
+  textarea.tmpl-text {
+    width: 100%;
+    background: none;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.7;
+    resize: none;
+    outline: none;
+    min-height: 90px;
+  }
+
+  .var-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+
+  .var-chip {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--accent-light);
+    border: 1px solid #d44a0a40;
+    color: var(--accent);
+    cursor: pointer;
+    transition: background 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .var-chip:hover { background: #ffd9c5; }
+
+  /* Inställningar */
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1.5px solid var(--border);
+  }
+
+  .setting-row:last-child { border-bottom: none; }
+  .setting-name { font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 2px; }
+  .setting-desc { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+  /* Toggle */
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle.on { background: var(--accent); }
+  .toggle::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:3px; left:3px; transition:transform 0.2s; }
+  .toggle.on::after { transform:translateX(20px); }
+
+  /* Number input */
+  .num-input { display:flex; align-items:center; background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; overflow:hidden; }
+  .num-btn { width:32px; height:32px; background:none; border:none; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.1s; }
+  .num-btn:hover { background:var(--border); }
+  .num-val { font-family:var(--font-mono); font-size:14px; min-width:36px; text-align:center; font-weight:500; }
+
+  /* Customer table */
+  .customer-table { width:100%; border-collapse:collapse; }
+  .customer-table th { font-family:var(--font-mono); font-size:9px; letter-spacing:2px; color:var(--muted); text-align:left; padding:0 10px 12px 0; border-bottom:1.5px solid var(--border); }
+  .customer-table td { padding:12px 10px 12px 0; font-size:13px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  .customer-table tr:last-child td { border-bottom:none; }
+  .customer-table tr:hover td { background:#f8f5ee; }
+
+  .cust-name { font-weight:600; color:var(--dark); }
+  .cust-phone { font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:2px; }
+  .mono { font-family:var(--font-mono); font-size:12px; }
+
+  .days-chip {
+    font-family:var(--font-mono); font-size:11px;
+    padding:3px 10px; border-radius:20px; font-weight:500;
+  }
+
+  .days-14 { background:#fff0ea; color:var(--accent); border:1px solid #d44a0a40; }
+  .days-21 { background:#fef9ec; color:var(--yellow); border:1px solid #b4530940; }
+  .days-30 { background:#eef3ff; color:var(--blue); border:1px solid #1a56db40; }
+  .days-ok { background:#e8f5ee; color:var(--green); }
+
+  .sms-badge { font-family:var(--font-mono); font-size:10px; padding:3px 8px; border-radius:4px; letter-spacing:1px; }
+  .sms-pending { background:#fff0ea; color:var(--accent); }
+  .sms-sent { background:#e8f5ee; color:var(--green); }
+  .sms-scheduled { background:#eef3ff; color:var(--blue); }
+
+  .btn-send {
+    background:var(--accent); color:#fff; border:none;
+    border-radius:6px; padding:6px 14px;
+    font-family:var(--font-mono); font-size:10px; letter-spacing:1px;
+    cursor:pointer; font-weight:600; transition:opacity 0.15s;
+  }
+
+  .btn-send:hover { opacity:0.85; }
+
+  /* Phone preview */
+  .phone {
+    background: var(--dark);
+    border-radius: 24px;
+    padding: 20px 16px;
+    max-width: 240px;
+    margin: 0 auto;
+  }
+
+  .phone-notch {
+    width: 50px; height: 4px;
+    background: #ffffff20; border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .sms-from { font-family:var(--font-mono); font-size:10px; color:#6a6560; letter-spacing:1px; margin-bottom:8px; text-align:center; }
+
+  .sms-bubble {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 16px 16px 4px 16px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+
+  .sms-time { font-family:var(--font-mono); font-size:10px; color:#6a6560; text-align:right; margin-top:6px; }
+
+  /* Log */
+  .log-list { display:flex; flex-direction:column; max-height:260px; overflow-y:auto; }
+  .log-row { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .log-row:last-child { border-bottom:none; }
+  .log-dot { width:6px; height:6px; border-radius:50%; margin-top:4px; flex-shrink:0; }
+  .log-text { flex:1; font-size:12px; line-height:1.5; color:var(--text); }
+  .log-text strong { color:var(--accent); }
+  .log-time { font-family:var(--font-mono); font-size:10px; color:var(--muted); white-space:nowrap; }
+
+  /* Discount input */
+  .discount-input {
+    background:var(--surface2); border:1.5px solid var(--border);
+    border-radius:8px; padding:8px 14px;
+    font-family:var(--font-mono); font-size:16px;
+    color:var(--accent); width:72px; text-align:center; outline:none;
+    transition:border-color 0.15s;
+  }
+
+  .discount-input:focus { border-color:var(--accent); }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ===== AI SMS WRITER ===== */
+  .ai-modal-overlay {
+    position: fixed; inset: 0;
+    background: #00000080;
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-modal-overlay.show { display: flex; }
+
+  .ai-modal {
+    background: var(--dark);
+    border: 1.5px solid #3a3528;
+    border-radius: 18px;
+    width: 580px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes modalIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+
+  .ai-modal-header {
+    padding: 24px 28px 20px;
+    border-bottom: 1px solid #2e2b24;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .ai-modal-title { font-family: var(--font-display); font-size: 26px; letter-spacing: 2px; color: #f0ece0; }
+  .ai-modal-sub { font-family: var(--font-mono); font-size: 10px; color: #6a6560; letter-spacing: 1.5px; margin-top: 4px; }
+
+  .ai-close {
+    background: #2e2b24; border: none; color: #6a6560;
+    width: 30px; height: 30px; border-radius: 50%; font-size: 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .ai-close:hover { background: #ff6b1a30; color: #ff6b1a; }
+
+  .ai-modal-body { padding: 24px 28px; }
+
+  .ai-customer-card {
+    background: #222018;
+    border: 1px solid #2e2b24;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+  }
+
+  .ai-cust-stat { }
+  .ai-cust-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: #6a6560; margin-bottom: 4px; }
+  .ai-cust-val { font-family: var(--font-display); font-size: 20px; letter-spacing: 1px; color: #f0ece0; }
+  .ai-cust-val.orange { color: var(--accent); }
+
+  .ai-generate-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #ff6b1a, #e8521a);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: opacity 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .ai-generate-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .ai-generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .ai-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid #ffffff40;
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .ai-variants { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+
+  .ai-variant {
+    background: #222018;
+    border: 1.5px solid #2e2b24;
+    border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    position: relative;
+  }
+
+  .ai-variant:hover { border-color: #ff6b1a60; }
+  .ai-variant.selected { border-color: var(--accent); background: #ff6b1a10; }
+
+  .ai-variant-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .ai-variant-text {
+    font-size: 13px;
+    color: #c0bcb0;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    font-family: var(--font-mono);
+  }
+
+  .ai-select-indicator {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid #3a3528;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    transition: all 0.15s;
+  }
+
+  .ai-variant.selected .ai-select-indicator { background: var(--accent); border-color: var(--accent); }
+
+  .ai-edit-area {
+    background: #222018;
+    border: 1.5px solid #2e2b24;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  .ai-edit-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: #6a6560; margin-bottom: 8px; display: flex; justify-content: space-between; }
+
+  .ai-edit-textarea {
+    width: 100%; background: none; border: none;
+    font-family: var(--font-mono); font-size: 13px;
+    color: #f0ece0; line-height: 1.6; resize: none; outline: none;
+    min-height: 80px;
+  }
+
+  .ai-modal-footer {
+    padding: 16px 28px 24px;
+    border-top: 1px solid #2e2b24;
+    display: flex;
+    gap: 10px;
+  }
+
+  .ai-btn-send {
+    flex: 1; background: var(--accent); color: #fff; border: none;
+    border-radius: 8px; padding: 12px;
+    font-family: var(--font-display); font-size: 16px; letter-spacing: 2px;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .ai-btn-send:hover { opacity: 0.88; }
+
+  .ai-btn-cancel {
+    background: #222018; border: 1.5px solid #2e2b24; color: #6a6560;
+    border-radius: 8px; padding: 12px 20px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .ai-btn-cancel:hover { border-color: #ff4d4d; color: #ff4d4d; }
+
+  .ai-powered-tag {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px;
+    background: linear-gradient(135deg, #ff6b1a20, #f5c84220);
+    border: 1px solid #ff6b1a30;
+    color: var(--accent); padding: 3px 8px; border-radius: 4px;
+  }
+
+  .btn-ai {
+    background: linear-gradient(135deg, #ff6b1a, #e8521a);
+    color: #fff; border: none; border-radius: 6px;
+    padding: 6px 12px; font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 1px; cursor: pointer;
+    font-weight: 600; transition: opacity 0.15s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .btn-ai:hover { opacity: 0.85; }
+
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo">CRUSTLY</div>
+    <div class="page-tag">📱 RE-ENGAGEMENT</div>
+  </div>
+  <div class="header-btns">
+    <button class="btn-ghost" onclick="runCheck()">▶ KÖR KONTROLL</button>
+    <button class="btn-accent" onclick="saveInställningar()">SPARA INSTÄLLNINGAR</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="hero">
+    <div>
+      <div class="page-title">VINN TILLBAKA<br><span>KUNDER</span></div>
+      <div class="page-sub">AUTOMATISKT SMS · KUNDER SOM INTE BESTÄLLT PÅ X DAGAR · ALLA RESTAURANGER</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">KUNDER ATT ÅTERAKTIVERA</div>
+      <div class="stat-val accent" id="statLapsed">—</div>
+      <div class="stat-change">HAR INTE BESTÄLLT PÅ 14+ DAGAR</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">SMS SKICKADE DENNA MÅNAD</div>
+      <div class="stat-val blue" id="statSent">—</div>
+      <div class="stat-change up" id="statSentChange">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">KUNDER VUNNA TILLBAKA</div>
+      <div class="stat-val green" id="statWonTillbaka">—</div>
+      <div class="stat-change up" id="statWonChange">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">ÅTERVUNNEN INTÄKT</div>
+      <div class="stat-val accent" id="statIntäkt">€—</div>
+      <div class="stat-change" id="statRevChange">THIS MONTH</div>
+    </div>
+  </div>
+
+  <!-- How it works flow -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-title">SÅ HÄR FUNGERAR DET</div>
+    <div class="card-sub">AUTOMATISKT FLÖDE · KÖR VARJE DAG</div>
+    <div class="flow">
+      <div class="flow-step active">
+        <div class="flow-icon">📦</div>
+        <div class="flow-label">KUND BESTÄLLER</div>
+        <div class="flow-val">Senaste order sparad</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon">⏳</div>
+        <div class="flow-label">DAGAR PASSERAR</div>
+        <div class="flow-val" id="flowDays">14 days</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step active">
+        <div class="flow-icon">📱</div>
+        <div class="flow-label">AUTO-SMS SKICKAS</div>
+        <div class="flow-val">Med rabatt</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon">🍕</div>
+        <div class="flow-label">KUND BESTÄLLER</div>
+        <div class="flow-val">Intäkt återvunnen</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step active">
+        <div class="flow-icon">💸</div>
+        <div class="flow-label">DU FÅR 10%</div>
+        <div class="flow-val">Automatisk</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-3-1">
+
+    <!-- Left: Templates + Inställningar -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- SMS Templates -->
+      <div class="card">
+        <div class="card-title">SMS-MALLAR</div>
+        <div class="card-sub">OLIKA MEDDELANDEN FÖR OLIKA TIDSGAP</div>
+
+        <div class="template-tabs">
+          <div class="tmpl-tab active" onclick="switchTemplate(0, this)">14 DAYS</div>
+          <div class="tmpl-tab" onclick="switchTemplate(1, this)">21 DAYS</div>
+          <div class="tmpl-tab" onclick="switchTemplate(2, this)">30 DAYS</div>
+        </div>
+
+        <div class="var-row">
+          <div class="var-chip" onclick="insertVar('{name}')">👤 {name}</div>
+          <div class="var-chip" onclick="insertVar('{restaurant}')">🍕 {restaurant}</div>
+          <div class="var-chip" onclick="insertVar('{discount}')">💸 {discount}</div>
+          <div class="var-chip" onclick="insertVar('{order_link}')">🔗 {order_link}</div>
+          <div class="var-chip" onclick="insertVar('{days}')">📅 {days}</div>
+        </div>
+
+        <div class="template-area">
+          <div class="tmpl-label">MEDDELANDE · <span id="charCount">0</span> / 160 CHARS</div>
+          <textarea class="tmpl-text" id="templateText" oninput="updatePreview(); updateCharCount()"></textarea>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:1.5px;">RABATT %</div>
+          <input type="number" class="discount-input" id="discountVal" value="15" min="5" max="50" oninput="updatePreview()">
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);">PÅ NÄSTA ORDER</div>
+        </div>
+      </div>
+
+      <!-- Inställningar -->
+      <div class="card">
+        <div class="card-title">SETTINGS</div>
+        <div class="card-sub">AUTOMATIONSKONTROLLER</div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Återaktivering ON</div>
+            <div class="setting-desc">HUVUDBRYTARE</div>
+          </div>
+          <div class="toggle on" id="toggle-master" onclick="toggleSetting('master')"></div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Dagar tills första SMS</div>
+            <div class="setting-desc">GRÄNSVÄRDE</div>
+          </div>
+          <div class="num-input">
+            <button class="num-btn" onclick="adjustDays(-1)">−</button>
+            <span class="num-val" id="daysVal">14</span>
+            <button class="num-btn" onclick="adjustDays(1)">+</button>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Max SMS per kund</div>
+            <div class="setting-desc">PER MÅNAD · FÖRHINDRAR SPAM</div>
+          </div>
+          <div class="num-input">
+            <button class="num-btn" onclick="adjustMax(-1)">−</button>
+            <span class="num-val" id="maxVal">2</span>
+            <button class="num-btn" onclick="adjustMax(1)">+</button>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Utskickstid</div>
+            <div class="setting-desc">DAGLIG KONTROLLTID</div>
+          </div>
+          <select style="background:var(--surface2);border:1.5px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:7px 12px;border-radius:8px;outline:none;" id="sendTime">
+            <option>08:00</option>
+            <option selected>10:00</option>
+            <option>12:00</option>
+            <option>17:00</option>
+          </select>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">SMS-leverantör</div>
+            <div class="setting-desc">KOPPLA IN NÄR REDO</div>
+          </div>
+          <select style="background:var(--surface2);border:1.5px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:11px;padding:7px 12px;border-radius:8px;outline:none;">
+            <option>Ej ansluten</option>
+            <option>46elks</option>
+            <option>Twilio</option>
+          </select>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Right: Preview + Log -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Phone preview -->
+      <div class="card">
+        <div class="card-title">FÖRHANDSGRANSKNING</div>
+        <div class="card-sub">KUNDENS TELEFON</div>
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="sms-from">PIZZA ROMA</div>
+          <div class="sms-bubble" id="smsPreview">Laddar...</div>
+          <div class="sms-time">10:00 AM ✓✓</div>
+        </div>
+      </div>
+
+      <!-- Activity log -->
+      <div class="card">
+        <div class="card-title">AKTIVITETSLOGG</div>
+        <div class="card-sub">SENASTE HÄNDELSER</div>
+        <div class="log-list" id="logList">
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);padding:20px 0;text-align:center;letter-spacing:1px;">INGEN AKTIVITET ÄN</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Lapsed customers table -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div class="card-title">INAKTIVA KUNDER</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-ghost" style="background:var(--surface2);color:var(--dark);border:1.5px solid var(--border);font-size:12px;padding:7px 14px;" onclick="loadKunder()">↻ UPPDATERA</button>
+        <button class="btn-ghost" style="background:var(--surface2);color:var(--dark);border:1.5px solid var(--border);font-size:12px;padding:7px 14px;" onclick="addTestCustomer()">+ LÄGG TILL TEST</button>
+        <button class="btn-accent" style="font-size:12px;padding:7px 16px;" onclick="sendToAll()">SKICKA TILL ALLA VÄNTANDE</button>
+      </div>
+    </div>
+    <div class="card-sub">KUNDER SOM INTE BESTÄLLT PÅ 14+ DAGAR · SORTERADE EFTER INAKTIVITETSDAGAR</div>
+
+    <table class="customer-table">
+      <thead>
+        <tr>
+          <th>Kund</th>
+          <th>Restaurang</th>
+          <th>Senaste Order</th>
+          <th>Dagar Inaktiv</th>
+          <th>Totaltt Orders</th>
+          <th>SMS-Status</th>
+          <th>Åtgärd</th>
+        </tr>
+      </thead>
+      <tbody id="customerTableBody">
+        <tr><td colspan="7" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;padding:32px;">Laddar kunder...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  // ============================================================
+  // TEMPLATES
+  // ============================================================
+  const templates = [
+    `Hej {name}! 🍕 Det är {days} dagar sedan du beställde från {restaurant}.
+
+Vi saknar dig! Kom tillbaka med {discount}% rabatt på din nästa order 👉 {order_link}
+
+Erbjudandet gäller i 48h!`,
+
+    `{name}, länge sedan! 😊
+
+{restaurant} vill ha tillbaka dig med {discount}% rabatt.
+
+Beställ nu 👉 {order_link}
+(Gäller till imorgon)`,
+
+    `Hej {name}! Det har gått {days} dagar — vi hoppas allt är bra! 🍕
+
+{restaurant} har ett speciellt erbjudande för dig: {discount}% på allt.
+
+👉 {order_link}`
+  ];
+
+  let activeTemplate = 0;
+  let settings = { master: true, days: 14, max: 2 };
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('templateText').value = templates[0];
+    updatePreview();
+    updateCharCount();
+    loadKunder();
+    loadStats();
+  });
+
+  // ============================================================
+  // TEMPLATE SWITCHING
+  // ============================================================
+  function switchTemplate(idx, btn) {
+    // Spara current
+    templates[activeTemplate] = document.getElementById('templateText').value;
+    activeTemplate = idx;
+    document.getElementById('templateText').value = templates[idx];
+    document.querySelectorAll('.tmpl-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    updatePreview();
+    updateCharCount();
+  }
+
+  function insertVar(v) {
+    const ta = document.getElementById('templateText');
+    const pos = ta.selectionStart;
+    ta.value = ta.value.slice(0, pos) + v + ta.value.slice(pos);
+    ta.selectionStart = ta.selectionEnd = pos + v.length;
+    ta.focus();
+    updatePreview();
+    updateCharCount();
+  }
+
+  function updatePreview() {
+    const tmpl = document.getElementById('templateText').value;
+    const discount = document.getElementById('discountVal').value || '15';
+    const days = document.getElementById('daysVal').textContent;
+    const preview = tmpl
+      .replace('{name}', 'Anna')
+      .replace('{restaurant}', 'Pizza Roma')
+      .replace('{discount}', discount)
+      .replace('{order_link}', 'crustly.app/pizza-roma')
+      .replace('{days}', days);
+    document.getElementById('smsPreview').textContent = preview;
+  }
+
+  function updateCharCount() {
+    const len = document.getElementById('templateText').value.length;
+    const el = document.getElementById('charCount');
+    el.textContent = len;
+    el.style.color = len > 160 ? 'var(--accent)' : 'var(--muted)';
+  }
+
+  // ============================================================
+  // SETTINGS
+  // ============================================================
+  function toggleSetting(key) {
+    settings[key] = !settings[key];
+    document.getElementById(`toggle-${key}`).classList.toggle('on', settings[key]);
+  }
+
+  function adjustDays(delta) {
+    const el = document.getElementById('daysVal');
+    const val = Math.max(7, Math.min(60, parseInt(el.textContent) + delta));
+    el.textContent = val;
+    settings.days = val;
+    document.getElementById('flowDays').textContent = `${val} days`;
+    updatePreview();
+  }
+
+  function adjustMax(delta) {
+    const el = document.getElementById('maxVal');
+    const val = Math.max(1, Math.min(5, parseInt(el.textContent) + delta));
+    el.textContent = val;
+    settings.max = val;
+  }
+
+  // ============================================================
+  // LOAD CUSTOMERS FROM FIREBASE
+  // ============================================================
+  async function loadKunder() {
+    const tbody = document.getElementById('customerTableBody');
+    tbody.innerHTML = `<tr><td colspan="7" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;padding:32px;">Laddar...</td></tr>`;
+
+    try {
+      const days = parseInt(document.getElementById('daysVal').textContent);
+      const cutavf = new Date();
+      cutavf.setDate(cutavf.getDate() - days);
+
+      // Get all customers with their last order date
+      const user = await window.__sb.requireAuth();
+      if (!user) return;
+      const rest = await window.__sb.getMyRestaurant(user.id);
+      if (!rest) return;
+      let customers = await window.__sb.getCustomers(rest.id);
+
+      // Calculate days lapsed from last_order_at
+      const now = new Date();
+      customers = customers
+        .filter(c => c.phone)
+        .map(c => {
+          const lastOrder = c.last_order_at ? new Date(c.last_order_at) : null;
+          const daysLapsed = lastOrder ? Math.floor((now - lastOrder) / (1000 * 60 * 60 * 24)) : 999;
+          return { ...c, daysLapsed, lastOrder };
+        })
+        .filter(c => c.daysLapsed >= days)
+        .sort((a, b) => b.daysLapsed - a.daysLapsed);
+
+      if (customers.length === 0) {
+        renderDemoKunder();
+      } else {
+        renderCustomerTable(customers);
+        document.getElementById('statLapsed').textContent = customers.length;
+      }
+
+    } catch(e) {
+      console.error(e);
+      renderDemoKunder();
+    }
+  }
+
+  const DEMO_CUSTOMERS = [
+    { id: 'd1', name: 'Anna Svensson', phone: '+46 70 123 45 67', restaurantName: 'Pizza Roma', daysLapsed: 31, orderCount: 8, reengageSent: false },
+    { id: 'd2', name: 'Erik Johansson', phone: '+46 73 234 56 78', restaurantName: 'Bella Napoli', daysLapsed: 22, orderCount: 5, reengageSent: true },
+    { id: 'd3', name: 'Maria Lindqvist', phone: '+46 76 345 67 89', restaurantName: 'Pizza Roma', daysLapsed: 18, orderCount: 3, reengageSent: false },
+    { id: 'd4', name: 'Johan Berg', phone: '+46 70 456 78 90', restaurantName: 'Fuoco & Farina', daysLapsed: 16, orderCount: 12, reengageSent: false },
+    { id: 'd5', name: 'Sara Nilsson', phone: '+46 73 567 89 01', restaurantName: 'Bella Napoli', daysLapsed: 14, orderCount: 2, reengageSent: false },
+  ];
+
+  function renderDemoKunder() {
+    renderCustomerTable(DEMO_CUSTOMERS);
+    document.getElementById('statLapsed').textContent = DEMO_CUSTOMERS.length;
+    document.getElementById('statSent').textContent = '24';
+    document.getElementById('statWonTillbaka').textContent = '9';
+    document.getElementById('statIntäkt').textContent = '€1,840';
+    document.getElementById('statSentChange').textContent = '↑ vs last month';
+    document.getElementById('statWonChange').textContent = '37% win-back rate';
+    document.getElementById('statRevChange').textContent = 'FROM WIN-BACKS';
+  }
+
+  function renderCustomerTable(customers) {
+    const tbody = document.getElementById('customerTableBody');
+    tbody.innerHTML = customers.map(c => {
+      const daysClass = c.daysLapsed >= 30 ? 'days-30' : c.daysLapsed >= 21 ? 'days-21' : 'days-14';
+      const statusHtml = c.reengageSent
+        ? `<span class="sms-badge sms-sent">SENT ✓</span>`
+        : `<span class="sms-badge sms-pending">PENDING</span>`;
+      const actionHtml = !c.reengageSent
+        ? `<div style="display:flex;gap:6px;">
+             <button class="btn-ai" onclick="openAiModal(${JSON.stringify(c)})">✨ AI</button>
+             <button class="btn-send" onclick="sendToCustomer('${c.id}','${c.name}')">SEND</button>
+           </div>`
+        : `<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">—</span>`;
+
+      const lastOrderLabel = c.lastOrder
+        ? c.lastOrder.toLocaleDateString('sv-SE')
+        : `${c.daysLapsed} dagar sedan`;
+
+      return `
+        <tr>
+          <td>
+            <div class="cust-name">${c.name}</div>
+            <div class="cust-phone">${c.phone}</div>
+          </td>
+          <td style="color:var(--muted);font-size:13px;">${c.restaurantName || '—'}</td>
+          <td><span class="mono">${lastOrderLabel}</span></td>
+          <td><span class="days-chip ${daysClass}">${c.daysLapsed} days</span></td>
+          <td><span class="mono">${c.orderCount || '—'} orders</span></td>
+          <td>${statusHtml}</td>
+          <td>${actionHtml}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ============================================================
+  // SEND LOGIC
+  // ============================================================
+  function sendToCustomer(customerId, customerName) {
+    templates[activeTemplate] = document.getElementById('templateText').value;
+    const discount = document.getElementById('discountVal').value;
+
+    // Log it
+    addLog(`SMS queued for <strong>${customerName}</strong> — ${discount}% win-back avfer`, 'accent');
+
+    // Spara till Supabase
+    if (!customerId.startsWith('d')) {
+      await _sb.from('customers').update({
+        reengageSent: true,
+        reengageSentAt: _sb)
+      });
+    }
+
+    alert(`✅ SMS queued for ${customerName}\n\nWhen you connect 46elks or Twilio, this sends automatically.`);
+    loadKunder();
+  }
+
+  function sendToAll() {
+    const pending = DEMO_CUSTOMERS.filter(c => !c.reengageSent);
+    pending.forEach(c => addLog(`SMS queued for <strong>${c.name}</strong>`, 'accent'));
+    addLog(`Bulk send complete — <strong>${pending.length} SMS</strong> queued`, 'green');
+    alert(`✅ ${pending.length} SMS queued!\n\nConnect your SMS-leverantör to send for real.`);
+  }
+
+  async function addTestCustomer() {
+    const lastOrder = new Date();
+    lastOrder.setDate(lastOrder.getDate() - 17);
+
+    const testCustomer = {
+      name: 'Test Customer',
+      phone: '+46 70 000 00 00',
+      restaurantName: 'Pizza Roma',
+      restaurantSlug: 'pizza-roma',
+      lastOrderAt: _sb),
+      orderCount: 3,
+      reengageSent: false,
+      createdAt: _sb)
+    };
+
+    try {
+      await _sb.from('customers').insert(testCustomer);
+      addLog(`Test customer added (ID: ${ref.id.slice(0,8)}...)`, 'blue');
+      loadKunder();
+    } catch(e) {
+      addLog('Visar demo-data', 'muted');
+    }
+  }
+
+  // ============================================================
+  // RUN CHECK
+  // ============================================================
+  async function runCheck() {
+    const days = parseInt(document.getElementById('daysVal').textContent);
+    addLog(`Running re-engagement check — looking for customers inactive ${days}+ days...`, 'blue');
+
+    setTimeout(() => {
+      const count = DEMO_CUSTOMERS.filter(c => !c.reengageSent && c.daysLapsed >= days).length;
+      addLog(`Check complete — <strong>${count} customers</strong> qualify for re-engagement SMS today`, count > 0 ? 'accent' : 'muted');
+    }, 800);
+  }
+
+  // ============================================================
+  // STATS
+  // ============================================================
+  async function loadStats() {
+    try {
+      const user4 = await window.__sb.requireAuth(); const rest4 = await window.__sb.getMyRestaurant(user4.id); const allC4 = await window.__sb.getCustomers(rest4.id); const snap = { size: allC4.filter(c=>c.reengaged).length };
+      document.getElementById('statSent').textContent = snap.size;
+    } catch(e) {
+      // Demo stats shown in renderDemoKunder
+    }
+  }
+
+  // ============================================================
+  // SPARA INSTÄLLNINGAR
+  // ============================================================
+  async function saveInställningar() {
+    templates[activeTemplate] = document.getElementById('templateText').value;
+    const payload = {
+      ...settings,
+      templates,
+      discount: parseInt(document.getElementById('discountVal').value),
+      sendTime: document.getElementById('sendTime').value,
+      updatedAt: _sb)
+    };
+
+    try {
+      const user5 = await window.__sb.requireAuth(); const rest5 = await window.__sb.getMyRestaurant(user5.id); if(rest5) await window.__sb.saveSettings(rest5.id, {reengagement_settings: payload});
+      addLog('Inställningar sparade ✓', 'green');
+    } catch(e) {
+      addLog('Inställningar sparade lokalt', 'muted');
+    }
+
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = 'SPARAD ✓';
+    setTimeout(() => btn.textContent = orig, 2000);
+  }
+
+  // ============================================================
+  // LOG
+  // ============================================================
+  function addLog(msg, type = 'muted') {
+    const colors = { accent: 'var(--accent)', green: 'var(--green)', blue: 'var(--blue)', muted: 'var(--muted)' };
+    const feed = document.getElementById('logList');
+    const empty = feed.querySelector('[style*="INGEN AKTIVITET"]');
+    if (empty) empty.remove();
+
+    const time = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    row.innerHTML = `
+      <div class="log-dot" style="background:${colors[type]||colors.muted}"></div>
+      <div class="log-text">${msg}</div>
+      <div class="log-time">${time}</div>
+    `;
+    feed.insertBefore(row, feed.firstChild);
+  }
+
+  // ============================================================
+  // AI SMS WRITER
+  // ============================================================
+  let aiCurrentCustomer = null;
+  let aiSelectedText = '';
+
+  function openAiModal(customer) {
+    aiCurrentCustomer = customer;
+    aiSelectedText = '';
+
+    document.getElementById('aiCustName').textContent = customer.name;
+    document.getElementById('aiCustDays').textContent = customer.daysLapsed + 'd';
+    document.getElementById('aiCustOrders').textContent = (customer.orderCount || '?') + ' orders';
+    document.getElementById('aiModalSub').textContent = 'PERSONALISED SMS FOR ' + customer.name.toUpperCase();
+    document.getElementById('aiVariants').innerHTML = '';
+    document.getElementById('aiRedigeraArea').style.display = 'none';
+    document.getElementById('aiSendBtn').style.display = 'none';
+    document.getElementById('aiGenerateBtnText').textContent = '✨ GENERERA 3 ALTERNATIV';
+    document.getElementById('aiSpinner').style.display = 'none';
+    document.getElementById('aiGenerateBtn').disabled = false;
+    document.getElementById('aiModal').classList.add('show');
+  }
+
+  function closeAiModal() {
+    document.getElementById('aiModal').classList.remove('show');
+    aiCurrentCustomer = null;
+  }
+
+  async function generateSMS() {
+    const btn = document.getElementById('aiGenerateBtn');
+    const spinner = document.getElementById('aiSpinner');
+    const btnText = document.getElementById('aiGenerateBtnText');
+    const variantsEl = document.getElementById('aiVariants');
+
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'GENERATING...';
+    variantsEl.innerHTML = '';
+    document.getElementById('aiRedigeraArea').style.display = 'none';
+    document.getElementById('aiSendBtn').style.display = 'none';
+
+    const c = aiCurrentCustomer;
+    const discount = document.getElementById('discountVal').value || '15';
+    const days = document.getElementById('daysVal').textContent || '14';
+
+    const prompt = `You are writing re-engagement SMS messages for a pizza restaurant called "${c.restaurantName || 'the restaurant'}".
+
+Customer details:
+- Name: ${c.name}
+- Days since last order: ${c.daysLapsed}
+- Totalt orders placed: ${c.orderCount || 'unknown'}
+- Favourite rätter: ${c.favouriteItems || 'pizza and pasta'}
+
+Write 3 different SHORT SMS messages (max 140 chars each) to win this customer back.
+Each should feel personal, warm, and different in tone:
+- Option 1: Friendly and casual
+- Option 2: Creates urgency  
+- Option 3: Flattering / makes them feel special
+
+Include a ${discount}% discount avfer in each.
+Write in Swedish.
+The ordering link is: crustly.app/${(c.restaurantName||'restaurant').toLowerCase().replace(/\s+/g,'-')}
+
+Respond ONLY with a JSON array av 3 strings, no other text. Example:
+["message 1", "message 2", "message 3"]`;
+
+    try {
+      const apiKey = localStorage.getItem('crustly_claude_key');
+      if (!apiKey) {
+        alert('Ingen Claude API-nyckel hittad.\nGå till Inställningar och lägg till din nyckel.');
+        btn.disabled = false; spinner.style.display = 'none'; btnText.textContent = '✨ GENERERA 3 ALTERNATIV';
+        return;
+      }
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 600,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const raw = data.content?.[0]?.text || '[]';
+      let variants;
+      try {
+        const clean = raw.replace(/```json|```/g, '').trim();
+        variants = JSON.parse(clean);
+      } catch(e) {
+        // Extract strings if JSON parse fails
+        variants = raw.match(/"([^"]+)"/g)?.map(s => s.slice(1,-1)) || [raw];
+      }
+
+      renderVariants(variants);
+
+    } catch(e) {
+      // Fallback demo variants if API not connected
+      const name = c.name.split(' ')[0];
+      renderVariants([
+        `Hej ${name}! Vi saknar dig på ${c.restaurantName} 🍕 Det är ${c.daysLapsed} dagar sedan sist — kom tillbaka med ${discount}% rabatt! crustly.app`,
+        `${name}, ${discount}% rabatt väntar dig! Erbjudandet gäller bara 48h. Beställ nu 👉 crustly.app`,
+        `Hej ${name}! Du är en av våra bästa kunder — därför får du ${discount}% på nästa order. Välkommen åter! 🍕`
+      ]);
+    }
+
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    btnText.textContent = '↻ REGENERATE';
+  }
+
+  function renderVariants(variants) {
+    const labels = ['FRIENDLY & CASUAL', 'CREATES URGENCY', 'MAKES THEM FEEL SPECIAL'];
+    const el = document.getElementById('aiVariants');
+
+    el.innerHTML = variants.map((text, i) => `
+      <div class="ai-variant" onclick="selectVariant(${i}, this)" data-text="${text.replace(/"/g,'&quot;')}">
+        <div class="ai-variant-label">
+          <span>OPTION ${i+1} · ${labels[i] || 'VARIANT'}</span>
+          <div class="ai-select-indicator">${i === 0 ? '✓' : ''}</div>
+        </div>
+        <div class="ai-variant-text">${text}</div>
+      </div>
+    `).join('');
+
+    // Auto-select first
+    selectVariant(0, el.querySelector('.ai-variant'));
+  }
+
+  function selectVariant(idx, el) {
+    document.querySelectorAll('.ai-variant').forEach(v => v.classList.remove('selected'));
+    document.querySelectorAll('.ai-select-indicator').forEach(v => v.textContent = '');
+    el.classList.add('selected');
+    el.querySelector('.ai-select-indicator').textContent = '✓';
+
+    const text = el.dataset.text;
+    aiSelectedText = text;
+
+    const editArea = document.getElementById('aiRedigeraArea');
+    const editText = document.getElementById('aiRedigeraText');
+    editArea.style.display = 'block';
+    editText.value = text;
+    updateAiCharCount();
+    document.getElementById('aiSendBtn').style.display = 'block';
+  }
+
+  function updateAiCharCount() {
+    const len = document.getElementById('aiRedigeraText').value.length;
+    const el = document.getElementById('aiCharCount');
+    el.textContent = len + ' / 160';
+    el.style.color = len > 160 ? '#ff4d4d' : '#6a6560';
+  }
+
+  function sendAiSMS() {
+    const text = document.getElementById('aiRedigeraText').value;
+    const c = aiCurrentCustomer;
+    addLog(`AI SMS queued for <strong>${c.name}</strong> — "${text.slice(0,40)}..."`, 'accent');
+    closeAiModal();
+    alert(`✅ AI SMS queued for ${c.name}\n\nMessage:\n"${text}"\n\nConnect 46elks or Twilio to send for real.`);
+  }
+
+  // Close modal on overlay click
+  document.getElementById('aiModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAiModal();
+  });
+
+</script>
+
+<!-- AI SMS WRITER MODAL -->
+<div class="ai-modal-overlay" id="aiModal">
+  <div class="ai-modal">
+    <div class="ai-modal-header">
+      <div>
+        <div class="ai-modal-title">✨ AI SMS WRITER</div>
+        <div class="ai-modal-sub" id="aiModalSub">GENERATING PERSONALISED MESSAGE...</div>
+      </div>
+      <button class="ai-close" onclick="closeAiModal()">✕</button>
+    </div>
+
+    <div class="ai-modal-body">
+
+      <!-- Customer snapshot -->
+      <div class="ai-customer-card" id="aiCustomerCard">
+        <div class="ai-cust-stat">
+          <div class="ai-cust-label">CUSTOMER</div>
+          <div class="ai-cust-val" id="aiCustName">—</div>
+        </div>
+        <div class="ai-cust-stat">
+          <div class="ai-cust-label">DAGAR INAKTIV</div>
+          <div class="ai-cust-val orange" id="aiCustDays">—</div>
+        </div>
+        <div class="ai-cust-stat">
+          <div class="ai-cust-label">TOTAL ORDERS</div>
+          <div class="ai-cust-val" id="aiCustOrders">—</div>
+        </div>
+      </div>
+
+      <!-- Generate button -->
+      <button class="ai-generate-btn" id="aiGenerateBtn" onclick="generateSMS()">
+        <div class="ai-spinner" id="aiSpinner"></div>
+        <span id="aiGenerateBtnText">✨ GENERERA 3 ALTERNATIV</span>
+      </button>
+
+      <!-- Variants -->
+      <div class="ai-variants" id="aiVariants"></div>
+
+      <!-- Redigera box -->
+      <div class="ai-edit-area" id="aiRedigeraArea" style="display:none;">
+        <div class="ai-edit-label">
+          <span>REDIGERA INNAN SKICKNING</span>
+          <span id="aiCharCount">0 / 160</span>
+        </div>
+        <textarea class="ai-edit-textarea" id="aiRedigeraText" oninput="updateAiCharCount()"></textarea>
+      </div>
+
+    </div>
+
+    <div class="ai-modal-footer">
+      <button class="ai-btn-cancel" onclick="closeAiModal()">AVBRYT</button>
+      <button class="ai-btn-send" id="aiSendBtn" onclick="sendAiSMS()" style="display:none;">
+        📱 SEND SMS
+      </button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

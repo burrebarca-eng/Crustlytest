@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crustly — Fler beställningar. Noll risk.</title>
+<meta name="description" content="Crustly ger din pizzeria ett eget beställningssystem, AI-marknadsföring och lojalitetsautomation. Du betalar ingenting förrän du tjänar pengar.">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0b08;
+  --surf: #131210;
+  --surf2: #1a1814;
+  --bdr: #252219;
+  --orange: #f05a1a;
+  --orange2: #ff7a3a;
+  --cream: #f5f0e4;
+  --cream2: #e8e2d0;
+  --text: #f0ece0;
+  --muted: #6a6458;
+  --fd: 'Bebas Neue', sans-serif;
+  --fm: 'DM Mono', monospace;
+  --fb: 'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:var(--fb); overflow-x:hidden; }
+
+/* ── NAV ── */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  padding:0 48px; height:64px;
+  display:flex; align-items:center; justify-content:space-between;
+  transition:background .3s, border-bottom .3s;
+}
+nav.scrolled { background:#0c0b08ee; border-bottom:1px solid var(--bdr); backdrop-filter:blur(12px); }
+.nav-logo { font-family:var(--fd); font-size:26px; color:var(--orange); letter-spacing:3px; text-decoration:none; }
+.nav-links { display:flex; gap:32px; align-items:center; }
+.nav-link { font-family:var(--fm); font-size:10px; letter-spacing:2px; color:var(--muted); text-decoration:none; transition:color .15s; }
+.nav-link:hover { color:var(--text); }
+.nav-cta {
+  background:var(--orange); color:#fff; border:none; border-radius:8px;
+  padding:10px 22px; font-family:var(--fd); font-size:16px; letter-spacing:2px;
+  cursor:pointer; text-decoration:none; transition:all .15s;
+}
+.nav-cta:hover { background:var(--orange2); transform:translateY(-1px); }
+
+/* ── HERO ── */
+.hero {
+  min-height:100vh; display:flex; flex-direction:column;
+  justify-content:center; padding:120px 48px 80px;
+  position:relative; overflow:hidden;
+}
+
+/* Animated bg */
+.hero-bg {
+  position:absolute; inset:0; z-index:0;
+  background: radial-gradient(ellipse 80% 60% at 60% 40%, #f05a1a0d 0%, transparent 60%),
+              radial-gradient(ellipse 50% 40% at 20% 80%, #f05a1a06 0%, transparent 50%);
+}
+
+/* Grid pattern */
+.hero-grid {
+  position:absolute; inset:0; z-index:0;
+  background-image:
+    linear-gradient(var(--bdr) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bdr) 1px, transparent 1px);
+  background-size:60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+  opacity:.5;
+}
+
+.hero-content { position:relative; z-index:1; max-width:780px; }
+
+.hero-tag {
+  display:inline-flex; align-items:center; gap:8px;
+  background:#f05a1a18; border:1px solid #f05a1a30;
+  color:var(--orange); font-family:var(--fm); font-size:10px; letter-spacing:2.5px;
+  padding:7px 14px; border-radius:20px; margin-bottom:28px;
+  animation:fadeUp .6s ease both;
+}
+.hero-tag-dot { width:6px; height:6px; border-radius:50%; background:var(--orange); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.hero-title {
+  font-family:var(--fd); font-size:clamp(64px,9vw,110px);
+  line-height:.95; letter-spacing:2px; color:var(--cream);
+  margin-bottom:24px;
+  animation:fadeUp .6s ease .1s both;
+}
+.hero-title .accent { color:var(--orange); }
+.hero-title .outline {
+  -webkit-text-stroke:2px var(--cream);
+  color:transparent;
+}
+
+.hero-sub {
+  font-size:18px; color:#9a9488; line-height:1.65;
+  max-width:520px; margin-bottom:40px;
+  animation:fadeUp .6s ease .2s both;
+}
+.hero-sub strong { color:var(--cream); font-weight:600; }
+
+.hero-ctas {
+  display:flex; gap:14px; flex-wrap:wrap;
+  animation:fadeUp .6s ease .3s both;
+}
+
+.btn-primary {
+  background:var(--orange); color:#fff; border:none;
+  border-radius:10px; padding:16px 32px;
+  font-family:var(--fd); font-size:20px; letter-spacing:2px;
+  cursor:pointer; text-decoration:none; transition:all .15s;
+  display:inline-flex; align-items:center; gap:8px;
+}
+.btn-primary:hover { background:var(--orange2); transform:translateY(-2px); box-shadow:0 8px 32px #f05a1a40; }
+
+.btn-secondary {
+  background:transparent; color:var(--cream); border:1.5px solid #3a3528;
+  border-radius:10px; padding:16px 28px;
+  font-family:var(--fd); font-size:18px; letter-spacing:2px;
+  cursor:pointer; text-decoration:none; transition:all .15s;
+  display:inline-flex; align-items:center; gap:8px;
+}
+.btn-secondary:hover { border-color:var(--orange); color:var(--orange); }
+
+.hero-proof {
+  margin-top:56px; display:flex; gap:40px; flex-wrap:wrap;
+  animation:fadeUp .6s ease .4s both;
+}
+.proof-stat {}
+.proof-num { font-family:var(--fd); font-size:40px; color:var(--orange); letter-spacing:2px; line-height:1; }
+.proof-lbl { font-family:var(--fm); font-size:9px; color:var(--muted); letter-spacing:2px; margin-top:4px; }
+
+/* Scroll indicator */
+.scroll-ind {
+  position:absolute; bottom:32px; left:48px; z-index:1;
+  display:flex; align-items:center; gap:10px;
+  font-family:var(--fm); font-size:9px; letter-spacing:2px; color:var(--muted);
+  animation:fadeUp .6s ease .6s both;
+}
+.scroll-line { width:40px; height:1px; background:var(--muted); }
+
+/* ── PROBLEM SECTION ── */
+.section { padding:100px 48px; }
+.section-inner { max-width:1000px; margin:0 auto; }
+
+.sec-tag {
+  font-family:var(--fm); font-size:9px; letter-spacing:3px; color:var(--orange);
+  margin-bottom:16px; display:flex; align-items:center; gap:10px;
+}
+.sec-tag::before { content:''; width:24px; height:1.5px; background:var(--orange); }
+
+.sec-title {
+  font-family:var(--fd); font-size:clamp(40px,5vw,64px);
+  letter-spacing:2px; line-height:1; color:var(--cream); margin-bottom:16px;
+}
+.sec-sub { font-size:16px; color:#9a9488; line-height:1.7; max-width:540px; }
+
+/* Pain points */
+.pain-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:48px; }
+.pain-card {
+  background:var(--surf); border:1.5px solid var(--bdr);
+  border-radius:14px; padding:28px;
+  transition:border-color .2s;
+}
+.pain-card:hover { border-color:#332f26; }
+.pain-icon { font-size:32px; margin-bottom:16px; }
+.pain-title { font-family:var(--fd); font-size:20px; letter-spacing:1.5px; color:var(--cream); margin-bottom:8px; }
+.pain-text { font-size:14px; color:#7a7468; line-height:1.65; }
+.pain-cost { font-family:var(--fm); font-size:11px; color:var(--orange); margin-top:12px; }
+
+/* ── HOW IT WORKS ── */
+.how-section { padding:100px 48px; background:var(--surf); border-top:1.5px solid var(--bdr); border-bottom:1.5px solid var(--bdr); }
+
+.steps { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--bdr); margin-top:56px; border-radius:16px; overflow:hidden; }
+.step { background:var(--surf2); padding:32px 28px; position:relative; }
+.step-num {
+  font-family:var(--fd); font-size:64px; color:var(--bdr);
+  line-height:1; margin-bottom:16px; transition:color .2s;
+}
+.step:hover .step-num { color:#332f26; }
+.step-icon { font-size:28px; margin-bottom:12px; }
+.step-title { font-family:var(--fd); font-size:22px; letter-spacing:1.5px; color:var(--cream); margin-bottom:8px; }
+.step-text { font-size:13px; color:#7a7468; line-height:1.65; }
+.step-accent { width:32px; height:3px; background:var(--orange); margin-bottom:16px; border-radius:2px; }
+
+/* ── FEATURES ── */
+.features-section { padding:100px 48px; }
+
+.features-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:56px; }
+
+.feat-card {
+  background:var(--surf); border:1.5px solid var(--bdr);
+  border-radius:16px; padding:36px; position:relative; overflow:hidden;
+  transition:border-color .2s, transform .2s;
+}
+.feat-card:hover { border-color:#332f26; transform:translateY(-3px); }
+.feat-card.wide { grid-column:1/-1; }
+.feat-card.highlight { border-color:#f05a1a30; background:linear-gradient(135deg,#f05a1a08,transparent); }
+
+.feat-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:var(--orange); transform:scaleX(0); transition:transform .25s;
+  transform-origin:left;
+}
+.feat-card:hover::before { transform:scaleX(1); }
+
+.feat-icon { font-size:36px; margin-bottom:20px; }
+.feat-title { font-family:var(--fd); font-size:26px; letter-spacing:2px; color:var(--cream); margin-bottom:8px; }
+.feat-text { font-size:14px; color:#7a7468; line-height:1.7; }
+.feat-tag {
+  display:inline-block; margin-top:14px;
+  font-family:var(--fm); font-size:9px; letter-spacing:2px;
+  padding:4px 10px; border-radius:4px;
+  background:#f05a1a18; color:var(--orange);
+}
+.feat-tag.ai { background:#c084fc18; color:#c084fc; }
+.feat-tag.free { background:#3db87018; color:#3db870; }
+
+/* Wide feat layout */
+.feat-wide-inner { display:grid; grid-template-columns:1fr 1fr; gap:32px; align-items:center; }
+.feat-wide-list { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
+.feat-item { display:flex; align-items:flex-start; gap:12px; }
+.feat-check { color:var(--orange); font-size:14px; margin-top:1px; flex-shrink:0; }
+.feat-item-text { font-size:14px; color:#9a9488; line-height:1.55; }
+
+/* Mock UI */
+.mock-ui {
+  background:#0e0d0a; border:1.5px solid var(--bdr);
+  border-radius:12px; overflow:hidden;
+}
+.mock-bar { background:#1a1814; padding:10px 14px; display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--bdr); }
+.mock-dot { width:10px; height:10px; border-radius:50%; }
+.mock-order { padding:16px; display:flex; flex-direction:column; gap:8px; }
+.mock-item-row { display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background:#131210; border-radius:6px; font-size:12px; }
+.mock-item-name { color:#c4bfb0; }
+.mock-item-price { font-family:var(--fm); color:var(--orange); font-size:11px; }
+.mock-total { background:var(--orange); color:#fff; border-radius:8px; padding:10px; text-align:center; font-family:var(--fd); font-size:16px; letter-spacing:2px; margin-top:4px; }
+.mock-ai-bubble { background:#1e1c17; border:1px solid #c084fc30; border-radius:8px; padding:12px; margin-top:8px; font-size:11px; color:#c4bfb0; line-height:1.6; }
+.mock-ai-label { font-family:var(--fm); font-size:8px; letter-spacing:2px; color:#c084fc; margin-bottom:5px; }
+
+/* ── PRICING ── */
+.pricing-section { padding:100px 48px; background:var(--surf); border-top:1.5px solid var(--bdr); border-bottom:1.5px solid var(--bdr); }
+
+.pricing-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:56px; }
+
+.price-card {
+  background:var(--bg); border:1.5px solid var(--bdr);
+  border-radius:16px; padding:36px; position:relative;
+  transition:border-color .2s;
+}
+.price-card:hover { border-color:#332f26; }
+.price-card.featured {
+  background:linear-gradient(160deg,#f05a1a10,#0c0b08);
+  border-color:#f05a1a40;
+}
+.price-card.featured::before {
+  content:'POPULÄRAST'; position:absolute; top:-1px; left:50%; transform:translateX(-50%);
+  background:var(--orange); color:#fff; font-family:var(--fm); font-size:8px;
+  letter-spacing:2px; padding:4px 12px; border-radius:0 0 8px 8px;
+}
+
+.price-tier { font-family:var(--fm); font-size:9px; letter-spacing:3px; color:var(--muted); margin-bottom:12px; }
+.price-name { font-family:var(--fd); font-size:28px; letter-spacing:2px; color:var(--cream); margin-bottom:20px; }
+.price-amount { margin-bottom:8px; }
+.price-num { font-family:var(--fd); font-size:48px; color:var(--orange); letter-spacing:2px; line-height:1; }
+.price-period { font-family:var(--fm); font-size:11px; color:var(--muted); }
+.price-base { font-family:var(--fm); font-size:10px; color:var(--muted); margin-bottom:24px; }
+.price-divider { height:1px; background:var(--bdr); margin:20px 0; }
+.price-features { display:flex; flex-direction:column; gap:10px; margin-bottom:28px; }
+.pf { display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#9a9488; }
+.pf-check { color:var(--orange); flex-shrink:0; }
+.pf-check.dim { color:var(--muted); }
+.price-cta {
+  width:100%; padding:13px; border-radius:8px;
+  font-family:var(--fd); font-size:18px; letter-spacing:2px;
+  cursor:pointer; transition:all .15s; text-align:center;
+  text-decoration:none; display:block;
+}
+.price-cta.main { background:var(--orange); color:#fff; border:none; }
+.price-cta.main:hover { background:var(--orange2); }
+.price-cta.ghost { background:none; border:1.5px solid var(--bdr); color:var(--muted); }
+.price-cta.ghost:hover { border-color:var(--orange); color:var(--orange); }
+
+/* ── CALCULATOR ── */
+.calc-section { padding:100px 48px; }
+.calc-box {
+  max-width:680px; margin:48px auto 0;
+  background:var(--surf); border:1.5px solid var(--bdr);
+  border-radius:20px; padding:40px;
+}
+.calc-title { font-family:var(--fd); font-size:28px; letter-spacing:2px; margin-bottom:24px; }
+.calc-row { display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; margin-bottom:16px; }
+.calc-lbl { font-size:14px; color:#9a9488; }
+.calc-input-wrap { display:flex; align-items:center; gap:8px; }
+.calc-inp {
+  background:var(--surf2); border:1.5px solid var(--bdr);
+  border-radius:8px; padding:10px 14px;
+  font-family:var(--fm); font-size:16px; color:var(--orange);
+  outline:none; width:130px; text-align:right;
+  transition:border-color .15s;
+}
+.calc-inp:focus { border-color:var(--orange); }
+.calc-unit { font-family:var(--fm); font-size:11px; color:var(--muted); }
+.calc-divider { height:1.5px; background:var(--bdr); margin:20px 0; }
+.calc-result-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.calc-result-lbl { font-size:14px; color:#9a9488; }
+.calc-result-val { font-family:var(--fm); font-size:14px; color:var(--text); }
+.calc-result-big { display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding:16px; background:#f05a1a12; border-radius:10px; border:1px solid #f05a1a30; }
+.calc-big-lbl { font-family:var(--fd); font-size:18px; letter-spacing:1.5px; color:var(--cream); }
+.calc-big-val { font-family:var(--fd); font-size:32px; color:var(--orange); letter-spacing:2px; }
+
+/* ── TESTIMONIAL ── */
+.social-section { padding:80px 48px; }
+.social-inner { max-width:800px; margin:0 auto; text-align:center; }
+.quote-mark { font-family:var(--fd); font-size:120px; color:var(--bdr); line-height:.8; margin-bottom:8px; }
+.quote-text { font-size:22px; color:var(--cream); line-height:1.6; font-style:italic; margin-bottom:24px; }
+.quote-author { font-family:var(--fm); font-size:10px; letter-spacing:2px; color:var(--muted); }
+
+/* ── CTA SECTION ── */
+.cta-section {
+  padding:120px 48px;
+  background:linear-gradient(160deg,#f05a1a10 0%,transparent 50%);
+  border-top:1.5px solid var(--bdr);
+  text-align:center;
+}
+.cta-title { font-family:var(--fd); font-size:clamp(48px,7vw,90px); letter-spacing:2px; line-height:.95; color:var(--cream); margin-bottom:20px; }
+.cta-title .accent { color:var(--orange); }
+.cta-sub { font-size:18px; color:#9a9488; margin-bottom:40px; max-width:480px; margin-left:auto; margin-right:auto; }
+.cta-note { font-family:var(--fm); font-size:10px; letter-spacing:1.5px; color:var(--muted); margin-top:16px; }
+
+/* ── FOOTER ── */
+footer {
+  background:var(--surf); border-top:1.5px solid var(--bdr);
+  padding:40px 48px;
+  display:flex; justify-content:space-between; align-items:center;
+  flex-wrap:wrap; gap:16px;
+}
+.foot-logo { font-family:var(--fd); font-size:22px; color:var(--orange); letter-spacing:2px; }
+.foot-sub { font-family:var(--fm); font-size:9px; color:var(--muted); letter-spacing:2px; margin-top:2px; }
+.foot-links { display:flex; gap:24px; }
+.foot-link { font-family:var(--fm); font-size:9px; letter-spacing:1.5px; color:var(--muted); text-decoration:none; transition:color .15s; }
+.foot-link:hover { color:var(--text); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+.reveal { opacity:0; transform:translateY(24px); transition:opacity .6s ease, transform .6s ease; }
+.reveal.visible { opacity:1; transform:translateY(0); }
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  nav{padding:0 20px;}
+  .nav-links{display:none;}
+  .hero{padding:100px 20px 60px;}
+  .section,.features-section,.pricing-section,.calc-section,.cta-section,.social-section{padding:60px 20px;}
+  .how-section{padding:60px 20px;}
+  .pain-grid,.steps,.features-grid,.pricing-grid{grid-template-columns:1fr;}
+  .feat-card.wide{grid-column:1;}
+  .feat-wide-inner{grid-template-columns:1fr;}
+  .mock-ui{display:none;}
+  footer{flex-direction:column;align-items:flex-start;padding:32px 20px;}
+  .hero-proof{gap:24px;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <a class="nav-logo" href="#">CRUSTLY</a>
+  <div class="nav-links">
+    <a class="nav-link" href="#how">HUR DET FUNGERAR</a>
+    <a class="nav-link" href="#features">FUNKTIONER</a>
+    <a class="nav-link" href="#pricing">PRISER</a>
+    <a class="nav-link" href="#calculator">KALKYLATOR</a>
+  </div>
+  <a class="nav-cta" href="#contact">BOKA DEMO</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+
+  <div class="hero-content">
+    <div class="hero-tag">
+      <div class="hero-tag-dot"></div>
+      INGA UPPSTARTSKOSTNADER · INGEN BINDNINGSTID
+    </div>
+
+    <h1 class="hero-title">
+      FLER<br>
+      BESTÄLL<span class="accent">-</span><br>
+      NINGAR.<br>
+      <span class="outline">NOLL RISK.</span>
+    </h1>
+
+    <p class="hero-sub">
+      Crustly ger din pizzeria ett <strong>eget beställningssystem</strong>, AI-driven marknadsföring och lojalitetsautomation. Du betalar ingenting förrän pengarna rullar in.
+    </p>
+
+    <div class="hero-ctas">
+      <a class="btn-primary" href="#contact">BOKA GRATIS DEMO →</a>
+      <a class="btn-secondary" href="#how">SE HUR DET FUNGERAR</a>
+    </div>
+
+    <div class="hero-proof">
+      <div class="proof-stat">
+        <div class="proof-num">0 KR</div>
+        <div class="proof-lbl">UPPSTARTSKOSTNAD</div>
+      </div>
+      <div class="proof-stat">
+        <div class="proof-num">7 KR</div>
+        <div class="proof-lbl">SERVICEAVGIFT PER ORDER</div>
+      </div>
+      <div class="proof-stat">
+        <div class="proof-num">48H</div>
+        <div class="proof-lbl">TILLS DU ÄR LIVE</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-ind">
+    <div class="scroll-line"></div>
+    SCROLLA
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section class="section" id="problem">
+  <div class="section-inner">
+    <div class="sec-tag">PROBLEMET</div>
+    <h2 class="sec-title">Varför betalar du<br>Foodora 30%?</h2>
+    <p class="sec-sub">Matleveransappar tar en tredjedel av varje order. Du lagar maten, de tar pengarna.</p>
+
+    <div class="pain-grid">
+      <div class="pain-card reveal">
+        <div class="pain-icon">💸</div>
+        <div class="pain-title">FOODORA / BOLT</div>
+        <div class="pain-text">25–35% provision på varje beställning. Du säljer en pizza för 150 kr och får 100 kr. Månadsvis förlorar du tiotusentals kronor.</div>
+        <div class="pain-cost">→ 80 000 kr/mån = 24 000 kr till appen</div>
+      </div>
+      <div class="pain-card reveal" style="transition-delay:.1s">
+        <div class="pain-icon">👤</div>
+        <div class="pain-title">DU ÄGER INTE KUNDERNA</div>
+        <div class="pain-text">Kunddata stannar hos plattformen. Du vet inte vem som beställer, kan inte kontakta dem och bygger ingen lojalitet.</div>
+        <div class="pain-cost">→ Noll möjlighet till direktmarknadsföring</div>
+      </div>
+      <div class="pain-card reveal" style="transition-delay:.2s">
+        <div class="pain-icon">📉</div>
+        <div class="pain-title">INGEN KONTROLL</div>
+        <div class="pain-text">Plattformen ändrar regler, sänker din synlighet om du inte betalar extra och kan stänga ditt konto när som helst.</div>
+        <div class="pain-cost">→ Ditt företag på andras villkor</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <div class="section-inner">
+    <div class="sec-tag">LÖSNINGEN</div>
+    <h2 class="sec-title">Igång på 48 timmar</h2>
+    <p class="sec-sub">Vi sätter upp allt. Du fokuserar på pizzan.</p>
+
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">01</div>
+        <div class="step-accent"></div>
+        <div class="step-icon">📋</div>
+        <div class="step-title">ONBOARDING</div>
+        <div class="step-text">Vi samlar in dina uppgifter, meny och grafisk profil. Tar 20 minuter.</div>
+      </div>
+      <div class="step reveal" style="transition-delay:.1s">
+        <div class="step-num">02</div>
+        <div class="step-accent"></div>
+        <div class="step-icon">🎨</div>
+        <div class="step-title">VI BYGGER</div>
+        <div class="step-text">Din beställningssida är live inom 48 timmar, anpassad med dina färger och logotyp.</div>
+      </div>
+      <div class="step reveal" style="transition-delay:.2s">
+        <div class="step-num">03</div>
+        <div class="step-accent"></div>
+        <div class="step-icon">📦</div>
+        <div class="step-title">ORDERS RULLAR IN</div>
+        <div class="step-text">Kunder beställer direkt via din länk. Köket ser ordrarna live på surfplattan.</div>
+      </div>
+      <div class="step reveal" style="transition-delay:.3s">
+        <div class="step-num">04</div>
+        <div class="step-accent"></div>
+        <div class="step-icon">💰</div>
+        <div class="step-title">FAST & TRANSPARENT AVGIFT</div>
+        <div class="step-text">2 000 kr/mån + 7 kr serviceavgift per order — betald av kunden. Inga dolda kostnader.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="section-inner">
+    <div class="sec-tag">FUNKTIONER</div>
+    <h2 class="sec-title">Allt din restaurang<br>behöver. Inget mer.</h2>
+
+    <div class="features-grid">
+
+      <div class="feat-card reveal">
+        <div class="feat-icon">🛒</div>
+        <div class="feat-title">EGET BESTÄLLNINGSSYSTEM</div>
+        <div class="feat-text">Din egen beställningssida med din logga, dina färger och din meny. Kunder betalar direkt till dig via kort eller kontant.</div>
+        <span class="feat-tag free">INGÅR I BAS</span>
+      </div>
+
+      <div class="feat-card reveal" style="transition-delay:.1s">
+        <div class="feat-icon">🖥️</div>
+        <div class="feat-title">KÖKSSKÄRM</div>
+        <div class="feat-text">Inkommande orders visas direkt på surfplattan i köket. Personal markerar när ordern är klar. Fungerar i realtid.</div>
+        <span class="feat-tag free">INGÅR I BAS</span>
+      </div>
+
+      <div class="feat-card wide highlight reveal" style="transition-delay:.15s">
+        <div class="feat-wide-inner">
+          <div>
+            <div class="feat-icon">✨</div>
+            <div class="feat-title">AI-DRIVEN MARKNADSFÖRING</div>
+            <div class="feat-text">Claude AI skriver personliga SMS till varje kund baserat på deras orderhistorik. Inte mallar — riktiga meddelanden som konverterar.</div>
+            <span class="feat-tag ai">AI-TILLÄGG</span>
+            <div class="feat-wide-list">
+              <div class="feat-item"><div class="feat-check">→</div><div class="feat-item-text">Win-back SMS till kunder som inte beställt på 14+ dagar</div></div>
+              <div class="feat-item"><div class="feat-check">→</div><div class="feat-item-text">Födelsedag-erbjudanden automatiskt 7 dagar i förväg</div></div>
+              <div class="feat-item"><div class="feat-check">→</div><div class="feat-item-text">Slow night-detektor skickar rabatter vid lugna kvällar</div></div>
+              <div class="feat-item"><div class="feat-check">→</div><div class="feat-item-text">Veckorapport till dig varje måndag</div></div>
+            </div>
+          </div>
+          <div class="mock-ui">
+            <div class="mock-bar">
+              <div class="mock-dot" style="background:#ff5f57"></div>
+              <div class="mock-dot" style="background:#febc2e"></div>
+              <div class="mock-dot" style="background:#28c840"></div>
+            </div>
+            <div class="mock-order">
+              <div class="mock-ai-label">✨ AI SKRIVER SMS TILL ANNA</div>
+              <div class="mock-ai-bubble">"Hej Anna! Det är 18 dagar sedan din senaste Margherita 🍕 Vi saknar dig — 15% rabatt på nästa order väntar dig. Beställ nu: crustly.app/pizzaroma"</div>
+              <div class="mock-item-row"><span class="mock-item-name">📊 Konverteringsgrad</span><span class="mock-item-price" style="color:#3db870">34%</span></div>
+              <div class="mock-item-row"><span class="mock-item-name">📱 SMS skickade denna månad</span><span class="mock-item-price">247</span></div>
+              <div class="mock-item-row"><span class="mock-item-name">💰 Intäkter från SMS</span><span class="mock-item-price" style="color:#3db870">+18 400 kr</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feat-card reveal" style="transition-delay:.2s">
+        <div class="feat-icon">👥</div>
+        <div class="feat-title">ÄGARPORTAL</div>
+        <div class="feat-text">Din restaurangägare ser sina egna orders, intäkter, topprätter och kundlista. Login med e-post, data i realtid.</div>
+        <span class="feat-tag free">INGÅR I BAS</span>
+      </div>
+
+      <div class="feat-card reveal" style="transition-delay:.25s">
+        <div class="feat-icon">🧾</div>
+        <div class="feat-title">AUTOMATISK FAKTURERING</div>
+        <div class="feat-text">Månadsvis faktura genereras automatiskt baserat på faktisk omsättning. PDF laddas ner med ett klick.</div>
+        <span class="feat-tag free">INGÅR I BAS</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="section-inner">
+    <div class="sec-tag">PRISER</div>
+    <h2 class="sec-title">Transparent.<br>Ingen överraskning.</h2>
+    <p class="sec-sub">Du betalar bara när du tjänar pengar. Inga startavgifter, inga dolda kostnader.</p>
+
+    <div class="pricing-grid">
+
+      <div class="price-card reveal">
+        <div class="price-tier">BAS</div>
+        <div class="price-name">CRUSTLY BAS</div>
+        <div class="price-amount">
+          <span class="price-num">2 000</span><span class="price-period"> kr/mån</span>
+        </div>
+        <div class="price-base">+ 7 kr serviceavgift per order (betalas av kunden)</div>
+        <div class="price-divider"></div>
+        <div class="price-features">
+          <div class="pf"><span class="pf-check">✓</span>Eget beställningssystem</div>
+          <div class="pf"><span class="pf-check">✓</span>Köksskärm i realtid</div>
+          <div class="pf"><span class="pf-check">✓</span>Ägarportal med statistik</div>
+          <div class="pf"><span class="pf-check">✓</span>Månatlig PDF-faktura</div>
+          <div class="pf"><span class="pf-check dim">–</span><span style="color:var(--muted)">AI-marknadsföring</span></div>
+          <div class="pf"><span class="pf-check dim">–</span><span style="color:var(--muted)">SMS-automation</span></div>
+        </div>
+        <a class="price-cta ghost" href="#contact">BOKA DEMO</a>
+      </div>
+
+      <div class="price-card featured reveal" style="transition-delay:.1s">
+        <div class="price-tier">REKOMMENDERAS</div>
+        <div class="price-name">CRUSTLY AI</div>
+        <div class="price-amount">
+          <span class="price-num">2 299</span><span class="price-period"> kr/mån</span>
+        </div>
+        <div class="price-base">2 000 kr bas + 299 kr AI + 7 kr/order</div>
+        <div class="price-divider"></div>
+        <div class="price-features">
+          <div class="pf"><span class="pf-check">✓</span>Allt i Bas</div>
+          <div class="pf"><span class="pf-check">✓</span>AI-skriven SMS win-back</div>
+          <div class="pf"><span class="pf-check">✓</span>Födelsedag-automation</div>
+          <div class="pf"><span class="pf-check">✓</span>Veckorapport till ägaren</div>
+          <div class="pf"><span class="pf-check">✓</span>Slow night-detektor</div>
+          <div class="pf"><span class="pf-check dim">–</span><span style="color:var(--muted)">Röstbeställning</span></div>
+        </div>
+        <a class="price-cta main" href="#contact">BOKA DEMO</a>
+      </div>
+
+      <div class="price-card reveal" style="transition-delay:.2s">
+        <div class="price-tier">PREMIUM</div>
+        <div class="price-name">CRUSTLY PRO</div>
+        <div class="price-amount">
+          <span class="price-num">2 599</span><span class="price-period"> kr/mån</span>
+        </div>
+        <div class="price-base">2 000 kr bas + 599 kr Pro + 7 kr/order</div>
+        <div class="price-divider"></div>
+        <div class="price-features">
+          <div class="pf"><span class="pf-check">✓</span>Allt i AI</div>
+          <div class="pf"><span class="pf-check">✓</span>Röstbeställning via telefon</div>
+          <div class="pf"><span class="pf-check">✓</span>AI-menyoptimering</div>
+          <div class="pf"><span class="pf-check">✓</span>Recensionssvars-bot</div>
+          <div class="pf"><span class="pf-check">✓</span>Prioriterad support</div>
+          <div class="pf"><span class="pf-check">✓</span>Anpassad domän</div>
+        </div>
+        <a class="price-cta ghost" href="#contact">BOKA DEMO</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CALCULATOR -->
+<section class="calc-section" id="calculator">
+  <div class="section-inner">
+    <div class="sec-tag">KALKYLATOR</div>
+    <h2 class="sec-title" style="text-align:center">Vad kostar Crustly<br>för dig?</h2>
+
+    <div class="calc-box reveal">
+      <div class="calc-title">RÄKNA UT DIN KOSTNAD</div>
+
+      <div class="calc-row">
+        <div class="calc-lbl">Månatlig omsättning via Crustly</div>
+        <div class="calc-input-wrap">
+          <input class="calc-inp" type="number" id="calcRev" value="80000" oninput="calcIt()">
+          <span class="calc-unit">KR</span>
+        </div>
+      </div>
+
+      <div class="calc-row">
+        <div class="calc-lbl">Nuvarande Foodora-provision</div>
+        <div class="calc-input-wrap">
+          <input class="calc-inp" type="number" id="calcFoodora" value="30" oninput="calcIt()">
+          <span class="calc-unit">%</span>
+        </div>
+      </div>
+
+      <div class="calc-row">
+        <div class="calc-lbl">Antal orders per månad via Crustly</div>
+        <div class="calc-input-wrap">
+          <input class="calc-inp" type="number" id="calcOrders" value="200" oninput="calcIt()">
+          <span class="calc-unit">ST</span>
+        </div>
+      </div>
+
+      <div class="calc-divider"></div>
+
+      <div class="calc-result-row">
+        <div class="calc-result-lbl">Du betalar till Foodora idag</div>
+        <div class="calc-result-val" id="rFoodora">24 000 kr/mån</div>
+      </div>
+      <div class="calc-result-row">
+        <div class="calc-result-lbl">Du betalar till Crustly (fast avgift)</div>
+        <div class="calc-result-val" id="rCrustly">8 000 kr/mån</div>
+      </div>
+
+      <div class="calc-result-big">
+        <div class="calc-big-lbl">DU SPARAR VARJE MÅNAD</div>
+        <div class="calc-big-val" id="rSavings">16 000 KR</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUOTE -->
+<section class="social-section">
+  <div class="social-inner reveal">
+    <div class="quote-mark">"</div>
+    <div class="quote-text">Vi gick från att ge bort 28% till Foodora till att betala 2 000 kr/mån till Crustly. Första månaden sparade vi nästan 20 000 kronor — utan att omsätta mer.</div>
+    <div class="quote-author">FIKTIVT EXEMPEL · BASERAT PÅ VERKLIGA SIFFROR</div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="contact">
+  <div class="sec-tag" style="justify-content:center">BOKA DEMO</div>
+  <div class="cta-title">REDO ATT<br>SLUTA <span class="accent">BETALA</span><br>FOODORA?</div>
+  <p class="cta-sub">Boka en kostnadsfri 20-minuters demo. Vi visar hur din restaurang ser ut i systemet — live.</p>
+
+  <div style="display:flex;flex-direction:column;gap:12px;align-items:center;max-width:400px;margin:0 auto;">
+    <input type="text" id="ctaName" placeholder="Ditt namn" style="width:100%;background:#1a1814;border:1.5px solid #2a2720;border-radius:10px;padding:14px 18px;font-family:var(--fb);font-size:15px;color:var(--text);outline:none;" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#2a2720'">
+    <input type="text" id="ctaRest" placeholder="Restaurangens namn" style="width:100%;background:#1a1814;border:1.5px solid #2a2720;border-radius:10px;padding:14px 18px;font-family:var(--fb);font-size:15px;color:var(--text);outline:none;" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#2a2720'">
+    <input type="tel" id="ctaPhone" placeholder="Telefonnummer" style="width:100%;background:#1a1814;border:1.5px solid #2a2720;border-radius:10px;padding:14px 18px;font-family:var(--fb);font-size:15px;color:var(--text);outline:none;" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#2a2720'">
+    <button onclick="submitDemo()" style="width:100%;background:var(--orange);color:#fff;border:none;border-radius:10px;padding:16px;font-family:var(--fd);font-size:22px;letter-spacing:2px;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--orange2)'" onmouseout="this.style.background='var(--orange)'">BOKA GRATIS DEMO →</button>
+  </div>
+  <div class="cta-note">Ingen bindningstid · Inga dolda kostnader · Live inom 48 timmar</div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="foot-logo">CRUSTLY</div>
+    <div class="foot-sub">FLER BESTÄLLNINGAR. NOLL RISK.</div>
+  </div>
+  <div class="foot-links">
+    <a class="foot-link" href="#how">HUR DET FUNGERAR</a>
+    <a class="foot-link" href="#pricing">PRISER</a>
+    <a class="foot-link" href="#contact">KONTAKT</a>
+  </div>
+</footer>
+
+<script>
+// Nav scroll
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 40);
+});
+
+// Scroll reveal
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
+},{threshold:.1});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// Calculator
+function calcIt(){
+  const rev    = parseFloat(document.getElementById('calcRev').value)||0;
+  const fp     = parseFloat(document.getElementById('calcFoodora').value)||0;
+  const orders = parseFloat(document.getElementById('calcOrders')?.value)||200;
+  const foodoraCost  = rev * fp / 100;
+  const crustlyCost  = 2000 + (orders * 7);
+  const savings      = foodoraCost - crustlyCost;
+  document.getElementById('rFoodora').textContent = fmt(foodoraCost)+' kr/mån';
+  document.getElementById('rCrustly').textContent = fmt(crustlyCost)+' kr/mån (2 000 kr + '+orders+' orders × 7 kr)';
+  document.getElementById('rSavings').textContent = fmt(Math.max(0,savings))+' KR';
+}
+function fmt(n){ return Math.round(n).toLocaleString('sv-SE'); }
+calcIt();
+
+// Demo form
+const SUPA_URL = 'https://febybrpterkybwzhigte.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ';
+
+async function submitDemo(){
+  const name  = document.getElementById('ctaName').value.trim();
+  const rest  = document.getElementById('ctaRest').value.trim();
+  const phone = document.getElementById('ctaPhone').value.trim();
+  if(!name||!rest||!phone){ alert('Fyll i alla fält för att boka demo.'); return; }
+
+  const btn = document.querySelector('[onclick="submitDemo()"]');
+  btn.textContent = 'SKICKAR...'; btn.disabled = true;
+
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/leads', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        name:            name,
+        restaurant_name: rest,
+        phone:           phone,
+      })
+    });
+
+    if (res.ok || res.status === 201) {
+      btn.textContent = '✓ TACK! VI HÖR AV OSS';
+      btn.style.background = '#27ae60';
+      document.getElementById('ctaName').value = '';
+      document.getElementById('ctaRest').value = '';
+      document.getElementById('ctaPhone').value = '';
+    } else {
+      throw new Error('status ' + res.status);
+    }
+  } catch(e) {
+    console.error('Lead error:', e);
+    btn.textContent = 'BOKA GRATIS DEMO →';
+    btn.disabled = false;
+    alert('Något gick fel. Ring oss direkt så bokar vi din demo!');
+  }
+}
+</script>
+</body>
+</html>

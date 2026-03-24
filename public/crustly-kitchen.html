@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Crustly — Kök</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+<script>
+// ── Supabase via fetch — ingen CDN behövs ──
+const SUPA_URL = 'https://febybrpterkybwzhigte.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ';
+
+async function sbFetch(path, opts={}) {
+  const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    ...opts,
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': opts.prefer || 'return=representation',
+      ...(opts.headers||{})
+    }
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function listenToOrders(restaurantId, callback) {
+  // Initial load
+  const data = await sbFetch(
+    'orders?restaurant_id=eq.' + restaurantId +
+    '&status=in.(new,progress,awaiting,done)' +
+    '&order=created_at.desc&limit=100'
+  );
+  if (data) callback(data);
+
+  // Poll every 5s instead of realtime
+  setInterval(async () => {
+    const fresh = await sbFetch(
+      'orders?restaurant_id=eq.' + restaurantId +
+      '&status=in.(new,progress,awaiting,done)' +
+      '&order=created_at.desc&limit=100'
+    );
+    if (fresh) callback(fresh);
+  }, 5000);
+}
+
+async function updateOrderStatus(orderId, status) {
+  const res = await fetch(SUPA_URL + '/rest/v1/orders?id=eq.' + orderId, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ status })
+  });
+  return res.ok;
+}
+
+async function confirmPayment(orderId) {
+  const res = await fetch(SUPA_URL + '/rest/v1/orders?id=eq.' + orderId, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ status: 'progress', payment_status: 'paid' })
+  });
+  return res.ok;
+}
+</script>
+
+<style>
+#newOrderFlash {
+  position: fixed;
+  inset: 0;
+  background: rgba(240, 96, 32, 0);
+  pointer-events: none;
+  z-index: 9999;
+  transition: background 0.1s ease;
+}
+#newOrderFlash.flash-active {
+  animation: flashAnim 1s ease forwards;
+}
+@keyframes flashAnim {
+  0%   { background: rgba(240, 96, 32, 0); }
+  15%  { background: rgba(240, 96, 32, 0.35); }
+  50%  { background: rgba(240, 96, 32, 0.2); }
+  100% { background: rgba(240, 96, 32, 0); }
+}
+</style>
+<style>
+:root {
+  --bg:#0a0908;
+  --surf:#131110;
+  --surf2:#1a1816;
+  --bdr:#252220;
+  --bdr2:#302d28;
+  --orange:#f06020;
+  --yellow:#f0b020;
+  --green:#28c060;
+  --red:#e03030;
+  --tx:#f0ece0;
+  --tx2:#c0bca8;
+  --mt:#686058;
+  --fd:'Bebas Neue',sans-serif;
+  --fm:'DM Mono',monospace;
+  --fb:'DM Sans',sans-serif;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;flex-direction:column;}
+
+/* ── TOPBAR ── */
+.topbar{
+  background:var(--surf);border-bottom:2px solid var(--bdr);
+  height:60px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+}
+.tb-left{display:flex;align-items:center;gap:12px;}
+.tb-logo{font-family:var(--fd);font-size:22px;color:var(--orange);letter-spacing:2px;}
+.tb-sep{width:1px;height:28px;background:var(--bdr2);}
+.tb-rest{font-family:var(--fd);font-size:20px;letter-spacing:1.5px;color:var(--tx2);}
+.tb-clock{font-family:var(--fm);font-size:18px;color:var(--tx);letter-spacing:2px;}
+
+.tb-right{display:flex;align-items:center;gap:8px;}
+.stat-pill{
+  display:flex;flex-direction:column;align-items:center;
+  background:var(--surf2);border:1.5px solid var(--bdr);
+  border-radius:8px;padding:4px 12px;min-width:52px;
+}
+.stat-num{font-family:var(--fd);font-size:20px;line-height:1;}
+.stat-lbl{font-family:var(--fm);font-size:7px;letter-spacing:1.5px;color:var(--mt);margin-top:1px;}
+.stat-pill.orange .stat-num{color:var(--orange);}
+.stat-pill.yellow .stat-num{color:var(--yellow);}
+.stat-pill.green .stat-num{color:var(--green);}
+
+/* ── FILTER BAR ── */
+.filterbar{
+  background:var(--surf);border-bottom:1.5px solid var(--bdr);
+  padding:8px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;
+  overflow-x:auto;scrollbar-width:none;
+}
+.filterbar::-webkit-scrollbar{display:none;}
+.fbtn{
+  font-family:var(--fm);font-size:11px;letter-spacing:2px;
+  padding:8px 16px;border-radius:7px;cursor:pointer;border:none;
+  background:var(--surf2);color:var(--mt);transition:all .15s;white-space:nowrap;
+  -webkit-user-select:none;user-select:none;
+}
+.fbtn:active{transform:scale(.96);}
+.fbtn.on{background:var(--orange);color:#fff;}
+.fbtn.yellow.on{background:var(--yellow);color:#000;}
+.fbtn.green.on{background:var(--green);color:#000;}
+.filter-sep{width:1px;height:24px;background:var(--bdr2);flex-shrink:0;}
+
+/* ── BOARD ── */
+.board{
+  flex:1;overflow-x:auto;overflow-y:auto;padding:14px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,320px);
+  grid-auto-rows:min-content;
+  gap:14px;align-content:start;
+  scrollbar-width:thin;scrollbar-color:var(--bdr2) transparent;
+}
+
+/* ── ORDER CARD ── */
+.ocard{
+  background:var(--surf);border:2px solid var(--bdr);
+  border-radius:14px;overflow:hidden;display:flex;flex-direction:column;
+  transition:border-color .2s;min-width:300px;width:320px;
+}
+.ocard.new{border-color:var(--orange);}
+.ocard.progress{border-color:var(--yellow);}
+.ocard.done{border-color:var(--green);opacity:.7;}
+.ocard.urgent{border-color:var(--red);animation:urgentPulse 1.5s ease-in-out infinite;}
+@keyframes urgentPulse{0%,100%{border-color:var(--red)}50%{border-color:#ff606080}}
+.ocard.awaiting{border-color:#a78bfa;animation:swishPulse 2s ease-in-out infinite;}
+@keyframes swishPulse{0%,100%{border-color:#a78bfa}50%{border-color:#a78bfa60}}
+
+/* Card top stripe */
+.card-stripe{height:4px;}
+.ocard.new .card-stripe{background:var(--orange);}
+.ocard.progress .card-stripe{background:var(--yellow);}
+.ocard.done .card-stripe{background:var(--green);}
+.ocard.urgent .card-stripe{background:var(--red);}
+.ocard.awaiting .card-stripe{background:#a78bfa;}
+
+/* Card header */
+.card-top{padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--bdr);}
+.card-num{font-family:var(--fd);font-size:30px;letter-spacing:2px;line-height:1;}
+.ocard.new .card-num{color:var(--orange);}
+.ocard.progress .card-num{color:var(--yellow);}
+.ocard.done .card-num{color:var(--green);}
+.ocard.urgent .card-num{color:var(--red);}
+.ocard.awaiting .card-num{color:#a78bfa;}
+.btn-confirm{background:#a78bfa;color:#fff;flex:1;}
+.btn-confirm:hover{background:#c4b5fd;}
+
+.card-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.timer{font-family:var(--fm);font-size:16px;letter-spacing:1px;font-weight:500;}
+.timer.ok{color:var(--green);}
+.timer.warn{color:var(--yellow);}
+.timer.hot{color:var(--red);}
+.type-tag{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;padding:3px 8px;border-radius:4px;}
+.type-delivery{background:#f0602018;color:var(--orange);}
+.type-pickup{background:#28c06018;color:var(--green);}
+
+/* Customer */
+.card-customer{padding:10px 14px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;}
+.cust-name{font-size:15px;font-weight:700;color:var(--tx);}
+.cust-addr{font-size:11px;color:var(--mt);margin-top:2px;font-family:var(--fm);}
+.cust-phone{font-family:var(--fm);font-size:12px;color:var(--tx2);}
+
+/* Items */
+.card-rätter{padding:10px 14px;flex:1;border-bottom:1px solid var(--bdr);}
+.rätt-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);}
+.rätt-row:last-child{border-bottom:none;}
+.rätt-qty{font-family:var(--fd);font-size:28px;color:var(--orange);width:32px;text-align:center;line-height:1;flex-shrink:0;}
+.rätt-name{font-size:16px;font-weight:700;flex:1;}
+.rätt-price{font-family:var(--fm);font-size:12px;color:var(--mt);}
+
+/* Notes */
+.card-notes{background:#f0b02010;border-top:1px solid #f0b02030;padding:8px 14px;font-size:13px;color:var(--yellow);display:flex;gap:6px;align-items:flex-start;}
+
+/* Footer */
+.card-foot{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.card-total{font-family:var(--fd);font-size:26px;letter-spacing:1px;color:var(--tx);}
+.card-actions{display:flex;gap:8px;}
+
+/* Action buttons — big for touch */
+.btn-act{
+  height:48px;border:none;border-radius:9px;
+  font-family:var(--fd);font-size:18px;letter-spacing:2px;
+  cursor:pointer;transition:all .15s;padding:0 20px;
+  -webkit-user-select:none;user-select:none;
+}
+.btn-act:active{transform:scale(.94);}
+.btn-start{background:var(--orange);color:#fff;}
+.btn-start:hover{background:#ff7040;}
+.btn-print{background:#334155;color:#fff;font-size:14px;padding:0 12px;}
+.btn-print:hover{background:#475569;}
+.btn-done{background:var(--green);color:#000;flex:1;}
+.btn-done:hover{background:#38d070;}
+.btn-undo{background:var(--surf2);color:var(--mt);border:1.5px solid var(--bdr2);}
+.btn-undo:hover{border-color:var(--mt);}
+.btn-bump{background:var(--surf2);color:var(--tx2);border:1.5px solid var(--bdr2);font-size:20px;width:48px;padding:0;}
+
+.done-label{font-family:var(--fm);font-size:11px;color:var(--green);letter-spacing:1.5px;}
+
+/* ── EMPTY STATE ── */
+.empty-board{
+  grid-column:1/-1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:80px 20px;
+  opacity:.5;
+}
+.empty-icon{font-size:64px;margin-bottom:16px;}
+.empty-title{font-family:var(--fd);font-size:32px;letter-spacing:3px;color:var(--mt);}
+.empty-sub{font-family:var(--fm);font-size:11px;color:var(--mt);letter-spacing:2px;margin-top:8px;}
+
+/* ── DEMO BANNER ── */
+.demo-bar{
+  background:#f0b02018;border-bottom:1.5px solid #f0b02030;
+  padding:8px 16px;text-align:center;
+  font-family:var(--fm);font-size:10px;letter-spacing:2px;color:var(--yellow);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:12px;
+}
+.btn-add-demo{
+  background:#f0b02030;border:1px solid #f0b02060;color:var(--yellow);
+  border-radius:5px;padding:4px 12px;font-family:var(--fm);font-size:9px;
+  letter-spacing:1.5px;cursor:pointer;transition:all .15s;
+}
+.btn-add-demo:hover{background:#f0b02050;}
+
+/* ── TABLET ADJUSTMENTS ── */
+@media(min-width:768px) and (max-width:1024px){
+  .topbar{height:64px;}
+  .tb-logo{font-size:24px;}
+  .tb-rest{font-size:22px;}
+  .tb-clock{font-size:20px;}
+}
+@media(max-width:480px){
+  .board{grid-template-columns:repeat(auto-fill,280px);padding:10px;gap:10px;}
+  .ocard{min-width:280px;width:280px;}
+  .topbar{height:54px;}
+  .stat-pill{display:none;}
+  .tb-clock{font-size:15px;}
+}
+</style>
+</head>
+<body>
+
+<!-- PIN-SKÄRM -->
+<div id="pinScreen" style="display:none;position:fixed;inset:0;background:#0f0f0f;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:4px;color:#fff;">CRUSTLY — KÖK</div>
+  <div style="font-family:'DM Sans',sans-serif;font-size:14px;letter-spacing:2px;color:#888;">ANGE KÖK-PIN</div>
+  <div style="display:flex;gap:12px;" id="pinDots">
+    <div style="width:16px;height:16px;border-radius:50%;border:2px solid #444;" id="dot0"></div>
+    <div style="width:16px;height:16px;border-radius:50%;border:2px solid #444;" id="dot1"></div>
+    <div style="width:16px;height:16px;border-radius:50%;border:2px solid #444;" id="dot2"></div>
+    <div style="width:16px;height:16px;border-radius:50%;border:2px solid #444;" id="dot3"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,80px);gap:12px;">
+    <button onclick="pinPress('1')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">1</button>
+    <button onclick="pinPress('2')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">2</button>
+    <button onclick="pinPress('3')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">3</button>
+    <button onclick="pinPress('4')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">4</button>
+    <button onclick="pinPress('5')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">5</button>
+    <button onclick="pinPress('6')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">6</button>
+    <button onclick="pinPress('7')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">7</button>
+    <button onclick="pinPress('8')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">8</button>
+    <button onclick="pinPress('9')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">9</button>
+    <button style="height:80px;background:transparent;border:none;cursor:default;"></button>
+    <button onclick="pinPress('0')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;cursor:pointer;transition:background .1s;">0</button>
+    <button onclick="pinPress('⌫')" style="height:80px;background:#1a1a1a;border:1.5px solid #333;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:28px;color:#888;cursor:pointer;transition:background .1s;">⌫</button>
+  </div>
+  <div id="pinError" style="color:#e74c3c;font-family:'DM Sans',sans-serif;font-size:13px;letter-spacing:1px;min-height:20px;"></div>
+</div>
+
+<div id="newOrderFlash"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-left">
+    <div class="tb-logo">CRUSTLY</div>
+    <div class="tb-sep"></div>
+    <div class="tb-rest" id="tbRest">LADDAR...</div>
+  </div>
+  <div class="tb-right">
+    <div class="stat-pill orange"><div class="stat-num" id="statNyhet">0</div><div class="stat-lbl">NYA</div></div>
+    <div class="stat-pill" style="border-color:#a78bfa40;display:none;" id="swishPill"><div class="stat-num" id="statSwish" style="color:#a78bfa;">0</div><div class="stat-lbl">SWISH</div></div>
+    <div class="stat-pill yellow"><div class="stat-num" id="statProg">0</div><div class="stat-lbl">PÅGÅENDE</div></div>
+    <div class="stat-pill green"><div class="stat-num" id="statDone">0</div><div class="stat-lbl">KLARA</div></div>
+    <div class="stat-pill" style="border-color:var(--bdr2);"><div class="stat-num" id="statTotalt" style="color:var(--tx2);">0</div><div class="stat-lbl">TOTALT</div></div>
+    <div class="tb-clock" id="clock">--:--</div>
+  </div>
+</div>
+
+<!-- DEMO BANNER -->
+<div class="demo-bar" id="demoBanner">
+  ⚠️ DEMO-LÄGE — ORDERS SPARAS INTE
+  <button class="btn-add-demo" onclick="addDemoOrder()">+ LÄGG TILL ORDER</button>
+  <button class="btn-add-demo" onclick="hideDemoBanner()" style="background:none;border:none;color:var(--mt);">✕</button>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filterbar">
+  <button class="fbtn on" onclick="setFiltrera('active',this)" id="fAll">🔥 AKTIVA</button>
+  <button class="fbtn orange" onclick="setFiltrera('new',this)">🆕 NYA</button>
+  <button class="fbtn" style="color:#a78bfa;" onclick="setFiltrera('awaiting',this)">📱 SWISH</button>
+  <button class="fbtn yellow" onclick="setFiltrera('progress',this)">⏳ PÅGÅENDE</button>
+  <div class="filter-sep"></div>
+  <button class="fbtn green" onclick="setFiltrera('done',this)">✅ KLARA</button>
+  <button class="fbtn" onclick="setFiltrera('all',this)">📋 ALLA</button>
+</div>
+
+<!-- ORDER BOARD -->
+<div class="board" id="board">
+  <div class="empty-board">
+    <div class="empty-icon">🍕</div>
+    <div class="empty-title">LADDAR ORDERS...</div>
+    <div class="empty-sub">ETT ÖGONBLICK</div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let orders = [];
+let currentFiltrera = 'active';
+let timerInterval = null;
+let isDemoMode = false;
+let demoCounter = 1039;
+
+// ============================================================
+// DEMO DATA
+// ============================================================
+const DEMO_ORDERS = [
+  {
+    id:'d0', num:'#1043', status:'awaiting',
+    type:'delivery', payment:'swish',
+    customer:{ name:'Lisa Ek', phone:'+46 76 999 11 22', address:'Sveavägen 44, Stockholm' },
+    rätter:[{name:'Pepperoni',qty:1,price:159},{name:'Tiramisu',qty:1,price:59}],
+    total:218, notes:'',
+    createdAt: new Date(Date.now()-2*60000)
+  },
+  {
+    id:'d1', num:'#1042', status:'new',
+    type:'delivery', payment:'card',
+    customer:{ name:'Anna Svensson', phone:'+46 70 123 45 67', address:'Drottninggatan 5, Stockholm' },
+    rätter:[{name:'Margherita',qty:2,price:139},{name:'Läsk',qty:2,price:29}],
+    total:336, notes:'Extra basilika tack!',
+    createdAt: new Date(Date.now()-3*60000)
+  },
+  {
+    id:'d2', num:'#1041', status:'progress',
+    type:'pickup', payment:'cash',
+    customer:{ name:'Erik Johansson', phone:'+46 73 234 56 78', address:'AVHÄMTNING' },
+    rätter:[{name:'Pepperoni',qty:1,price:159},{name:'Vitlöksbröd',qty:1,price:49},{name:'Läsk',qty:1,price:29}],
+    total:237, notes:'',
+    createdAt: new Date(Date.now()-14*60000),
+    startedAt: new Date(Date.now()-10*60000)
+  },
+  {
+    id:'d3', num:'#1040', status:'new',
+    type:'delivery', payment:'card',
+    customer:{ name:'Maria Lindqvist', phone:'+46 76 345 67 89', address:'Kungsgatan 8, Stockholm' },
+    rätter:[{name:'Quattro Stagioni',qty:1,price:169},{name:'Tiramisu',qty:1,price:59}],
+    total:228, notes:'',
+    createdAt: new Date(Date.now()-1*60000)
+  },
+  {
+    id:'d4', num:'#1039', status:'done',
+    type:'pickup', payment:'card',
+    customer:{ name:'Johan Berg', phone:'+46 70 456 78 90', address:'AVHÄMTNING' },
+    rätter:[{name:'Diavola',qty:2,price:159}],
+    total:318, notes:'',
+    createdAt: new Date(Date.now()-35*60000),
+    completedAt: new Date(Date.now()-8*60000)
+  }
+];
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  startClock();
+  tryFirebase();
+});
+
+// ── PIN-LOGIK ──
+let _kitchenPin = null;
+let _pinEntered = '';
+
+function pinPress(k) {
+  if (k === '') return;
+  if (k === '⌫') {
+    _pinEntered = _pinEntered.slice(0, -1);
+  } else if (_pinEntered.length < 4) {
+    _pinEntered += k;
+  }
+  // Uppdatera dots
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('dot' + i);
+    dot.style.background = i < _pinEntered.length ? '#f05a1a' : 'transparent';
+    dot.style.borderColor = i < _pinEntered.length ? '#f05a1a' : '#444';
+  }
+  // Kontrollera PIN när 4 siffror angetts
+  if (_pinEntered.length === 4) {
+    setTimeout(() => {
+      if (_pinEntered === _kitchenPin) {
+        sessionStorage.setItem('kitchen_pin_ok', _kitchenPin);
+        document.getElementById('pinScreen').style.display = 'none';
+        startKitchen();
+      } else {
+        document.getElementById('pinError').textContent = 'FEL PIN — FÖRSÖK IGEN';
+        _pinEntered = '';
+        for (let i = 0; i < 4; i++) {
+          const dot = document.getElementById('dot' + i);
+          dot.style.background = '#e74c3c';
+          dot.style.borderColor = '#e74c3c';
+        }
+        setTimeout(() => {
+          document.getElementById('pinError').textContent = '';
+          for (let i = 0; i < 4; i++) {
+            document.getElementById('dot' + i).style.background = 'transparent';
+            document.getElementById('dot' + i).style.borderColor = '#444';
+          }
+        }, 800);
+      }
+    }, 150);
+  }
+}
+
+function tryFirebase() {
+  try {
+    const restaurantId = new URLSearchParams(window.location.search).get('r');
+    if (!restaurantId) { loadDemo(); return; }
+
+    // Hämta restaurang + PIN
+    sbFetch('restaurants?id=eq.' + restaurantId + '&select=name,kitchen_pin&limit=1').then(data => {
+      if (data && data[0]) {
+        document.getElementById('tbRest').textContent = data[0].name.toUpperCase();
+        _kitchenPin = data[0].kitchen_pin || null;
+      }
+
+      // Kontrollera om PIN redan är okej i denna session
+      const savedPin = sessionStorage.getItem('kitchen_pin_ok');
+      if (!_kitchenPin || savedPin === _kitchenPin) {
+        // Ingen PIN satt eller redan inloggad
+        document.getElementById('pinScreen').style.display = 'none';
+        startKitchen();
+      } else {
+        // Visa PIN-skärm
+        document.getElementById('pinScreen').style.display = 'flex';
+      }
+    });
+  } catch(e) { console.error('init error:', e); loadDemo(); }
+}
+
+function startKitchen() {
+  const restaurantId = new URLSearchParams(window.location.search).get('r');
+  try {
+    let knownOrderIds = null;
+
+    listenToOrders(restaurantId, (orderList) => {
+      if (!orderList) return;
+      isDemoMode = false;
+      document.getElementById('demoBanner').style.display = 'none';
+      if (orderList.length === 0) {
+        orders = [];
+        render();
+        return;
+      }
+
+      // Detect new orders
+      const newIds = new Set(orderList.filter(o => o.status === 'new').map(o => o.id));
+      if (knownOrderIds !== null) {
+        const addedNew = [...newIds].filter(id => !knownOrderIds.has(id));
+        if (addedNew.length > 0) {
+          playOrderAlert();
+        }
+      }
+      knownOrderIds = newIds;
+
+      orders = orderList.map(o => ({
+        ...o,
+        items: o.items || [],
+        createdAt: o.created_at,
+        startedAt: o.updated_at,
+      }));
+      render();
+    });
+  } catch(e) {
+    console.error('Kitchen error:', e);
+    orders = [];
+    render();
+  }
+}
+
+function loadDemo() {
+  isDemoMode = true;
+  orders = [...DEMO_ORDERS];
+  render();
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+// ============================================================
+// LJUDNOTIS & VISUELL ALERT
+// ============================================================
+function playOrderAlert() {
+  // Ljud via Web Audio API - ingen fil behövs
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function beep(freq, start, duration, vol) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(vol, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    }
+
+    // Tre stigande pip — typisk restaurangnotis
+    beep(880, 0,    0.15, 0.4);
+    beep(880, 0.18, 0.15, 0.4);
+    beep(1100, 0.36, 0.25, 0.5);
+  } catch(e) {}
+
+  // Visuell flash på hela skärmen
+  const flash = document.getElementById('newOrderFlash');
+  if (flash) {
+    flash.classList.add('flash-active');
+    setTimeout(() => flash.classList.remove('flash-active'), 1000);
+  }
+
+  // Blink på page title
+  let blinks = 0;
+  const orig = document.title;
+  const blink = setInterval(() => {
+    document.title = blinks % 2 === 0 ? '🔔 NY ORDER!' : orig;
+    if (++blinks >= 8) { clearInterval(blink); document.title = orig; }
+  }, 400);
+}
+
+function render() {
+  updateStats();
+
+  let filtered = [...orders];
+
+  if (currentFiltrera === 'active') filtered = filtered.filter(o => o.status==='new' || o.status==='progress' || o.status==='awaiting');
+  else if (currentFiltrera !== 'all') filtered = filtered.filter(o => o.status===currentFiltrera);
+
+  // Sortera: new → progress → done, oldest first within group
+  const ord = {awaiting:0, new:1, progress:2, done:3};
+  filtered.sort((a,b) => {
+    if (ord[a.status] !== ord[b.status]) return ord[a.status]-ord[b.status];
+    return getTime(a.created_at||a.createdAt) - getTime(b.created_at||b.createdAt);
+  });
+
+  const board = document.getElementById('board');
+  if (!filtered.length) {
+    board.innerHTML = `
+      <div class="empty-board">
+        <div class="empty-icon">${currentFiltrera==='done'?'✅':'🍕'}</div>
+        <div class="empty-title">${currentFiltrera==='done'?'INGA KLARA ORDERS':'INGA AKTIVA ORDERS'}</div>
+        <div class="empty-sub">${currentFiltrera==='active'?'VÄNTAR PÅ BESTÄLLNINGAR...':'INGET HÄR ÄN'}</div>
+      </div>`;
+    return;
+  }
+
+  board.innerHTML = filtered.map(o => cardHTML(o)).join('');
+  startTimers(filtered);
+}
+
+function cardHTML(o) {
+  const age = Math.floor((Date.now() - getTime(o.created_at||o.created_at)) / 60000);
+  const isUrgent = o.status === 'new' && age >= 12;
+  const cardClass = isUrgent ? 'urgent' : o.status;
+  const timerClass = age >= 12 ? 'hot' : age >= 7 ? 'warn' : 'ok';
+  const typeLabel = o.delivery_type === 'delivery' ? '🛵 LEVERANS' : '🏠 AVHÄMTNING';
+  const typeClass = o.delivery_type === 'delivery' ? 'type-delivery' : 'type-pickup';
+  const swishTag = o.payment_method_method === 'swish' ? `<div class="type-tag" style="background:#a78bfa18;color:#a78bfa;">📱 SWISH</div>` : '';
+
+  const itemsHtml = (o.items||[]).map(i => `
+    <div class="rätt-row">
+      <div class="rätt-qty">${i.quantity||i.qty||1}×</div>
+      <div class="rätt-name">${i.name}</div>
+      <div class="rätt-price">${sek((i.price||0)*(i.quantity||1))}</div>
+    </div>
+  `).join('');
+
+  const notesHtml = o.special_instructions ? `<div class="card-notes">📝 ${o.special_instructions}</div>` : '';
+
+  let actionsHtml;
+  if (o.status === 'done') {
+    actionsHtml = `<div class="card-actions"><div class="done-label">✓ KLAR</div><button class="btn-act btn-print" onclick='printOrderTicket(orders.find(o=>o.id=="${o.id}"))' title="Skriv ut igen">🖨</button></div>`;
+  } else if (o.status === 'awaiting') {
+    actionsHtml = `
+      <div class="card-actions" style="flex:1;">
+        <button class="btn-act btn-confirm" onclick="confirmBetalning('${o.id}')">📱 BEKRÄFTA SWISH</button>
+      </div>`;
+  } else if (o.status === 'new') {
+    actionsHtml = `
+      <div class="card-actions">
+        <button class="btn-act btn-bump" onclick="bump('${o.id}')" title="Prioritera">⬆</button>
+        <button class="btn-act btn-start" onclick="setStatus('${o.id}','progress')">START →</button>
+      </div>`;
+  } else {
+    actionsHtml = `
+      <div class="card-actions" style="flex:1;">
+        <button class="btn-act btn-undo" onclick="setStatus('${o.id}','new')">↩</button>
+        <button class="btn-act btn-print" onclick='printOrderTicket(orders.find(o=>o.id=="${o.id}"))' title="Skriv ut igen">🖨</button>
+        <button class="btn-act btn-done" onclick="setStatus('${o.id}','done')">✓ KLAR</button>
+      </div>`;
+  }
+
+  return `
+    <div class="ocard ${cardClass}" id="c-${o.id}">
+      <div class="card-stripe"></div>
+      <div class="card-top">
+        <div>
+          <div class="card-num">${o.num||('#'+o.id.slice(-4).toUpperCase())}</div>
+          ${o.status==='awaiting'?'<div style="font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:#a78bfa;margin-top:3px;">VÄNTAR PÅ SWISH</div>':''} 
+        </div>
+        <div class="card-meta">
+          <div class="timer ${timerClass}" id="t-${o.id}">${fmtAge(age)}</div>
+          <div class="type-tag ${typeClass}">${typeLabel}</div>
+          ${swishTag}
+        </div>
+      </div>
+      <div class="card-customer">
+        <div>
+          <div class="cust-name">${o.customer_name||'—'}</div>
+          <div class="cust-addr">${o.delivery_address||''}</div>
+        </div>
+        <div class="cust-phone">${o.customer_phone||''}</div>
+      </div>
+      <div class="card-rätter">${itemsHtml}</div>
+      ${notesHtml}
+      <div class="card-foot">
+        <div class="card-total">${sek(o.total||0)}</div>
+        ${actionsHtml}
+      </div>
+    </div>
+  `;
+}
+
+
+// ============================================================
+// UTSKRIFT — SUNMI V2 + FALLBACK window.print()
+// ============================================================
+function printOrderTicket(o) {
+  const items = (o.items || []).map(i =>
+    `${(i.quantity||i.qty||1)}x  ${i.name}`
+  ).join('\n');
+
+  const typeLabel = o.delivery_type === 'delivery' ? 'LEVERANS' : 'AVHÄMTNING';
+  const payLabel  = o.payment_method === 'swish'   ? 'SWISH'    : 'KONTANT';
+  const orderNum  = o.num || ('#' + o.id.slice(-4).toUpperCase());
+  const now       = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+
+  // Försök Sunmi JS Bridge
+  if (window.SunmiInnerPrinter) {
+    try {
+      const p = window.SunmiInnerPrinter;
+      p.setAlignment(1);           // center
+      p.printTextWithFont('CRUSTLY\n', '', 28);
+      p.printText('------------------------\n');
+      p.setAlignment(0);           // left
+      p.printTextWithFont(orderNum + '\n', '', 24);
+      p.printText(now + '   ' + typeLabel + '\n');
+      p.printText('------------------------\n');
+      p.printTextWithFont((o.customer_name || '') + '\n', '', 22);
+      if (o.customer_phone) p.printText(o.customer_phone + '\n');
+      if (o.delivery_type === 'delivery' && o.delivery_address) {
+        p.printText(o.delivery_address + '\n');
+      }
+      p.printText('------------------------\n');
+      p.printTextWithFont(items + '\n', '', 22);
+      p.printText('------------------------\n');
+      p.setAlignment(2);           // right
+      p.printTextWithFont('TOTALT: ' + (o.total || 0) + ' kr\n', '', 24);
+      p.setAlignment(0);
+      p.printText(payLabel + '\n');
+      if (o.special_instructions) {
+        p.printText('\nNOT: ' + o.special_instructions + '\n');
+      }
+      p.printText('\n\n\n');
+      p.cutPaper(1);
+      return;
+    } catch(e) {
+      console.warn('Sunmi print failed, fallback:', e);
+    }
+  }
+
+  // Fallback: window.print() med termisk CSS
+  const win = window.open('', '_blank', 'width=400,height=800');
+  win.document.write(`
+    <html><head><title>Order</title>
+    <style>
+      @page { margin: 0; size: 80mm auto; }
+      * { box-sizing: border-box; }
+      body {
+        font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 13px;
+        width: 100%;
+        max-width: 380px;
+        padding: 0;
+        margin: 0 auto;
+        color: #111;
+        background: #fff;
+      }
+      .hang-space {
+        height: 38mm;
+        border-bottom: 1.5px dashed #bbb;
+        margin-bottom: 0;
+      }
+      .content { padding: 5mm 7mm 8mm; }
+
+      /* HEADER */
+      .header { text-align: center; padding-bottom: 4mm; }
+      .logo {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 8px;
+        color: #999;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 2mm;
+      }
+      .order-num {
+        font-size: 52px;
+        font-weight: 900;
+        letter-spacing: -1px;
+        line-height: 1;
+        display: block;
+        color: #111;
+      }
+      .meta {
+        font-size: 11px;
+        color: #888;
+        margin-top: 2mm;
+        letter-spacing: 0.5px;
+      }
+      .type-badge {
+        display: inline-block;
+        background: #111;
+        color: #fff;
+        padding: 2mm 5mm;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        margin-top: 3mm;
+        text-transform: uppercase;
+      }
+
+      /* DIVIDERS */
+      .divider { border: none; border-top: 1px solid #e5e5e5; margin: 4mm 0; }
+      .divider-thick { border: none; border-top: 2px solid #111; margin: 4mm 0; }
+
+      /* SECTIONS */
+      .section-label {
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        color: #aaa;
+        text-transform: uppercase;
+        margin-bottom: 2mm;
+      }
+
+      /* CUSTOMER */
+      .cust-name {
+        font-size: 22px;
+        font-weight: 900;
+        line-height: 1.1;
+        margin-bottom: 1.5mm;
+      }
+      .cust-detail {
+        font-size: 12px;
+        color: #555;
+        margin-top: 1mm;
+        display: flex;
+        align-items: center;
+        gap: 2mm;
+      }
+
+      /* ITEMS */
+      .item-row {
+        display: flex;
+        align-items: baseline;
+        padding: 1.5mm 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .item-row:last-child { border-bottom: none; }
+      .item-qty {
+        font-weight: 900;
+        font-size: 15px;
+        min-width: 9mm;
+        color: #111;
+      }
+      .item-name {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .item-price {
+        font-size: 12px;
+        font-weight: 700;
+        color: #333;
+      }
+
+      /* TOTAL */
+      .total-block {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 2mm;
+      }
+      .total-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        color: #888;
+        text-transform: uppercase;
+      }
+      .total-amount {
+        font-size: 32px;
+        font-weight: 900;
+        line-height: 1;
+      }
+      .pay-pill {
+        display: inline-block;
+        border: 1.5px solid #ddd;
+        border-radius: 20px;
+        padding: 1mm 4mm;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #666;
+        margin-top: 2mm;
+        float: right;
+      }
+
+      /* NOTES */
+      .notes-box {
+        background: #fff8e1;
+        border-left: 3px solid #f59e0b;
+        padding: 3mm 4mm;
+        margin-top: 4mm;
+        font-size: 12px;
+        color: #333;
+      }
+      .notes-title {
+        font-weight: 900;
+        font-size: 9px;
+        letter-spacing: 2px;
+        color: #b45309;
+        text-transform: uppercase;
+        margin-bottom: 1.5mm;
+      }
+
+      /* FOOTER */
+      .footer {
+        text-align: center;
+        font-size: 9px;
+        color: #ccc;
+        margin-top: 6mm;
+        letter-spacing: 2px;
+      }
+
+      @media print { body { width: 80mm; max-width: 80mm; } }
+    </style></head><body>
+
+    <div class="hang-space"></div>
+
+    <div class="content">
+      <div class="header">
+        <span class="logo">CRUSTLY</span>
+        <span class="order-num">${orderNum}</span>
+        <div class="meta">${now}</div>
+        <div class="type-badge">${typeLabel}</div>
+      </div>
+
+      <hr class="divider-thick">
+
+      <div class="section-label">Kund</div>
+      <div class="cust-name">${o.customer_name || '—'}</div>
+      ${o.customer_phone ? '<div class="cust-detail">📞 ' + o.customer_phone + '</div>' : ''}
+      ${o.delivery_type === 'delivery' && o.delivery_address ? '<div class="cust-detail">📍 ' + o.delivery_address + '</div>' : ''}
+
+      <hr class="divider">
+
+      <div class="section-label">Beställning</div>
+      ${(o.items||[]).map(i => `
+        <div class="item-row">
+          <span class="item-qty">${(i.quantity||i.qty||1)}×</span>
+          <span class="item-name">${i.name}</span>
+          <span class="item-price">${((i.price||0)*(i.quantity||i.qty||1))} kr</span>
+        </div>
+      `).join('')}
+
+      <hr class="divider-thick">
+
+      <div class="total-block">
+        <span class="total-label">Totalt</span>
+        <span class="total-amount">${o.total || 0} kr</span>
+      </div>
+      <div class="pay-pill">${payLabel}</div>
+      <div style="clear:both"></div>
+
+      ${o.special_instructions ? `
+        <div class="notes-box">
+          <div class="notes-title">⚠ Notering</div>
+          ${o.special_instructions}
+        </div>
+      ` : ''}
+
+      <div class="footer">crustly.se</div>
+    </div>
+
+    </body></html>
+  `);
+  win.document.close();
+  win.focus();
+  win.print();
+  setTimeout(() => win.close(), 1000);
+}
+
+// ============================================================
+// STATUS UPDATE
+// ============================================================
+function confirmBetalning(id) {
+  // Mark payment confirmed → move to 'new' so kitchen can start it
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx < 0) return;
+  orders[idx].status = 'new';
+  orders[idx].paymentConfirmed = true;
+  render();
+  if (!isDemoMode) {
+    try {
+      confirmPayment(id);
+    } catch(e){}
+  }
+}
+
+function setStatus(id, newStatus) {
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx < 0) return;
+  orders[idx].status = newStatus;
+  if (newStatus === 'progress') {
+    orders[idx].startedAt = new Date();
+    // Print ticket when kitchen accepts order
+    printOrderTicket(orders[idx]);
+  }
+  if (newStatus === 'done') orders[idx].completedAt = new Date();
+  render();
+
+  // Supabase save
+  if (!isDemoMode) {
+    try {
+      updateOrderStatus(id, newStatus);
+    } catch(e){}
+  }
+}
+
+function bump(id) {
+  // Move to front av new orders
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx < 0) return;
+  const o = orders.splice(idx, 1)[0];
+  o.created_at = new Date(Date.now() + 60000); // small cheat to sort first
+  orders.unshift(o);
+  render();
+}
+
+// ============================================================
+// DEMO — ADD ORDER
+// ============================================================
+function addDemoOrder() {
+  demoCounter++;
+  const names = ['Sara Nilsson','Lars Persson','Karin Berg','Mikael Holm','Emma Strand'];
+  const items_pool = [
+    [{name:'Margherita',qty:1,price:139}],
+    [{name:'Pepperoni',qty:2,price:159},{name:'Läsk',qty:2,price:29}],
+    [{name:'Diavola',qty:1,price:159},{name:'Tiramisu',qty:1,price:59}],
+    [{name:'Quattro Stagioni',qty:1,price:169},{name:'Vitlöksbröd',qty:1,price:49}],
+  ];
+  const items = items_pool[Math.floor(Math.random()*items_pool.length)];
+  const total = rätter.reduce((s,i)=>s+(i.price*i.qty),0);
+  const name = names[Math.floor(Math.random()*names.length)];
+  orders.unshift({
+    id:'d'+Date.now(), num:'#'+demoCounter, status:'new',
+    type: Math.random()>.5?'delivery':'pickup', payment:'card',
+    customer:{ name, phone:'+46 70 '+Math.floor(1000000+Math.random()*8999999), address:'Testgatan '+Math.floor(1+Math.random()*99)+', Stockholm' },
+    rätter, total, notes:'',
+    createdAt: new Date()
+  });
+  render();
+}
+
+function hideDemoBanner() {
+  document.getElementById('demoBanner').style.display = 'none';
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+function setFiltrera(f, btn) {
+  currentFiltrera = f;
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  render();
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function updateStats() {
+  document.getElementById('statNyhet').textContent = orders.filter(o=>o.status==='new').length;
+  document.getElementById('statProg').textContent = orders.filter(o=>o.status==='progress').length;
+  document.getElementById('statDone').textContent = orders.filter(o=>o.status==='done').length;
+  document.getElementById('statTotalt').textContent = orders.length;
+  const awaiting = orders.filter(o=>o.status==='awaiting').length;
+  const swishEl = document.getElementById('statSwish');
+  if (swishEl) { swishEl.textContent = awaiting; document.getElementById('swishPill').style.display = awaiting > 0 ? 'flex' : 'none'; }
+}
+
+// ============================================================
+// TIMERS
+// ============================================================
+function startTimers(filtered) {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    filtered.forEach(o => {
+      const el = document.getElementById('t-'+o.id);
+      if (!el) return;
+      const age = Math.floor((Date.now()-getTime(o.created_at||o.created_at))/60000);
+      el.textContent = fmtAge(age);
+      el.className = 'timer '+(age>=12?'hot':age>=7?'warn':'ok');
+      // Flash card red if urgent new order
+      const card = document.getElementById('c-'+o.id);
+      if (card && o.status==='new' && age>=12) card.className='ocard urgent';
+    });
+  }, 30000);
+}
+
+function startClock() {
+  const el = document.getElementById('clock');
+  const tick = () => {
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+  };
+  tick();
+  setInterval(tick, 10000);
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function sek(v){ return Math.round(v)+' kr'; }
+function fmtAge(m){ if(m<1) return '< 1 MIN'; if(m<60) return m+' MIN'; return Math.floor(m/60)+'H '+m%60+'M'; }
+function getTime(d){ if(!d) return Date.now(); if(d instanceof Date) return d.getTime(); if(d?.toDate) return d.toDate().getTime(); return new Date(d).getTime(); }
+</script>
+</body>
+</html>

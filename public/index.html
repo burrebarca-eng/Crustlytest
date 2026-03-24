@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crustly — Kontrollcenter</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0e0d0a; --surf:#161410; --surf2:#1e1c17; --surf3:#252219;
+  --bdr:#2a2720; --bdr2:#332f26;
+  --or:#c8380a; --odim:#c8380a12;
+  --green:#3db870; --gdim:#3db87012;
+  --yellow:#f0b429; --ydim:#f0b42912;
+  --blue:#4e9eff; --bdim:#4e9eff12;
+  --purple:#c084fc; --pdim:#c084fc12;
+  --gold:#c8920a; --goldim:#c8920a12;
+  --red:#e84040; --rdim:#e8404012;
+  --tx:#f0ece0; --tx2:#c4bfb0; --mt:#6a6458;
+  --fd:'Cormorant Garamond',serif;
+  --fm:'JetBrains Mono',monospace;
+  --fb:'Plus Jakarta Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:var(--fb);min-height:100vh;position:relative;overflow-x:hidden;}
+
+body::before{content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse at 10% 40%,rgba(200,56,10,0.06) 0%,transparent 50%),
+             radial-gradient(ellipse at 90% 10%,rgba(61,184,112,0.05) 0%,transparent 40%);
+  pointer-events:none;z-index:0;}
+body::after{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(var(--bdr) 1px,transparent 1px),linear-gradient(90deg,var(--bdr) 1px,transparent 1px);
+  background-size:52px 52px;opacity:.2;pointer-events:none;z-index:0;}
+
+.wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:52px 28px 80px;}
+
+/* HEADER */
+.header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:40px;animation:fadeUp .5s ease both;}
+.logo{font-family:var(--fd);font-size:56px;font-style:italic;font-weight:600;color:var(--or);line-height:1;}
+.logo-sub{font-family:var(--fm);font-size:9px;color:var(--mt);letter-spacing:3px;margin-top:6px;}
+.host-tag{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--mt);background:var(--surf);border:1px solid var(--bdr);padding:6px 14px;border-radius:20px;}
+
+/* STATUS BAR */
+.status-bar{background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:36px;animation:fadeUp .4s ease .1s both;}
+.status-left{display:flex;align-items:center;gap:12px;}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--mt);flex-shrink:0;transition:background .3s;}
+.status-dot.ok{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;}
+.status-dot.err{background:var(--red);}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(61,184,112,0.4)}50%{box-shadow:0 0 0 6px rgba(61,184,112,0)}}
+.status-lbl{font-family:var(--fm);font-size:11px;letter-spacing:1.5px;}
+.status-sub{font-family:var(--fm);font-size:10px;color:var(--mt);margin-top:2px;}
+.status-btn{background:var(--surf2);border:1.5px solid var(--bdr);border-radius:8px;padding:7px 16px;font-family:var(--fm);font-size:10px;letter-spacing:1.5px;color:var(--mt);cursor:pointer;text-decoration:none;transition:all .15s;}
+.status-btn:hover{border-color:var(--or);color:var(--or);}
+
+/* SECTION LABEL */
+.sec{font-family:var(--fm);font-size:9px;letter-spacing:3px;color:var(--mt);margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.sec::after{content:'';flex:1;height:1px;background:var(--bdr);}
+
+/* GRIDS */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:28px;}
+
+/* CARD */
+.card{background:var(--surf);border:1.5px solid var(--bdr);border-radius:14px;padding:22px;text-decoration:none;color:var(--tx);display:flex;flex-direction:column;gap:12px;transition:border-color .2s,transform .15s,box-shadow .2s;animation:fadeUp .4s ease both;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--cc,var(--or));transform:scaleX(0);transition:transform .25s ease;transform-origin:left;}
+.card:hover{border-color:var(--cc,var(--or));transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.3);}
+.card:hover::before{transform:scaleX(1);}
+.card:nth-child(1){animation-delay:.05s}.card:nth-child(2){animation-delay:.1s}.card:nth-child(3){animation-delay:.15s}.card:nth-child(4){animation-delay:.2s}.card:nth-child(5){animation-delay:.25s}.card:nth-child(6){animation-delay:.3s}
+
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;}
+.card-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;background:var(--cd,var(--odim));flex-shrink:0;}
+.badge{font-family:var(--fm);font-size:8px;letter-spacing:1.5px;padding:3px 8px;border-radius:4px;}
+.badge-live{background:var(--gdim);color:var(--green);}
+.badge-auto{background:var(--ydim);color:var(--yellow);}
+.badge-tool{background:var(--bdim);color:var(--blue);}
+.badge-new{background:var(--odim);color:var(--or);}
+.badge-ext{background:var(--surf2);color:var(--mt);}
+
+.card-title{font-family:var(--fd);font-size:20px;font-style:italic;font-weight:600;line-height:1;margin-bottom:4px;}
+.card-desc{font-family:var(--fm);font-size:10px;color:var(--mt);line-height:1.6;letter-spacing:.3px;}
+.card-foot{display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--bdr);margin-top:auto;}
+.card-url{font-family:var(--fm);font-size:9px;color:var(--mt);}
+.card-arrow{font-size:14px;color:var(--mt);transition:transform .2s,color .2s;}
+.card:hover .card-arrow{transform:translateX(4px);color:var(--cc,var(--or));}
+
+/* STATUS SUMMARY */
+.summary-bar{background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;padding:18px 24px;margin-top:8px;animation:fadeUp .4s ease .5s both;}
+.summary-row{display:flex;gap:32px;flex-wrap:wrap;}
+.summary-col{}
+.summary-lbl{font-family:var(--fm);font-size:8px;letter-spacing:2px;margin-bottom:6px;}
+.summary-lbl.done{color:var(--green);}
+.summary-lbl.next{color:var(--yellow);}
+.summary-items{font-family:var(--fm);font-size:9px;color:var(--mt);line-height:1.8;}
+
+.footer{text-align:center;font-family:var(--fm);font-size:9px;color:var(--mt);letter-spacing:2.5px;margin-top:36px;animation:fadeUp .4s ease .6s both;}
+.footer span{color:var(--or);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="logo">Crustly</div>
+      <div class="logo-sub">KONTROLLCENTER · ALLA SIDOR</div>
+    </div>
+    <div class="host-tag">damp-violet-0f15.burrebarca.workers.dev</div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-bar">
+    <div class="status-left">
+      <div class="status-dot" id="sbDot"></div>
+      <div>
+        <div class="status-lbl" id="sbLbl">KONTROLLERAR SUPABASE...</div>
+        <div class="status-sub" id="sbSub">febybrpterkybwzhigte.supabase.co</div>
+      </div>
+    </div>
+    <a class="status-btn" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte" target="_blank">⚡ ÖPPNA SUPABASE</a>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="sec">ADMIN — DINA VERKTYG</div>
+  <div class="grid3">
+
+    <a class="card" href="crustly-dashboard.html" style="--cc:var(--or);--cd:var(--odim);">
+      <div class="card-top"><div class="card-icon">📊</div><span class="badge badge-live">LIVE DATA</span></div>
+      <div><div class="card-title">Dashboard</div><div class="card-desc">Intäkt, restauranger, orders, menyimport och tillvalsimport i realtid</div></div>
+      <div class="card-foot"><div class="card-url">crustly-dashboard.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-onboarding.html" style="--cc:var(--green);--cd:var(--gdim);">
+      <div class="card-top"><div class="card-icon">➕</div><span class="badge badge-tool">SETUP</span></div>
+      <div><div class="card-title">Onboarding</div><div class="card-desc">Lägg till ny restaurang — 4 steg, 10 minuter, sparas direkt i Supabase</div></div>
+      <div class="card-foot"><div class="card-url">crustly-onboarding.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-invoice.html" style="--cc:var(--green);--cd:var(--gdim);">
+      <div class="card-top"><div class="card-icon">🧾</div><span class="badge badge-tool">FAKTURERING</span></div>
+      <div><div class="card-title">Fakturor</div><div class="card-desc">Skapa och ladda ner PDF-fakturor till restaurangerna</div></div>
+      <div class="card-foot"><div class="card-url">crustly-invoice.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-settings.html" style="--cc:var(--yellow);--cd:var(--ydim);">
+      <div class="card-top"><div class="card-icon">⚙️</div><span class="badge badge-tool">KONFIGURATION</span></div>
+      <div><div class="card-title">Inställningar</div><div class="card-desc">Claude API-nyckel, 46elks-uppgifter och övriga integrationer</div></div>
+      <div class="card-foot"><div class="card-url">crustly-settings.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-landing.html" style="--cc:var(--or);--cd:var(--odim);">
+      <div class="card-top"><div class="card-icon">🌐</div><span class="badge badge-new">LANDNING</span></div>
+      <div><div class="card-title">Landningssida</div><div class="card-desc">Marknadsföringssidan — sälj Crustly till restauranger med priskalkylator</div></div>
+      <div class="card-foot"><div class="card-url">crustly-landing.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte" target="_blank" style="--cc:var(--green);--cd:var(--gdim);">
+      <div class="card-top"><div class="card-icon">⚡</div><span class="badge badge-ext">EXTERN</span></div>
+      <div><div class="card-title">Supabase</div><div class="card-desc">Databaskonsol — data, RLS-policies, SQL Editor och Auth</div></div>
+      <div class="card-foot"><div class="card-url">supabase.com/dashboard</div><div class="card-arrow">↗</div></div>
+    </a>
+
+  </div>
+
+  <!-- AI & LOJALITET -->
+  <div class="sec">AI-AUTOMATISERING & LOJALITET</div>
+  <div class="grid4">
+
+    <a class="card" href="crustly-birthday.html" style="--cc:var(--gold);--cd:var(--goldim);">
+      <div class="card-top"><div class="card-icon">🎂</div><span class="badge badge-auto">AUTOMATION</span></div>
+      <div><div class="card-title">Födelsedag</div><div class="card-desc">Automatiska SMS-erbjudanden 7 dagar innan kundernas födelsedag</div></div>
+      <div class="card-foot"><div class="card-url">crustly-birthday.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-reengagement.html" style="--cc:var(--blue);--cd:var(--bdim);">
+      <div class="card-top"><div class="card-icon">📣</div><span class="badge badge-auto">AUTOMATION</span></div>
+      <div><div class="card-title">Återaktivering</div><div class="card-desc">Win-back SMS till kunder inaktiva i 14+ dagar med AI-skriven text</div></div>
+      <div class="card-foot"><div class="card-url">crustly-reengagement.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-loyalty.html" style="--cc:var(--gold);--cd:var(--goldim);">
+      <div class="card-top"><div class="card-icon">⭐</div><span class="badge badge-auto">LOJALITET</span></div>
+      <div><div class="card-title">Lojalitetsprogram</div><div class="card-desc">Hantera poäng, nivåer, belöningar och poängregler per restaurang</div></div>
+      <div class="card-foot"><div class="card-url">crustly-loyalty.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-loyalty-customer.html" style="--cc:var(--gold);--cd:var(--goldim);">
+      <div class="card-top"><div class="card-icon">🎁</div><span class="badge badge-live">KUNDSIDA</span></div>
+      <div><div class="card-title">Poängportal</div><div class="card-desc">Kundens inloggade vy — poäng, belöningar, historik och nivå</div></div>
+      <div class="card-foot"><div class="card-url">crustly-loyalty-customer.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+  </div>
+
+  <!-- RESTAURANGVERKTYG -->
+  <div class="sec">RESTAURANGVERKTYG</div>
+  <div class="grid3">
+
+    <a class="card" href="crustly-kitchen.html" style="--cc:var(--red);--cd:var(--rdim);">
+      <div class="card-top"><div class="card-icon">🖥️</div><span class="badge badge-live">LIVE</span></div>
+      <div><div class="card-title">Köksskärm</div><div class="card-desc">Surfplatta i köket — orders dyker upp direkt i realtid, markera som klart</div></div>
+      <div class="card-foot"><div class="card-url">crustly-kitchen.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-owner.html" style="--cc:var(--purple);--cd:var(--pdim);">
+      <div class="card-top"><div class="card-icon">🏪</div><span class="badge" style="background:var(--pdim);color:var(--purple);">PORTAL</span></div>
+      <div><div class="card-title">Ägarportal</div><div class="card-desc">Ägarens inloggning — orders, meny, tillval, kunder och inställningar</div></div>
+      <div class="card-foot"><div class="card-url">crustly-owner.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-order.html" style="--cc:var(--green);--cd:var(--gdim);">
+      <div class="card-top"><div class="card-icon">🛒</div><span class="badge badge-live">KUNDSIDA</span></div>
+      <div><div class="card-title">Beställningssida</div><div class="card-desc">Vad kunden ser — meny med tillval, varukorg, Swish och ordertracking</div></div>
+      <div class="card-foot"><div class="card-url">crustly-order.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+  </div>
+
+  <!-- LA FAVORITA -->
+  <div class="sec">🍕 LA FAVORITA — TESTRESTAURANG</div>
+  <div class="grid3">
+
+    <a class="card" href="crustly-order.html?r=la-favorita" style="--cc:var(--green);--cd:var(--gdim);">
+      <div class="card-top"><div class="card-icon">🛒</div><span class="badge badge-live">KUND</span></div>
+      <div><div class="card-title">Beställ</div><div class="card-desc">La Favoritas beställningssida med meny, tillval och poängintjäning</div></div>
+      <div class="card-foot"><div class="card-url">?r=la-favorita</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-kitchen.html?r=07d3dbf9-d519-4de7-b329-06c845a85b09" style="--cc:var(--red);--cd:var(--rdim);">
+      <div class="card-top"><div class="card-icon">🖥️</div><span class="badge badge-live">LIVE</span></div>
+      <div><div class="card-title">Köket</div><div class="card-desc">La Favoritas köksskärm — se och hantera inkommande orders i realtid</div></div>
+      <div class="card-foot"><div class="card-url">?r=07d3dbf9...a85b09</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="crustly-owner.html" style="--cc:var(--purple);--cd:var(--pdim);">
+      <div class="card-top"><div class="card-icon">🏪</div><span class="badge" style="background:var(--pdim);color:var(--purple);">ÄGARE</span></div>
+      <div><div class="card-title">Ägarportal</div><div class="card-desc">Logga in som <span class="__cf_email__" data-cfemail="f19384838394ae9390839290b1999e859c90989ddf929e9c">[email&#160;protected]</span> — meny, orders, tillval, kunder</div></div>
+      <div class="card-foot"><div class="card-url">crustly-owner.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+  </div>
+
+  <!-- SÄKERHET -->
+  <div class="sec">AUTH & SÄKERHET</div>
+  <div class="grid3">
+
+    <a class="card" href="crustly-login.html" style="--cc:var(--or);--cd:var(--odim);">
+      <div class="card-top"><div class="card-icon">🔐</div><span class="badge badge-new">AUTH</span></div>
+      <div><div class="card-title">Inloggning</div><div class="card-desc">Ägarinloggning med Supabase Auth — email, lösenord och glömt lösenord</div></div>
+      <div class="card-foot"><div class="card-url">crustly-login.html</div><div class="card-arrow">→</div></div>
+    </a>
+
+    <a class="card" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte/auth/policies" target="_blank" style="--cc:var(--red);--cd:var(--rdim);">
+      <div class="card-top"><div class="card-icon">🛡️</div><span class="badge badge-tool">RLS</span></div>
+      <div><div class="card-title">RLS Policies</div><div class="card-desc">Row Level Security — styr vem som kan läsa och skriva data. OBS: orders-policy öppen!</div></div>
+      <div class="card-foot"><div class="card-url">supabase.com/.../policies</div><div class="card-arrow">↗</div></div>
+    </a>
+
+    <a class="card" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte/editor" target="_blank" style="--cc:var(--yellow);--cd:var(--ydim);">
+      <div class="card-top"><div class="card-icon">🗄️</div><span class="badge badge-tool">SQL</span></div>
+      <div><div class="card-title">SQL Editor</div><div class="card-desc">Kör SQL-queries direkt — skapa vyer, testa data, fixa RLS-policies</div></div>
+      <div class="card-foot"><div class="card-url">supabase.com/.../editor</div><div class="card-arrow">↗</div></div>
+    </a>
+
+  </div>
+
+  <!-- STATUS SUMMARY -->
+  <div class="summary-bar">
+    <div class="summary-row">
+      <div class="summary-col">
+        <div class="summary-lbl done">✓ KLART</div>
+        <div class="summary-items">Auth · Köksskärm · Beställningar · Tillval · Menyimport<br>Lojalitetsprogram · Kundportal · Dashboard · Fakturor<br>Onboarding · Födelsedag-SMS · Återaktivering · Ordertracking</div>
+      </div>
+      <div style="width:1px;background:var(--bdr2);align-self:stretch;"></div>
+      <div class="summary-col">
+        <div class="summary-lbl next">◑ NÄSTA</div>
+        <div class="summary-items">RLS orders-policy (K1 kritisk) · Köksinloggning<br>Poänginlösning i kassan · AI-rapportering<br>GitHub auto-deploy · Lojalitetsnivåer live</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">BYGGT MED ❤️ AV <span>CRUSTLY</span> · CLOUDFLARE + SUPABASE</div>
+
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+(async () => {
+  const dot = document.getElementById('sbDot');
+  const lbl = document.getElementById('sbLbl');
+  const sub = document.getElementById('sbSub');
+  try {
+    const res = await fetch('https://febybrpterkybwzhigte.supabase.co/rest/v1/restaurants?select=id,name&limit=10', {
+      headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ' }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      dot.classList.add('ok');
+      lbl.textContent = 'SUPABASE ANSLUTEN';
+      const names = data.map(r => r.name).join(', ');
+      sub.textContent = data.length + ' restaurang(er): ' + (names || '—');
+    } else {
+      throw n

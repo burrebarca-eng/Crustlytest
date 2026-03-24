@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lojalitetsprogram — Crustly</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#faf8f4; --surf:#fff; --surf2:#f2efe7; --surf3:#e8e4da;
+  --bdr:#e4dfd4; --bdr2:#d4cfc4;
+  --dark:#1c1812; --or:#c8380a; --odim:rgba(200,56,10,0.08);
+  --green:#2d9e5f; --gdim:#edf7f2;
+  --gold:#c8920a; --golddim:#fef8ec;
+  --red:#d93a2b; --reddim:#fef0ee;
+  --tx:#1a1710; --tx2:#5a5248; --mt:#9a9088;
+  --fd:'Cormorant Garamond',serif; --fm:'JetBrains Mono',monospace; --fb:'Plus Jakarta Sans',sans-serif;
+  --r:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:var(--fb);min-height:100vh;}
+
+.topbar{background:var(--dark);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:52px;}
+.tb-logo{font-family:var(--fd);font-size:20px;font-style:italic;color:var(--or);}
+.tb-right{display:flex;align-items:center;gap:16px;}
+.tb-tag{font-family:var(--fm);font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.4);}
+.tb-back{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.4);text-decoration:none;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:5px 12px;transition:all .15s;}
+.tb-back:hover{color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);}
+
+.page-head{background:var(--dark);padding:24px 32px 32px;border-bottom:1px solid rgba(255,255,255,.05);}
+.page-title{font-family:var(--fd);font-size:36px;font-style:italic;color:#f0ece0;margin-bottom:4px;}
+.page-title span{color:var(--or);}
+.page-sub{font-family:var(--fm);font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.3);}
+
+.main{max-width:1100px;margin:0 auto;padding:28px 32px;}
+
+/* KPIs */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.kpi{background:var(--surf);border:1.5px solid var(--bdr);border-radius:var(--r);padding:18px 20px;}
+.kpi-lbl{font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:8px;}
+.kpi-val{font-family:var(--fd);font-size:28px;font-weight:600;color:var(--tx);line-height:1;}
+.kpi-val.orange{color:var(--or);}
+.kpi-val.gold{color:var(--gold);}
+.kpi-val.green{color:var(--green);}
+.kpi-sub{font-size:11px;color:var(--mt);margin-top:4px;}
+
+.grid2{display:grid;grid-template-columns:1fr 380px;gap:20px;}
+
+/* Cards */
+.card{background:var(--surf);border:1.5px solid var(--bdr);border-radius:14px;overflow:hidden;margin-bottom:16px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--bdr);background:var(--surf2);}
+.card-title{font-family:var(--fm);font-size:9px;letter-spacing:2.5px;color:var(--mt);}
+.card-body{padding:20px;}
+
+/* Table */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);padding:10px 14px;text-align:left;border-bottom:1px solid var(--bdr);}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--bdr);font-size:13px;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tbody tr:hover{background:var(--surf2);}
+
+.member-avatar{width:34px;height:34px;border-radius:50%;background:var(--or);color:#fff;font-family:var(--fd);font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.member-row td:first-child{display:flex;align-items:center;gap:10px;}
+
+/* Points bar */
+.pts-bar-wrap{height:3px;background:var(--bdr);border-radius:2px;margin-top:5px;width:80px;}
+.pts-bar{height:100%;background:var(--gold);border-radius:2px;}
+
+/* Give points */
+.give-pts-wrap{display:flex;gap:6px;align-items:center;}
+.give-pts-inp{width:70px;background:var(--bg);border:1.5px solid var(--bdr);border-radius:7px;padding:6px 8px;font-family:var(--fm);font-size:11px;color:var(--tx);outline:none;text-align:center;}
+.give-pts-inp:focus{border-color:var(--or);}
+.btn-give{background:var(--or);color:#fff;border:none;border-radius:7px;padding:6px 10px;font-family:var(--fm);font-size:9px;letter-spacing:1px;cursor:pointer;transition:opacity .15s;white-space:nowrap;}
+.btn-give:hover{opacity:.85;}
+.btn-give.subtract{background:var(--red);}
+
+/* Badges */
+.badge{font-family:var(--fm);font-size:8px;letter-spacing:1.5px;padding:3px 9px;border-radius:20px;}
+.badge-active{background:var(--gdim);color:var(--green);}
+.badge-inactive{background:var(--surf3);color:var(--mt);}
+.badge-bronze{background:rgba(184,112,64,.12);color:#b87040;}
+.badge-silver{background:rgba(138,136,136,.12);color:#8a8888;}
+.badge-gold{background:var(--golddim);color:var(--gold);}
+
+/* Rewards */
+.reward-form{background:var(--surf2);border:1.5px dashed var(--bdr2);border-radius:var(--r);padding:16px;margin-top:14px;}
+.rf-row{display:grid;grid-template-columns:1fr 90px;gap:8px;margin-bottom:8px;}
+.rf-inp{width:100%;background:var(--bg);border:1.5px solid var(--bdr);border-radius:7px;padding:9px 12px;font-family:var(--fb);font-size:13px;color:var(--tx);outline:none;}
+.rf-inp:focus{border-color:var(--or);}
+.btn-add-reward{width:100%;background:var(--dark);color:#f0ece0;border:none;border-radius:8px;padding:10px;font-family:var(--fm);font-size:10px;letter-spacing:2px;cursor:pointer;transition:all .15s;}
+.btn-add-reward:hover{background:var(--or);}
+.btn-del{background:none;border:1.5px solid var(--bdr);border-radius:6px;padding:4px 8px;font-family:var(--fm);font-size:9px;cursor:pointer;color:var(--mt);transition:all .15s;}
+.btn-del:hover{border-color:var(--red);color:var(--red);}
+.btn-toggle{background:none;border:1.5px solid var(--bdr);border-radius:6px;padding:4px 10px;font-family:var(--fm);font-size:9px;cursor:pointer;color:var(--mt);transition:all .15s;margin-right:4px;}
+.btn-toggle:hover{border-color:var(--green);color:var(--green);}
+
+/* Rules */
+.rule-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--bdr);}
+.rule-row:last-child{border-bottom:none;}
+.rule-lbl{font-size:13px;font-weight:500;}
+.rule-desc{font-size:11px;color:var(--mt);margin-top:2px;}
+.rule-val{display:flex;align-items:center;gap:6px;}
+.rule-inp{width:70px;background:var(--bg);border:1.5px solid var(--bdr);border-radius:7px;padding:7px 10px;font-family:var(--fm);font-size:13px;color:var(--or);text-align:center;outline:none;}
+.rule-inp:focus{border-color:var(--or);}
+.rule-unit{font-family:var(--fm);font-size:10px;color:var(--mt);}
+.btn-save-rules{width:100%;background:var(--or);color:#fff;border:none;border-radius:9px;padding:12px;font-family:var(--fm);font-size:10px;letter-spacing:2px;cursor:pointer;margin-top:16px;transition:opacity .15s;box-shadow:0 4px 14px rgba(200,56,10,.25);}
+.btn-save-rules:hover{opacity:.88;}
+
+/* Activity */
+.activity-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--bdr);}
+.activity-item:last-child{border-bottom:none;}
+.act-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.act-icon.earn{background:var(--golddim);}
+.act-icon.redeem{background:var(--gdim);}
+.act-icon.adjust{background:var(--odim);}
+.act-info{flex:1;}
+.act-name{font-weight:600;font-size:13px;}
+.act-desc{font-size:11px;color:var(--mt);margin-top:2px;}
+.act-pts{font-family:var(--fd);font-size:18px;font-weight:600;}
+.act-pts.earn{color:var(--gold);}
+.act-pts.redeem{color:var(--or);}
+.act-pts.adjust{color:var(--green);}
+
+/* Search */
+.search-inp{background:var(--surf2);border:1.5px solid var(--bdr);border-radius:7px;padding:7px 12px;font-family:var(--fb);font-size:12px;outline:none;width:180px;color:var(--tx);}
+.search-inp:focus{border-color:var(--or);}
+
+.mono{font-family:var(--fm);}
+.gold{color:var(--gold);}
+.loading-row{padding:32px;text-align:center;font-family:var(--fm);font-size:10px;letter-spacing:2px;color:var(--mt);}
+
+/* AI Proposals */
+.ai-section{background:var(--surf);border:1.5px solid var(--bdr);border-radius:14px;overflow:hidden;margin-bottom:24px;}
+.ai-section-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:linear-gradient(135deg,#1c1812,#252219);border-bottom:1px solid var(--bdr);}
+.ai-section-title{font-family:var(--fd);font-size:14px;font-style:italic;font-weight:600;color:#f0ece0;}
+.ai-section-sub{font-family:var(--fm);font-size:8px;letter-spacing:2px;color:rgba(255,255,255,0.3);margin-top:2px;}
+.btn-ai-generate{background:linear-gradient(135deg,var(--or),#e05000);color:#fff;border:none;border-radius:9px;padding:10px 20px;font-family:var(--fm);font-size:10px;letter-spacing:2px;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(200,56,10,0.3);display:flex;align-items:center;gap:8px;}
+.btn-ai-generate:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(200,56,10,0.4);}
+.btn-ai-generate:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.ai-spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;display:none;}
+.ai-spinner.on{display:block;}
+
+.proposals-wrap{padding:16px 20px;}
+.proposal-card{background:var(--surf2);border:1.5px solid var(--bdr);border-radius:12px;padding:18px;margin-bottom:12px;transition:all .2s;position:relative;overflow:hidden;}
+.proposal-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--or);}
+.proposal-card.approved{border-color:var(--green);background:var(--gdim);}
+.proposal-card.approved::before{background:var(--green);}
+.proposal-card.rejected{opacity:.4;border-color:var(--bdr);background:var(--surf3);}
+.proposal-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
+.proposal-name{font-weight:600;font-size:15px;color:var(--tx);}
+.proposal-pts{font-family:var(--fm);font-size:12px;color:var(--gold);font-weight:600;}
+.proposal-value{font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--or);margin-top:2px;}
+.proposal-reasoning{font-family:var(--fm);font-size:10px;color:var(--mt);line-height:1.6;margin-bottom:14px;letter-spacing:.3px;}
+.proposal-actions{display:flex;gap:8px;}
+.btn-approve{background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:var(--fm);font-size:9px;letter-spacing:1.5px;cursor:pointer;transition:opacity .15s;flex:1;}
+.btn-approve:hover{opacity:.88;}
+.btn-reject{background:none;border:1.5px solid var(--bdr);border-radius:8px;padding:8px 16px;font-family:var(--fm);font-size:9px;letter-spacing:1.5px;cursor:pointer;color:var(--mt);transition:all .15s;}
+.btn-reject:hover{border-color:var(--red);color:var(--red);}
+.btn-edit-prop{background:none;border:1.5px solid var(--bdr);border-radius:8px;padding:8px 16px;font-family:var(--fm);font-size:9px;letter-spacing:1.5px;cursor:pointer;color:var(--mt);transition:all .15s;}
+.btn-edit-prop:hover{border-color:var(--or);color:var(--or);}
+.proposal-approved-badge{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--green);display:flex;align-items:center;gap:4px;}
+.ai-empty{padding:32px;text-align:center;font-family:var(--fm);font-size:10px;letter-spacing:1.5px;color:var(--mt);}
+.ai-last-run{font-family:var(--fm);font-size:9px;color:var(--mt);padding:10px 20px;border-top:1px solid var(--bdr);text-align:center;}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--dark);color:#f0ece0;padding:12px 24px;border-radius:10px;font-family:var(--fm);font-size:11px;letter-spacing:1px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-logo">Crustly</div>
+  <div class="tb-right">
+    <select id="restSelector" onchange="switchRestaurant(this.value)"
+      style="background:var(--surf2);border:1.5px solid var(--bdr);border-radius:8px;padding:6px 12px;font-family:var(--fm);font-size:10px;letter-spacing:1px;color:var(--tx);outline:none;cursor:pointer;min-width:180px;">
+      <option value="">Välj restaurang...</option>
+    </select>
+    <div class="tb-tag" id="tbRestName">⭐ LOJALITETSPROGRAM</div>
+    <a class="tb-back" href="crustly-owner.html">← ÄGARPORTAL</a>
+    <a class="tb-back" href="crustly-dashboard.html">← ADMIN</a>
+  </div>
+</div>
+
+<div class="page-head">
+  <div class="page-title">LOJALITETS<span>PROGRAM</span></div>
+  <div class="page-sub" id="pageSub">LADDAR...</div>
+</div>
+
+<div class="main">
+  <!-- KPIs -->
+  <div class="kpi-strip">
+    <div class="kpi"><div class="kpi-lbl">AKTIVA MEDLEMMAR</div><div class="kpi-val orange" id="kpiMembers">—</div><div class="kpi-sub" id="kpiMembersSub"></div></div>
+    <div class="kpi"><div class="kpi-lbl">POÄNG UTDELADE</div><div class="kpi-val gold" id="kpiIssued">—</div><div class="kpi-sub">Totalt</div></div>
+    <div class="kpi"><div class="kpi-lbl">SNITT POÄNG/KUND</div><div class="kpi-val" id="kpiAvg">—</div><div class="kpi-sub">Aktiva kunder</div></div>
+    <div class="kpi"><div class="kpi-lbl">ÅTERKOMMANDE</div><div class="kpi-val green" id="kpiReturn">—</div><div class="kpi-sub">Fler än 1 order</div></div>
+  </div>
+
+  <!-- AI BELÖNINGSFÖRSLAG -->
+  <div class="ai-section" id="aiSection">
+    <div class="ai-section-head">
+      <div>
+        <div class="ai-section-title">✦ AI-genererade belöningsförslag</div>
+        <div class="ai-section-sub">UPPDATERAS VAR 14:E DAG · 10–15% AV TOTAL SPEND</div>
+      </div>
+      <button class="btn-ai-generate" id="aiGenBtn" onclick="generateProposals()">
+        <div class="ai-spinner" id="aiSpinner"></div>
+        <span id="aiGenTxt">GENERERA FÖRSLAG</span>
+      </button>
+    </div>
+    <div id="proposalsWrap" class="proposals-wrap">
+      <div class="ai-empty">Klicka "GENERERA FÖRSLAG" för att låta AI analysera restaurangens data och föreslå belöningar.</div>
+    </div>
+    <div class="ai-last-run" id="aiLastRun" style="display:none;"></div>
+  </div>
+
+  <div class="grid2">
+    <!-- VÄNSTER -->
+    <div>
+      <!-- Medlemmar -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">MEDLEMMAR</div>
+          <input class="search-inp" id="memberSok" placeholder="Sök namn eller telefon..." oninput="filterMembers()">
+        </div>
+        <table class="tbl">
+          <thead><tr>
+            <th>KUND</th><th>POÄNG</th><th>NIVÅ</th><th>ORDERS</th><th>SENASTE</th><th>JUSTERA</th>
+          </tr></thead>
+          <tbody id="membersTbody">
+            <tr><td colspan="6" class="loading-row">LADDAR KUNDER...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HÖGER -->
+    <div>
+      <!-- Poängregler -->
+      <div class="card">
+        <div class="card-head"><div class="card-title">POÄNGREGLER</div></div>
+        <div class="card-body">
+          <div class="rule-row">
+            <div>
+              <div class="rule-lbl">Poäng per kr</div>
+              <div class="rule-desc">Hur många kr krävs för 1 poäng</div>
+            </div>
+            <div class="rule-val">
+              <input class="rule-inp" type="number" id="ruleKrPerPt" value="10" min="1">
+              <span class="rule-unit">kr = 1p</span>
+            </div>
+          </div>
+          <div class="rule-row">
+            <div>
+              <div class="rule-lbl">Välkomstbonus</div>
+              <div class="rule-desc">Poäng vid första beställning</div>
+            </div>
+            <div class="rule-val">
+              <input class="rule-inp" type="number" id="ruleWelcome" value="0" min="0">
+              <span class="rule-unit">p</span>
+            </div>
+          </div>
+          <div class="rule-row">
+            <div>
+              <div class="rule-lbl">Nivå Silver från</div>
+              <div class="rule-desc">Poäng krävs för Silver</div>
+            </div>
+            <div class="rule-val">
+              <input class="rule-inp" type="number" id="ruleSilver" value="100" min="1">
+              <span class="rule-unit">p</span>
+            </div>
+          </div>
+          <div class="rule-row">
+            <div>
+              <div class="rule-lbl">Nivå Guld från</div>
+              <div class="rule-desc">Poäng krävs för Guld</div>
+            </div>
+            <div class="rule-val">
+              <input class="rule-inp" type="number" id="ruleGold" value="300" min="1">
+              <span class="rule-unit">p</span>
+            </div>
+          </div>
+          <button class="btn-save-rules" onclick="saveRules(this)">SPARA REGLER</button>
+        </div>
+      </div>
+
+      <!-- Belöningar -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">BELÖNINGAR</div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--mt);">POÄNG → RABATT</div>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <table class="tbl">
+            <thead><tr><th>BELÖNING</th><th>POÄNG</th><th>STATUS</th><th></th></tr></thead>
+            <tbody id="rewardsTbody"></tbody>
+          </table>
+          <div class="reward-form" style="margin:14px;margin-top:0;">
+            <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:10px;">NY BELÖNING</div>
+            <div class="rf-row">
+              <input class="rf-inp" id="newRewardName" placeholder="t.ex. 50 kr rabatt">
+              <input class="rf-inp" id="newRewardPts" type="number" placeholder="Poäng" min="1">
+            </div>
+            <input class="rf-inp" id="newRewardDesc" placeholder="Beskrivning (valfritt)" style="margin-bottom:8px;">
+            <button class="btn-add-reward" onclick="addReward()">+ LÄGG TILL BELÖNING</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Senaste aktivitet -->
+      <div class="card">
+        <div class="card-head"><div class="card-title">SENASTE AKTIVITET</div></div>
+        <div class="card-body" id="activityFeed" style="padding:0 20px;">
+          <div class="loading-row">LADDAR...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://febybrpterkybwzhigte.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ';
+const _sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let restaurant = null;
+let members = [];
+let filteredMembers = [];
+let rewards = [];
+let rules = { krPerPoint: 10, welcome: 0, silver: 100, gold: 300 };
+
+// ── INIT ──────────────────────────────────────────────────────
+let allRestaurants = [];
+let currentProposals = [];
+
+// ── AI FÖRSLAG ──────────────────────────────────────────────
+async function generateProposals() {
+  if (!restaurant) { showToast('Välj en restaurang först'); return; }
+
+  const btn  = document.getElementById('aiGenBtn');
+  const spin = document.getElementById('aiSpinner');
+  const txt  = document.getElementById('aiGenTxt');
+  btn.disabled = true;
+  spin.classList.add('on');
+  txt.textContent = 'ANALYSERAR...';
+
+  try {
+    // Bygg dataunderlag
+    const avgSpent   = members.length ? members.reduce((s,m)=>s+(m.total_spent||0),0)/members.length : 0;
+    const avgOrders  = members.length ? members.reduce((s,m)=>s+(m.total_orders||0),0)/members.length : 0;
+    const avgPoints  = members.length ? members.reduce((s,m)=>s+(m.loyalty_points||0),0)/members.length : 0;
+    const nearReward = members.filter(m=>(m.loyalty_points||0)>=40).length;
+    const minReward  = Math.round(avgSpent * 0.10);
+    const maxReward  = Math.round(avgSpent * 0.15);
+    const krPerPt    = rules.krPerPoint || 10;
+
+    const prompt = `Du är ett AI-system för lojalitetsprogram på en pizzarestaurang. 
+Analysera följande data och föreslå 3 st belöningar.
+
+RESTAURANG: ${restaurant.name}
+KUNDER: ${members.length} st
+SNITT SPENDERAT PER KUND: ${Math.round(avgSpent)} kr
+SNITT ORDERS PER KUND: ${avgOrders.toFixed(1)}
+SNITT POÄNG PER KUND: ${Math.round(avgPoints)} poäng
+KUNDER SOM KAN LÖSA IN (40+ poäng): ${nearReward} st
+POÄNGREGLER: 1 poäng per ${krPerPt} kr
+NUVARANDE BELÖNINGAR: ${rewards.map(r=>r.name+' ('+r.points+'p)').join(', ') || 'inga'}
+
+REGLER DU MÅSTE FÖLJA:
+- Belöningens värde i kr = exakt 10% av snitt total_spent (${minReward} kr)
+- Belöningen FÅR ALDRIG överstiga 15% av snitt total_spent (${maxReward} kr)
+- Poängtröskeln = belöningsvärdet i kr (1p = ${krPerPt} kr)
+- Föreslå ENDAST kr-rabatter eller fria leveranser, INTE gratis pizza eller rätter
+
+Svara ENDAST med giltig JSON, inga förklaringar utanför JSON:
+{
+  "proposals": [
+    {
+      "name": "belöningens namn",
+      "points": <poänggräns som heltal>,
+      "value_kr": <värde i kr som heltal>,
+      "desc": "kort beskrivning",
+      "reasoning": "1-2 meningar varför denna belöning passar just nu baserat på datan"
+    }
+  ]
+}`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const raw  = data.content?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    currentProposals = parsed.proposals.map((p,i) => ({
+      ...p,
+      id: 'prop_' + Date.now() + '_' + i,
+      status: 'pending',
+      active: true
+    }));
+
+    renderProposals();
+
+    // Spara tidpunkt
+    const now = new Date().toLocaleString('sv-SE');
+    const lastRun = document.getElementById('aiLastRun');
+    lastRun.textContent = 'Senast genererat: ' + now;
+    lastRun.style.display = 'block';
+
+  } catch(e) {
+    console.error('AI error:', e);
+    showToast('❌ Fel vid AI-analys: ' + e.message);
+  }
+
+  btn.disabled = false;
+  spin.classList.remove('on');
+  txt.textContent = 'REGENERERA';
+}
+
+function renderProposals() {
+  const wrap = document.getElementById('proposalsWrap');
+  if (!currentProposals.length) {
+    wrap.innerHTML = '<div class="ai-empty">Inga förslag genererade ännu.</div>';
+    return;
+  }
+
+  wrap.innerHTML = currentProposals.map((p, i) => {
+    const isApproved = p.status === 'approved';
+    const isRejected = p.status === 'rejected';
+    return `
+      <div class="proposal-card ${isApproved?'approved':''} ${isRejected?'rejected':''}" id="prop-${i}">
+        <div class="proposal-head">
+          <div>
+            <div class="proposal-name">${p.name}</div>
+            <div class="proposal-pts">⭐ ${p.points} poäng</div>
+            <div class="proposal-value">Värde: ${p.value_kr} kr rabatt</div>
+          </div>
+          ${isApproved ? '<div class="proposal-approved-badge">✓ GODKÄND</div>' : ''}
+        </div>
+        <div class="proposal-reasoning">${p.reasoning}</div>
+        ${!isApproved && !isRejected ? `
+        <div class="proposal-actions">
+          <button class="btn-approve" onclick="approveProposal(${i})">✓ GODKÄNN</button>
+          <button class="btn-edit-prop" onclick="editProposal(${i})">✏️ REDIGERA</button>
+          <button class="btn-reject" onclick="rejectProposal(${i})">✕ AVVISA</button>
+        </div>` : ''}
+        ${isRejected ? `<div style="font-family:var(--fm);font-size:9px;color:var(--mt);">AVISAD</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+async function approveProposal(i) {
+  const p = currentProposals[i];
+  if (!p) return;
+
+  // Lägg till i aktiva belöningar
+  rewards.push({
+    id: p.id,
+    name: p.name,
+    points: p.points,
+    desc: p.desc,
+    value_kr: p.value_kr,
+    active: true
+  });
+
+  await saveRewardsToSupabase();
+  currentProposals[i].status = 'approved';
+  renderProposals();
+  renderRewards();
+  showToast('✅ ' + p.name + ' godkänd och aktiverad!');
+}
+
+function rejectProposal(i) {
+  currentProposals[i].status = 'rejected';
+  renderProposals();
+  showToast('Förslag avvisat');
+}
+
+function editProposal(i) {
+  const p = currentProposals[i];
+  const newPts  = parseInt(prompt('Ändra poänggräns (nuvarande: ' + p.points + '):', p.points));
+  const newName = prompt('Ändra namn (nuvarande: ' + p.name + '):', p.name);
+  if (newPts && newName) {
+    currentProposals[i].points = newPts;
+    currentProposals[i].name   = newName;
+    renderProposals();
+  }
+}
+
+
+
+async function init() {
+  const { data: { session } } = await _sb.auth.getSession();
+  if (!session) { window.location.href = 'crustly-owner.html'; return; }
+
+  // Hämta alla restauranger (admin-vy)
+  const { data: allRests } = await _sb.from('restaurants').select('*').order('name');
+  
+  if (!allRests || allRests.length === 0) {
+    // Fallback: bara ägarens restaurang
+    const { data: rest } = await _sb.from('restaurants')
+      .select('*').eq('owner_uid', session.user.id).single();
+    if (rest) allRests?.push(rest);
+  }
+
+  allRestaurants = allRests || [];
+
+  // Populera väljaren
+  const sel = document.getElementById('restSelector');
+  sel.innerHTML = '<option value="">Välj restaurang...</option>' +
+    allRestaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+
+  // Välj URL-param eller första restaurangen
+  const urlRest = new URLSearchParams(window.location.search).get('r');
+  const firstId = urlRest || (allRestaurants[0]?.id || '');
+  if (firstId) {
+    sel.value = firstId;
+    await loadRestaurant(firstId);
+  }
+}
+
+async function switchRestaurant(id) {
+  if (!id) return;
+  await loadRestaurant(id);
+  // Uppdatera URL utan reload
+  history.replaceState(null, '', '?r=' + id);
+}
+
+async function loadRestaurant(id) {
+  const rest = allRestaurants.find(r => r.id === id);
+  if (!rest) return;
+  restaurant = rest;
+
+  const s = rest.settings || {};
+  if (s.loyalty) {
+    rules = { ...rules, ...s.loyalty };
+    document.getElementById('ruleKrPerPt').value = rules.krPerPoint;
+    document.getElementById('ruleWelcome').value = rules.welcome;
+    document.getElementById('ruleSilver').value = rules.silver;
+    document.getElementById('ruleGold').value = rules.gold;
+  } else {
+    // Återställ till defaults
+    rules = { krPerPoint: 10, welcome: 0, silver: 100, gold: 300 };
+    document.getElementById('ruleKrPerPt').value = 10;
+    document.getElementById('ruleWelcome').value = 0;
+    document.getElementById('ruleSilver').value = 100;
+    document.getElementById('ruleGold').value = 300;
+  }
+
+  const DEFAULT_REWARDS = [
+    { id:'r1', name:'Fri leverans',   points:30,  desc:'På nästa delivery-order', active:true },
+    { id:'r2', name:'50 kr rabatt',   points:50,  desc:'På valfri order', active:true },
+    { id:'r3', name:'Gratis dessert', points:80,  desc:'Tiramisu eller Panna Cotta', active:true },
+    { id:'r4', name:'100 kr rabatt',  points:100, desc:'På order över 200 kr', active:true },
+    { id:'r5', name:'Gratis pizza',   points:150, desc:'Upp till 135 kr', active:true },
+  ];
+  rewards = s.loyalty_rewards || DEFAULT_REWARDS;
+
+  document.getElementById('tbRestName').textContent = '⭐ ' + rest.name.toUpperCase();
+  document.getElementById('pageSub').textContent = rest.name.toUpperCase() + ' · POÄNGSYSTEM · 1 KR = ' + rules.krPerPoint + ' POÄNG';
+
+  await loadMembers();
+  renderRewards();
+  renderActivity();
+}
+
+// ── LOAD MEMBERS ──────────────────────────────────────────────
+async function loadMembers() {
+  const { data } = await _sb.from('customers')
+    .select('*')
+    .eq('restaurant_id', restaurant.id)
+    .order('loyalty_points', { ascending: false });
+
+  members = data || [];
+  filteredMembers = [...members];
+
+  // KPIs
+  const total = members.length;
+  const totalPts = members.reduce((s,c) => s + (c.loyalty_points||0), 0);
+  const returning = members.filter(c => (c.total_orders||0) > 1).length;
+  const avgPts = total ? Math.round(totalPts / total) : 0;
+
+  document.getElementById('kpiMembers').textContent = total;
+  document.getElementById('kpiMembersSub').textContent = returning + ' återkommande';
+  document.getElementById('kpiIssued').textContent = totalPts.toLocaleString('sv-SE');
+  document.getElementById('kpiAvg').textContent = avgPts;
+  document.getElementById('kpiReturn').textContent = returning;
+
+  renderMembers();
+}
+
+// ── RENDER MEMBERS ──────────────────────────────────────────
+function level(pts) {
+  if (pts >= rules.gold)   return { name:'GULD',  cls:'badge-gold'   };
+  if (pts >= rules.silver) return { name:'SILVER', cls:'badge-silver' };
+  return                          { name:'BRONS',  cls:'badge-bronze' };
+}
+
+function renderMembers() {
+  const maxPts = Math.max(...members.map(m => m.loyalty_points||0), 1);
+  if (filteredMembers.length === 0) {
+    document.getElementById('membersTbody').innerHTML = '<tr><td colspan="6" class="loading-row">INGA KUNDER ÄNNU</td></tr>';
+    return;
+  }
+  document.getElementById('membersTbody').innerHTML = filteredMembers.map(m => {
+    const lv = level(m.loyalty_points||0);
+    const initials = (m.name||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    const d = m.last_order_at ? new Date(m.last_order_at) : null;
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="member-avatar">${initials}</div>
+          <div>
+            <div style="font-weight:600;font-size:13px;">${m.name||'—'}</div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--mt);">${m.phone||''}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <span class="mono gold" style="font-size:15px;font-weight:600;">${(m.loyalty_points||0).toLocaleString('sv-SE')}</span>
+        <div class="pts-bar-wrap"><div class="pts-bar" style="width:${Math.round((m.loyalty_points||0)/maxPts*100)}%"></div></div>
+      </td>
+      <td><span class="badge ${lv.cls}">${lv.name}</span></td>
+      <td><span class="mono" style="color:var(--or);">${m.total_orders||0}</span></td>
+      <td><span style="font-family:var(--fm);font-size:10px;color:var(--mt);">${d ? timeAgo(d) : '—'}</span></td>
+      <td>
+        <div class="give-pts-wrap">
+          <input class="give-pts-inp" type="number" id="gpts-${m.id}" placeholder="±p">
+          <button class="btn-give" onclick="adjustPoints('${m.id}')">GE</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── ADJUST POINTS ──────────────────────────────────────────
+async function adjustPoints(id) {
+  const inp = document.getElementById('gpts-' + id);
+  const delta = parseInt(inp.value) || 0;
+  if (!delta) return;
+  const m = members.find(m => m.id === id);
+  if (!m) return;
+  const newPts = Math.max(0, (m.loyalty_points||0) + delta);
+  inp.value = '';
+
+  await _sb.from('customers').update({ loyalty_points: newPts }).eq('id', id);
+  m.loyalty_points = newPts;
+  filterMembers();
+  showToast((delta > 0 ? '+' : '') + delta + ' poäng till ' + m.name);
+}
+
+// ── FILTER ──────────────────────────────────────────────────
+function filterMembers() {
+  const q = document.getElementById('memberSok').value.toLowerCase();
+  filteredMembers = q
+    ? members.filter(m => (m.name||'').toLowerCase().includes(q) || (m.phone||'').includes(q))
+    : [...members];
+  renderMembers();
+}
+
+// ── REWARDS ──────────────────────────────────────────────────
+function renderRewards() {
+  document.getElementById('rewardsTbody').innerHTML = rewards.map(r => `
+    <tr>
+      <td>
+        <div style="font-weight:600;font-size:13px;">${r.name}</div>
+        ${r.desc ? `<div style="font-size:11px;color:var(--mt);">${r.desc}</div>` : ''}
+      </td>
+      <td><span class="mono gold" style="font-size:15px;">${r.points}p</span></td>
+      <td><span class="badge ${r.active ? 'badge-active':'badge-inactive'}">${r.active?'AKTIV':'AV'}</span></td>
+      <td>
+        <button class="btn-toggle" onclick="toggleReward('${r.id}')">${r.active?'Av':'På'}</button>
+        <button class="btn-del" onclick="deleteReward('${r.id}')">✕</button>
+      </td>
+    </tr>`).join('');
+}
+
+function addReward() {
+  const name = document.getElementById('newRewardName').value.trim();
+  const pts  = parseInt(document.getElementById('newRewardPts').value) || 0;
+  const desc = document.getElementById('newRewardDesc').value.trim();
+  if (!name || !pts) { showToast('Fyll i namn och poäng'); return; }
+  rewards.push({ id: 'r' + Date.now(), name, points: pts, desc, active: true });
+  document.getElementById('newRewardName').value = '';
+  document.getElementById('newRewardPts').value = '';
+  document.getElementById('newRewardDesc').value = '';
+  saveRewardsToSupabase();
+  renderRewards();
+  showToast('✅ Belöning tillagd');
+}
+
+function toggleReward(id) {
+  const r = rewards.find(r => r.id === id);
+  if (r) r.active = !r.active;
+  saveRewardsToSupabase();
+  renderRewards();
+}
+
+function deleteReward(id) {
+  rewards = rewards.filter(r => r.id !== id);
+  saveRewardsToSupabase();
+  renderRewards();
+}
+
+async function saveRewardsToSupabase() {
+  const s = restaurant.settings || {};
+  s.loyalty_rewards = rewards;
+  await _sb.from('restaurants').update({ settings: s }).eq('id', restaurant.id);
+  restaurant.settings = s;
+}
+
+// ── RULES ──────────────────────────────────────────────────
+async function saveRules(btn) {
+  rules.krPerPoint = parseInt(document.getElementById('ruleKrPerPt').value) || 10;
+  rules.welcome    = parseInt(document.getElementById('ruleWelcome').value)  || 0;
+  rules.silver     = parseInt(document.getElementById('ruleSilver').value)   || 100;
+  rules.gold       = parseInt(document.getElementById('ruleGold').value)     || 300;
+
+  const s = restaurant.settings || {};
+  s.loyalty = rules;
+  btn.textContent = 'SPARAR...'; btn.disabled = true;
+  await _sb.from('restaurants').update({ settings: s }).eq('id', restaurant.id);
+  restaurant.settings = s;
+  btn.textContent = '✓ SPARAT'; btn.disabled = false;
+  setTimeout(() => { btn.textContent = 'SPARA REGLER'; }, 2000);
+  document.getElementById('pageSub').textContent = restaurant.name.toUpperCase() + ' · POÄNGSYSTEM · 1 KR = ' + rules.krPerPoint + ' POÄNG';
+  showToast('✅ Poängregler sparade');
+}
+
+// ── ACTIVITY ──────────────────────────────────────────────
+async function renderActivity() {
+  const { data: orders } = await _sb.from('orders')
+    .select('id, customer_name, customer_phone, total, created_at')
+    .eq('restaurant_id', restaurant.id)
+    .order('created_at', { ascending: false })
+    .limit(8);
+
+  if (!orders || orders.length === 0) {
+    document.getElementById('activityFeed').innerHTML = '<div class="loading-row">INGA ORDERS ÄNNU</div>';
+    return;
+  }
+
+  document.getElementById('activityFeed').innerHTML = orders.map(o => {
+    const pts = Math.floor((o.total||0) / rules.krPerPoint);
+    const d = new Date(o.created_at);
+    return `
+      <div class="activity-item">
+        <div class="act-icon earn">⭐</div>
+        <div class="act-info">
+          <div class="act-name">${o.customer_name||'Kund'}</div>
+          <div class="act-desc">Order · ${(o.total||0).toFixed(0)} kr · ${timeAgo(d)}</div>
+        </div>
+        <div class="act-pts earn">+${pts}p</div>
+      </div>`;
+  }).join('');
+}
+
+// ── UTILS ──────────────────────────────────────────────────
+function timeAgo(d) {
+  const mins = Math.floor((Date.now() - d) / 60000);
+  if (mins < 60) return mins + 'm sedan';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h sedan';
+  return Math.floor(hrs / 24) + ' dagar sedan';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 2500);
+}
+
+init();
+</script>
+</body>
+</html>

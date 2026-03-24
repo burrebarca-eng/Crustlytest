@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mina poäng — Crustly</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #faf8f4;
+  --surf: #ffffff;
+  --surf2: #f2efe7;
+  --bdr: #e4dfd4;
+  --dark: #1c1812;
+  --orange: #c8380a;
+  --odim: rgba(200,56,10,0.08);
+  --green: #2d9e5f;
+  --gdim: #edf7f2;
+  --gold: #c8920a;
+  --golddim: #fef8ec;
+  --tx: #1a1710;
+  --mt: #9a9088;
+  --fd: 'Cormorant Garamond', serif;
+  --fm: 'JetBrains Mono', monospace;
+  --fb: 'Plus Jakarta Sans', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--tx); font-family:var(--fb); min-height:100vh; max-width:480px; margin:0 auto; }
+
+/* ── AUTH SCREEN ── */
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 32px 24px;
+}
+.auth-logo {
+  font-family: var(--fd);
+  font-size: 32px;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--orange);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.auth-sub {
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  color: var(--mt);
+  text-align: center;
+  margin-bottom: 40px;
+}
+.auth-card {
+  background: var(--surf);
+  border: 1.5px solid var(--bdr);
+  border-radius: 20px;
+  padding: 32px 28px;
+}
+.auth-title {
+  font-family: var(--fd);
+  font-size: 26px;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--tx);
+  margin-bottom: 4px;
+}
+.auth-desc {
+  font-size: 13px;
+  color: var(--mt);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+.auth-field { margin-bottom: 14px; }
+.auth-field label {
+  display: block;
+  font-family: var(--fm);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--mt);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.auth-inp {
+  width: 100%;
+  background: var(--bg);
+  border: 1.5px solid var(--bdr);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-family: var(--fb);
+  font-size: 15px;
+  color: var(--tx);
+  outline: none;
+  transition: border-color .2s;
+}
+.auth-inp:focus { border-color: var(--orange); }
+.auth-inp::placeholder { color: var(--mt); }
+.auth-btn {
+  width: 100%;
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-family: var(--fm);
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity .15s, transform .1s;
+  box-shadow: 0 4px 16px rgba(200,56,10,0.25);
+}
+.auth-btn:hover { opacity: .88; transform: translateY(-1px); }
+.auth-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.auth-switch {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--mt);
+}
+.auth-switch a {
+  color: var(--orange);
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 600;
+}
+.auth-err {
+  background: #fff0f0;
+  border: 1px solid #ffcccc;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #c83030;
+  margin-bottom: 14px;
+  display: none;
+}
+.auth-ok {
+  background: var(--gdim);
+  border: 1px solid #b8e6cc;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--green);
+  margin-bottom: 14px;
+  display: none;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+.auth-divider::before, .auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--bdr);
+}
+.auth-divider span {
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--mt);
+}
+
+/* ── PORTAL ── */
+.portal { display: none; }
+
+.hero {
+  background: var(--dark);
+  padding: 32px 24px 52px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(200,56,10,0.2) 0%, transparent 70%);
+  top: -80px; right: -80px;
+  pointer-events: none;
+}
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.hero-logo {
+  font-family: var(--fd);
+  font-size: 20px;
+  font-style: italic;
+  color: var(--orange);
+  letter-spacing: 1px;
+}
+.hero-logout {
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.3);
+  cursor: pointer;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 5px 12px;
+  transition: all .15s;
+}
+.hero-logout:hover { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.2); }
+.hero-name {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 2px;
+  font-family: var(--fm);
+  letter-spacing: 1px;
+}
+.hero-user {
+  font-family: var(--fd);
+  font-size: 28px;
+  font-style: italic;
+  color: #f0ece0;
+  margin-bottom: 4px;
+}
+.hero-phone {
+  font-family: var(--fm);
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 1px;
+}
+
+/* Points circle */
+.pts-circle-wrap { display:flex; justify-content:center; margin: 28px 0 20px; }
+.pts-circle {
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  border: 2px solid rgba(200,146,10,0.2);
+  background: rgba(200,146,10,0.06);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative;
+}
+.pts-circle::before {
+  content: '';
+  position: absolute; inset: -2px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--gold);
+  border-right-color: var(--gold);
+  animation: spin 3s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.pts-num {
+  font-family: var(--fd);
+  font-size: 52px;
+  color: var(--gold);
+  line-height: 1;
+  font-weight: 600;
+}
+.pts-lbl {
+  font-family: var(--fm);
+  font-size: 8px;
+  letter-spacing: 2.5px;
+  color: rgba(255,255,255,0.25);
+  margin-top: 3px;
+}
+
+/* Level */
+.level-badge { display:flex; align-items:center; justify-content:center; gap:8px; }
+.level-pill {
+  font-family: var(--fm);
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 5px 14px;
+  border-radius: 20px;
+}
+.level-bronze { background: rgba(184,112,64,0.15); color: #b87040; }
+.level-silver { background: rgba(138,136,136,0.15); color: #8a8888; }
+.level-gold { background: rgba(200,146,10,0.15); color: var(--gold); }
+.level-next {
+  font-family: var(--fm);
+  font-size: 9px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 1px;
+}
+
+/* Progress */
+.progress-wrap { padding: 0 20px; margin-top: -24px; position: relative; z-index: 10; }
+.progress-card {
+  background: var(--surf);
+  border: 1.5px solid var(--bdr);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+.prog-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.prog-lbl { font-family:var(--fm); font-size:9px; letter-spacing:2px; color:var(--mt); }
+.prog-pts { font-family:var(--fd); font-size:18px; color:var(--gold); font-weight:600; }
+.prog-bar-bg { background:var(--bdr); border-radius:6px; height:7px; overflow:hidden; }
+.prog-bar { height:100%; background:linear-gradient(90deg,var(--gold),#f0d060); border-radius:6px; transition:width 1s ease; }
+.prog-footer { display:flex; justify-content:space-between; margin-top:8px; }
+.prog-foot-lbl { font-family:var(--fm); font-size:9px; color:var(--mt); }
+
+/* Phone link */
+.phone-link-card {
+  margin: 16px 20px 0;
+  background: var(--surf);
+  border: 1.5px solid var(--bdr);
+  border-radius: 14px;
+  padding: 16px 20px;
+}
+.phone-link-title {
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--mt);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.phone-link-row { display: flex; gap: 8px; }
+.phone-link-inp {
+  flex: 1;
+  background: var(--bg);
+  border: 1.5px solid var(--bdr);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: var(--fb);
+  font-size: 14px;
+  color: var(--tx);
+  outline: none;
+}
+.phone-link-inp:focus { border-color: var(--orange); }
+.phone-link-btn {
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .15s;
+}
+.phone-link-btn:hover { opacity: .88; }
+.phone-linked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--green);
+}
+
+/* Tabs */
+.tabs { display:flex; background:var(--surf); border-bottom:1px solid var(--bdr); padding:0 20px; margin-top:16px; }
+.tab {
+  flex:1; padding:14px 8px;
+  font-family:var(--fm); font-size:9px; letter-spacing:2px;
+  color:var(--mt); cursor:pointer;
+  border-bottom:2px solid transparent;
+  text-align:center; transition:all .15s;
+  background:none; border-top:none; border-left:none; border-right:none;
+}
+.tab:hover { color:var(--tx); }
+.tab.on { color:var(--orange); border-bottom-color:var(--orange); }
+.tab-pane { display:none; padding:20px; }
+.tab-pane.on { display:block; }
+
+/* Rewards */
+.reward-card {
+  background:var(--surf);
+  border:1.5px solid var(--bdr);
+  border-radius:14px;
+  padding:16px;
+  display:flex; align-items:center; gap:14px;
+  margin-bottom:10px;
+  opacity:.6;
+  transition:all .2s;
+}
+.reward-card.unlocked { opacity:1; box-shadow:0 2px 12px rgba(0,0,0,0.06); }
+.reward-icon { font-size:28px; flex-shrink:0; }
+.reward-info { flex:1; min-width:0; }
+.reward-name { font-weight:600; font-size:14px; margin-bottom:3px; }
+.reward-pts-needed { font-family:var(--fm); font-size:9px; letter-spacing:1px; color:var(--mt); }
+.reward-pts-needed.can { color:var(--green); }
+.btn-redeem {
+  background:var(--bg); border:1.5px solid var(--bdr);
+  border-radius:8px; padding:8px 14px;
+  font-family:var(--fm); font-size:9px; letter-spacing:1.5px;
+  cursor:pointer; color:var(--mt); transition:all .15s; flex-shrink:0;
+  white-space:nowrap;
+}
+.btn-redeem:not(:disabled):hover { border-color:var(--orange); color:var(--orange); }
+.btn-redeem:disabled { cursor:not-allowed; }
+.btn-redeem.redeemed { border-color:var(--green); color:var(--green); }
+
+/* History */
+.hist-item {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 0;
+  border-bottom:1px solid var(--bdr);
+}
+.hist-item:last-child { border-bottom:none; }
+.hist-icon {
+  width:36px; height:36px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; flex-shrink:0;
+}
+.hist-icon.earn { background:var(--golddim); }
+.hist-icon.redeem { background:var(--gdim); }
+.hist-info { flex:1; min-width:0; }
+.hist-desc { font-size:13px; font-weight:500; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hist-date { font-family:var(--fm); font-size:9px; color:var(--mt); letter-spacing:.5px; }
+.hist-pts { font-family:var(--fd); font-size:18px; font-weight:600; }
+.hist-pts.earn { color:var(--gold); }
+.hist-pts.redeem { color:var(--orange); }
+
+/* Stats */
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.stat-card {
+  background:var(--surf); border:1.5px solid var(--bdr);
+  border-radius:12px; padding:16px;
+}
+.stat-val { font-family:var(--fd); font-size:28px; font-weight:600; color:var(--orange); }
+.stat-lbl { font-family:var(--fm); font-size:8px; letter-spacing:2px; color:var(--mt); margin-top:3px; }
+
+.empty-state {
+  text-align:center; padding:40px 20px;
+  font-family:var(--fm); font-size:10px;
+  letter-spacing:1.5px; color:var(--mt);
+}
+.empty-icon { font-size:32px; margin-bottom:12px; }
+
+/* Toast */
+.toast {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:var(--dark); color:#f0ece0;
+  padding:12px 20px; border-radius:10px;
+  font-family:var(--fm); font-size:11px; letter-spacing:1px;
+  z-index:999; opacity:0; transition:opacity .3s;
+  white-space:nowrap; pointer-events:none;
+}
+
+/* Loading */
+.loading {
+  min-height:100vh; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:12px;
+}
+.loading-spinner {
+  width:40px; height:40px; border-radius:50%;
+  border:3px solid var(--bdr);
+  border-top-color:var(--orange);
+  animation:spin 1s linear infinite;
+}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading" id="loadingScreen" style="display:flex;">
+  <div class="loading-spinner"></div>
+  <div style="font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--mt);">LADDAR...</div>
+</div>
+
+<!-- Auth screen -->
+<div class="auth-screen" id="authScreen" style="display:none;">
+  <div class="auth-logo">Crustly</div>
+  <div class="auth-sub">LOJALITETSPORTAL</div>
+
+  <!-- Login form -->
+  <div class="auth-card" id="loginCard">
+    <div class="auth-title">Välkommen tillbaka</div>
+    <div class="auth-desc">Logga in med din email för att se dina poäng och orderhistorik.</div>
+    <div class="auth-err" id="loginErr"></div>
+    <div class="auth-ok" id="loginOk"></div>
+    <div class="auth-field">
+      <label>E-POSTADRESS</label>
+      <input class="auth-inp" type="email" id="loginEmail" placeholder="anna@example.com">
+    </div>
+    <div class="auth-field">
+      <label>LÖSENORD</label>
+      <input class="auth-inp" type="password" id="loginPass" placeholder="••••••••">
+    </div>
+    <button class="auth-btn" id="loginBtn" onclick="doLogin()">LOGGA IN</button>
+    <div class="auth-switch">
+      Inget konto? <a onclick="showRegister()">Skapa konto →</a>
+    </div>
+    <div class="auth-switch" style="margin-top:8px;">
+      <a onclick="showForgot()">Glömt lösenord?</a>
+    </div>
+  </div>
+
+  <!-- Register form -->
+  <div class="auth-card" id="registerCard" style="display:none;">
+    <div class="auth-title">Skapa konto</div>
+    <div class="auth-desc">Samla poäng vid varje beställning — du behöver bara ange ditt telefonnummer i kassan.</div>
+    <div class="auth-err" id="regErr"></div>
+    <div class="auth-field">
+      <label>FÖRNAMN</label>
+      <input class="auth-inp" type="text" id="regName" placeholder="Anna">
+    </div>
+    <div class="auth-field">
+      <label>E-POSTADRESS</label>
+      <input class="auth-inp" type="email" id="regEmail" placeholder="anna@example.com">
+    </div>
+    <div class="auth-field">
+      <label>LÖSENORD (MIN 6 TECKEN)</label>
+      <input class="auth-inp" type="password" id="regPass" placeholder="••••••••">
+    </div>
+    <div class="auth-field">
+      <label>TELEFONNUMMER <span style="color:var(--mt);font-size:8px;">(KOPPLAR DINA BEFINTLIGA POÄNG)</span></label>
+      <input class="auth-inp" type="tel" id="regPhone" placeholder="+46 70 123 45 67">
+    </div>
+    <button class="auth-btn" id="regBtn" onclick="doRegister()">SKAPA KONTO</button>
+    <div class="auth-switch">
+      Har du konto? <a onclick="showLogin()">Logga in →</a>
+    </div>
+  </div>
+
+  <!-- Forgot password -->
+  <div class="auth-card" id="forgotCard" style="display:none;">
+    <div class="auth-title">Återställ lösenord</div>
+    <div class="auth-desc">Ange din email så skickar vi en återställningslänk.</div>
+    <div class="auth-err" id="forgotErr"></div>
+    <div class="auth-ok" id="forgotOk"></div>
+    <div class="auth-field">
+      <label>E-POSTADRESS</label>
+      <input class="auth-inp" type="email" id="forgotEmail" placeholder="anna@example.com">
+    </div>
+    <button class="auth-btn" id="forgotBtn" onclick="doForgot()">SKICKA ÅTERSTÄLLNINGSLÄNK</button>
+    <div class="auth-switch">
+      <a onclick="showLogin()">← Tillbaka till inloggning</a>
+    </div>
+  </div>
+</div>
+
+<!-- Portal -->
+<div class="portal" id="portal">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-top">
+      <div class="hero-logo">Crustly</div>
+      <button class="hero-logout" onclick="doLogout()">LOGGA UT</button>
+    </div>
+    <div class="hero-name">VÄLKOMMEN TILLBAKA</div>
+    <div class="hero-user" id="heroName">—</div>
+    <div class="hero-phone" id="heroPhone"></div>
+    <div class="pts-circle-wrap">
+      <div class="pts-circle">
+        <div class="pts-num" id="heroPoints">0</div>
+        <div class="pts-lbl">POÄNG</div>
+      </div>
+    </div>
+    <div class="level-badge">
+      <div class="level-pill level-bronze" id="levelPill">BRONS</div>
+      <div class="level-next" id="levelNext">— poäng till nästa nivå</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap">
+    <div class="progress-card">
+      <div class="prog-head">
+        <div class="prog-lbl">PROGRESS TILL NÄSTA NIVÅ</div>
+        <div class="prog-pts" id="progPts">0 / 100</div>
+      </div>
+      <div class="prog-bar-bg">
+        <div class="prog-bar" id="progBar" style="width:0%"></div>
+      </div>
+      <div class="prog-footer">
+        <div class="prog-foot-lbl" id="levelCurrent">BRONS</div>
+        <div class="prog-foot-lbl" id="levelNext2">SILVER</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phone link (om inte kopplat) -->
+  <div class="phone-link-card" id="phoneLinkCard" style="display:none;">
+    <div class="phone-link-title">🔗 KOPPLA DITT TELEFONNUMMER</div>
+    <div style="font-size:12px;color:var(--mt);margin-bottom:10px;line-height:1.5;">Ange ditt telefonnummer för att koppla ihop dina beställningar och poäng.</div>
+    <div class="phone-link-row">
+      <input class="phone-link-inp" type="tel" id="linkPhoneInp" placeholder="+46701234567">
+      <button class="phone-link-btn" onclick="linkPhone()">KOPPLA</button>
+    </div>
+    <div class="phone-linked" id="phoneLinkOk" style="display:none;">
+      <span>✓</span> <span id="linkedPhoneNum"></span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab on" onclick="showTab('rewards',this)">🎁 BELÖNINGAR</button>
+    <button class="tab" onclick="showTab('history',this)">📋 HISTORIK</button>
+    <button class="tab" onclick="showTab('stats',this)">📊 STATISTIK</button>
+  </div>
+
+  <!-- Rewards tab -->
+  <div class="tab-pane on" id="tab-rewards">
+    <div id="rewardsList">
+      <div class="empty-state"><div class="empty-icon">🎁</div>LADDAR BELÖNINGAR...</div>
+    </div>
+  </div>
+
+  <!-- History tab -->
+  <div class="tab-pane" id="tab-history">
+    <div id="historyList">
+      <div class="empty-state"><div class="empty-icon">📋</div>LADDAR HISTORIK...</div>
+    </div>
+  </div>
+
+  <!-- Stats tab -->
+  <div class="tab-pane" id="tab-stats">
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-val" id="statOrders">—</div><div class="stat-lbl">ORDERS TOTALT</div></div>
+      <div class="stat-card"><div class="stat-val" id="statSpent">—</div><div class="stat-lbl">TOTALT SPENDERAT</div></div>
+      <div class="stat-card"><div class="stat-val" id="statPoints">—</div><div class="stat-lbl">POÄNG TOTALT</div></div>
+      <div class="stat-card"><div class="stat-val" id="statLevel">—</div><div class="stat-lbl">NIVÅ</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://febybrpterkybwzhigte.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ';
+const { createClient } = supabase;
+const _sb = createClient(SUPA_URL, SUPA_KEY);
+
+// Belöningsdefinitioner
+const REWARDS = [
+  { id:'r1', name:'50 kr rabatt',      icon:'🎟️', points:50,  desc:'På valfri nästa order' },
+  { id:'r2', name:'100 kr rabatt',     icon:'💸', points:100, desc:'På order över 200 kr' },
+  { id:'r3', name:'Gratis pizza',      icon:'🍕', points:150, desc:'Upp till 135 kr' },
+  { id:'r4', name:'Gratis dessert',    icon:'🍮', points:80,  desc:'Tiramisu eller Panna Cotta' },
+  { id:'r5', name:'Fri leverans',      icon:'🛵', points:30,  desc:'På nästa delivery-order' },
+];
+
+// Nivåsystem
+const LEVELS = [
+  { name:'BRONS',  min:0,   max:100,  class:'level-bronze', next:'SILVER' },
+  { name:'SILVER', min:100, max:300,  class:'level-silver', next:'GULD' },
+  { name:'GULD',   min:300, max:9999, class:'level-gold',   next:'MAX' },
+];
+
+let currentUser = null;
+let customerData = null;
+
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  try {
+    const { data, error } = await _sb.auth.getSession();
+    if (data?.session) {
+      currentUser = data.session.user;
+      await loadPortal();
+    } else {
+      showFlex('authScreen');
+    }
+  } catch(e) {
+    console.error('Init error:', e);
+    showFlex('authScreen');
+  }
+  hide('loadingScreen');
+
+  // Lyssna på auth-ändringar
+  _sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      currentUser = session.user;
+      await loadPortal();
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      customerData = null;
+      hide('portal');
+      showFlex('authScreen');
+      showLogin();
+    }
+  });
+}
+
+// ── AUTH ──────────────────────────────────────────────────────
+function show(id) { const el = document.getElementById(id); if(el) el.style.display = 'block'; }
+function hide(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
+function showEl(id, val='block') { const el = document.getElementById(id); if(el) el.style.display = val; }
+function showFlex(id) { const el = document.getElementById(id); if(el) el.style.display = 'flex'; }
+
+function showLogin() {
+  show('loginCard'); hide('registerCard'); hide('forgotCard');
+}
+function showRegister() {
+  hide('loginCard'); show('registerCard'); hide('forgotCard');
+}
+function showForgot() {
+  hide('loginCard'); hide('registerCard'); show('forgotCard');
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const err   = document.getElementById('loginErr');
+  const ok    = document.getElementById('loginOk');
+  const btn   = document.getElementById('loginBtn');
+  err.style.display = 'none'; ok.style.display = 'none';
+
+  if (!email || !pass) { err.textContent = 'Fyll i email och lösenord.'; err.style.display = 'block'; return; }
+  btn.textContent = 'LOGGAR IN...'; btn.disabled = true;
+
+  const { error } = await _sb.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    err.textContent = error.message === 'Invalid login credentials'
+      ? 'Fel email eller lösenord.' : error.message;
+    err.style.display = 'block';
+    btn.textContent = 'LOGGA IN'; btn.disabled = false;
+  }
+  // onAuthStateChange hanterar resten
+}
+
+async function doRegister() {
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass  = document.getElementById('regPass').value;
+  const phone = document.getElementById('regPhone').value.trim();
+  const err   = document.getElementById('regErr');
+  const btn   = document.getElementById('regBtn');
+  err.style.display = 'none';
+
+  if (!name || !email || !pass) { err.textContent = 'Fyll i namn, email och lösenord.'; err.style.display = 'block'; return; }
+  if (pass.length < 6) { err.textContent = 'Lösenordet måste vara minst 6 tecken.'; err.style.display = 'block'; return; }
+  btn.textContent = 'SKAPAR KONTO...'; btn.disabled = true;
+
+  const { data, error } = await _sb.auth.signUp({
+    email, password: pass,
+    options: { data: { name, phone } }
+  });
+
+  if (error) {
+    err.textContent = error.message;
+    err.style.display = 'block';
+    btn.textContent = 'SKAPA KONTO'; btn.disabled = false;
+    return;
+  }
+
+  // Om telefonnummer angavs — koppla befintliga customer-rader
+  if (phone && data.user) {
+    await _sb.from('customers').update({ user_id: data.user.id })
+      .eq('phone', phone.replace(/\s/g,''));
+  }
+
+  btn.textContent = 'SKAPA KONTO'; btn.disabled = false;
+  showToast('✅ Konto skapat! Kontrollera din email för att verifiera.');
+}
+
+async function doForgot() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const err   = document.getElementById('forgotErr');
+  const ok    = document.getElementById('forgotOk');
+  const btn   = document.getElementById('forgotBtn');
+  err.style.display = 'none'; ok.style.display = 'none';
+
+  if (!email) { err.textContent = 'Ange din email.'; err.style.display = 'block'; return; }
+  btn.textContent = 'SKICKAR...'; btn.disabled = true;
+
+  const { error } = await _sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/crustly-loyalty-customer.html'
+  });
+
+  if (error) {
+    err.textContent = error.message; err.style.display = 'block';
+  } else {
+    ok.textContent = '✓ Återställningslänk skickad till ' + email;
+    ok.style.display = 'block';
+  }
+  btn.textContent = 'SKICKA ÅTERSTÄLLNINGSLÄNK'; btn.disabled = false;
+}
+
+async function doLogout() {
+  await _sb.auth.signOut();
+}
+
+// ── PORTAL ──────────────────────────────────────────────────
+async function loadPortal() {
+  if (!currentUser) return;
+
+  // Hämta kunddata kopplad till user_id
+  const { data: rows } = await _sb.from('customers')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('loyalty_points', { ascending: false })
+    .limit(1);
+
+  // Om ingen kopplad kund — visa telefonnummer-länkrutan
+  if (!rows || rows.length === 0) {
+    customerData = {
+      name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Kund',
+      phone: currentUser.user_metadata?.phone || '',
+      loyalty_points: 0,
+      total_orders: 0,
+      total_spent: 0,
+      loyalty_tier: 'bronze'
+    };
+    showEl('phoneLinkCard');
+  } else {
+    customerData = rows[0];
+    hide('phoneLinkCard');
+    // Visa länkat telefonnummer
+    if (customerData.phone) {
+      document.getElementById('linkedPhoneNum').textContent = customerData.phone;
+      showEl('phoneLinkOk', 'flex');
+    }
+  }
+
+  // Hämta restaurangnamn
+  if (customerData.restaurant_id) {
+    const { data: rest } = await _sb.from('restaurants')
+      .select('name, settings')
+      .eq('id', customerData.restaurant_id)
+      .single();
+    if (rest) {
+      document.querySelector('.hero-logo').textContent = rest.name;
+      document.title = 'Mina poäng — ' + rest.name;
+      // Använd restaurangens belöningsdefinitioner om de finns
+      if (rest.settings?.loyalty_rewards) {
+        window._restaurantRewards = rest.settings.loyalty_rewards.filter(r => r.active);
+      }
+      if (rest.settings?.loyalty) {
+        window._loyaltyRules = rest.settings.loyalty;
+      }
+    }
+  }
+  renderPortal();
+  document.getElementById('portal').style.display = 'block';
+  hide('authScreen');
+}
+
+function renderPortal() {
+  const pts   = customerData.loyalty_points || 0;
+  const name  = customerData.name || currentUser?.user_metadata?.name || 'Kund';
+  const phone = customerData.phone || '';
+
+  // Hero
+  document.getElementById('heroName').textContent = name;
+  document.getElementById('heroPhone').textContent = phone ? '📱 ' + phone : '';
+  document.getElementById('heroPoints').textContent = pts.toLocaleString('sv-SE');
+
+  // Nivå
+  const level = LEVELS.find(l => pts >= l.min && pts < l.max) || LEVELS[LEVELS.length-1];
+  const pill  = document.getElementById('levelPill');
+  pill.textContent  = level.name;
+  pill.className    = 'level-pill ' + level.class;
+
+  const toNext = level.max - pts;
+  document.getElementById('levelNext').textContent =
+    level.name === 'GULD' ? '🏆 Högsta nivå!' : toNext + ' poäng till ' + level.next;
+
+  // Progress bar
+  const pct = level.max === 9999 ? 100 : Math.min(100, Math.round((pts - level.min) / (level.max - level.min) * 100));
+  document.getElementById('progBar').style.width = pct + '%';
+  document.getElementById('progPts').textContent = pts.toLocaleString('sv-SE') + ' / ' + (level.max === 9999 ? '∞' : level.max);
+  document.getElementById('levelCurrent').textContent = level.name;
+  document.getElementById('levelNext2').textContent = level.next;
+
+  // Stats
+  document.getElementById('statOrders').textContent = customerData.total_orders || 0;
+  document.getElementById('statSpent').textContent = (customerData.total_spent || 0).toFixed(0) + ' kr';
+  document.getElementById('statPoints').textContent = pts;
+  document.getElementById('statLevel').textContent = level.name;
+
+  // Rewards
+  renderRewards(pts);
+
+  // History
+  renderHistory();
+}
+
+function getRewardIcon(name) {
+  const n = (name||'').toLowerCase();
+  if (n.includes('leverans')) return '🛵';
+  if (n.includes('pizza'))   return '🍕';
+  if (n.includes('dessert')) return '🍮';
+  if (n.includes('kr') || n.includes('rabatt')) return '🎟️';
+  if (n.includes('gratis'))  return '🎁';
+  return '⭐';
+}
+
+function renderRewards(pts) {
+  const rewardList = window._restaurantRewards || REWARDS;
+  document.getElementById('rewardsList').innerHTML = rewardList.map(r => {
+    const can = pts >= r.points;
+    const icon = r.icon || getRewardIcon(r.name);
+    return `
+      <div class="reward-card ${can ? 'unlocked' : ''}">
+        <div class="reward-icon">${icon}</div>
+        <div class="reward-info">
+          <div class="reward-name">${r.name}</div>
+          <div class="reward-pts-needed ${can ? 'can' : ''}">${can ? '✓ Du kan lösa in detta' : r.points + ' poäng behövs'}</div>
+          <div style="font-size:11px;color:var(--mt);margin-top:2px;">${r.desc}</div>
+        </div>
+        <button class="btn-redeem" ${can ? '' : 'disabled'} onclick="redeem('${r.id}',${r.points},'${r.name}',this)">
+          ${can ? 'LÖS IN' : r.points + 'p'}
+        </button>
+      </div>`;
+  }).join('');
+}
+
+async function renderHistory() {
+  if (!customerData.id) {
+    document.getElementById('historyList').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>INGA ORDERS ÄNNU</div>';
+    return;
+  }
+
+  const { data: orders } = await _sb.from('orders')
+    .select('id, total, created_at, items, status, restaurant_name')
+    .eq('customer_phone', customerData.phone)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (!orders || orders.length === 0) {
+    document.getElementById('historyList').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>INGA ORDERS ÄNNU<br><br>Beställ och ange ditt telefonnummer i kassan!</div>';
+    return;
+  }
+
+  document.getElementById('historyList').innerHTML = orders.map(o => {
+    const krPerPt = window._loyaltyRules?.krPerPoint || 10;
+    const earnedPts = Math.floor((o.total || 0) / krPerPt);
+    const d = new Date(o.created_at);
+    const dateStr = d.toLocaleDateString('sv-SE', { day:'numeric', month:'short' }) + ' ' +
+                    d.toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' });
+    const firstItem = (o.items && o.items[0]) ? o.items[0].name : 'Order';
+    const itemCount = o.items?.length || 0;
+    return `
+      <div class="hist-item">
+        <div class="hist-icon earn">⭐</div>
+        <div class="hist-info">
+          <div class="hist-desc">${firstItem}${itemCount > 1 ? ' + ' + (itemCount-1) + ' till' : ''}</div>
+          <div class="hist-date">${dateStr} · ${(o.total||0).toFixed(0)} kr</div>
+        </div>
+        <div class="hist-pts earn">+${earnedPts}p</div>
+      </div>`;
+  }).join('');
+}
+
+async function redeem(id, pts, name, btn) {
+  if (!customerData || (customerData.loyalty_points || 0) < pts) return;
+
+  btn.textContent = 'LÖSER IN...';
+  btn.disabled = true;
+
+  // Dra poäng
+  const newPts = (customerData.loyalty_points || 0) - pts;
+  if (customerData.id) {
+    await _sb.from('customers').update({ loyalty_points: newPts }).eq('id', customerData.id);
+  }
+  customerData.loyalty_points = newPts;
+
+  btn.textContent = '✓ INLÖST';
+  btn.className = 'btn-redeem redeemed';
+
+  document.getElementById('heroPoints').textContent = newPts.toLocaleString('sv-SE');
+  renderRewards(newPts);
+  showToast('🎉 ' + name + ' inlöst! Visa detta för personalen vid nästa order.');
+}
+
+// ── KOPPLA TELEFON ──────────────────────────────────────────
+async function linkPhone() {
+  const phone = document.getElementById('linkPhoneInp').value.trim().replace(/\s/g,'');
+  if (!phone) return;
+
+  // Koppla alla customer-rader med detta nummer till user_id
+  const { data: updated } = await _sb.from('customers')
+    .update({ user_id: currentUser.id })
+    .eq('phone', phone)
+    .select('*');
+
+  if (updated && updated.length > 0) {
+    customerData = updated[0];
+    hide('phoneLinkCard');
+    renderPortal();
+    showToast('✅ Telefonnummer kopplat! Dina poäng är nu synkroniserade.');
+  } else {
+    // Inget befintligt konto — skapa ett nytt customer-record
+    await _sb.from('customers').insert({
+      user_id: currentUser.id,
+      name: currentUser.user_metadata?.name || '',
+      email: currentUser.email,
+      phone,
+      loyalty_points: 0,
+      total_orders: 0,
+      total_spent: 0,
+    });
+    customerData.phone = phone;
+    document.getElementById('linkedPhoneNum').textContent = phone;
+    showEl('phoneLinkOk', 'flex');
+    hide('phoneLinkCard');
+    showToast('✅ Telefonnummer kopplat! Framtida orders kopplas automatiskt.');
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('on'));
+  document.getElementById('tab-' + id).classList.add('on');
+  btn.classList.add('on');
+}
+
+// ── TOAST ──────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+// ── START ──────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

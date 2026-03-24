@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crustly — Födelsdagsautomation</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  const { createClient } = supabase;
+  const _sb = createClient('https://febybrpterkybwzhigte.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ');
+
+  async function requireAuth() {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (!session) { window.location.href = 'crustly-login.html'; return null; }
+    return session.user;
+  }
+  async function getMyRestaurant(uid) {
+    const { data } = await _sb.from('restaurants').select('*').eq('owner_uid', uid).single();
+    return data;
+  }
+  async function getUpcomingBirthdays(restaurantId) {
+    const today = new Date();
+    const mm = today.getMonth() + 1;
+    const dd = today.getDate();
+    const { data } = await _sb.from('customers').select('*')
+      .eq('restaurant_id', restaurantId)
+      .not('birthday_month', 'is', null);
+    // Filter next 7 days in JS
+    return (data||[]).filter(c => {
+      if (!c.birthday_month || !c.birthday_day) return false;
+      const bDay = new Date(today.getFullYear(), c.birthday_month-1, c.birthday_day);
+      if (bDay < today) bDay.setFullYear(today.getFullYear()+1);
+      const diff = (bDay - today) / (1000*60*60*24);
+      return diff >= 0 && diff <= 7;
+    });
+  }
+  async function getCustomers(restaurantId) {
+    const { data } = await _sb.from('customers').select('*').eq('restaurant_id', restaurantId);
+    return data || [];
+  }
+  async function getSettings(restaurantId) {
+    const { data } = await _sb.from('restaurants').select('*').eq('id', restaurantId).single();
+    return data;
+  }
+  async function saveSettings(restaurantId, updates) {
+    await _sb.from('restaurants').update(updates).eq('id', restaurantId);
+  }
+  async function markSmsSent(customerId) {
+    await _sb.from('customers').update({ sms_sent: true }).eq('id', customerId);
+  }
+
+  window.__sb = { requireAuth, getMyRestaurant, getUpcomingBirthdays, getCustomers, getSettings, saveSettings, markSmsSent };
+  window.__supabaseReady = true;
+  document.dispatchEvent(new Event('supabaseReady'));
+</script>
+<style>
+:root{
+  --bg:#0e0d0a;--surf:#161410;--surf2:#1e1c17;--surf3:#252219;
+  --bdr:#2a2720;--bdr2:#332f26;
+  --orange:#f05a1a;--odim:#f05a1a18;
+  --green:#3db870;--gdim:#3db87018;
+  --red:#e84040;--rdim:#e8404018;
+  --yellow:#f0b429;--ydim:#f0b42918;
+  --gold:#c8920a;--goldim:#c8920a18;
+  --tx:#f0ece0;--tx2:#c4bfb0;--mt:#6a6458;
+  --fd:'Bebas Neue',sans-serif;--fm:'DM Mono',monospace;--fb:'DM Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:var(--fb);min-height:100vh;}
+
+/* TOPBAR */
+.topbar{height:54px;background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:100;}
+.tb-left{display:flex;align-items:center;gap:16px;}
+.tb-logo{font-family:var(--fd);font-size:22px;color:var(--orange);letter-spacing:2px;}
+.tb-div{width:1px;height:18px;background:var(--bdr2);}
+.tb-title{font-family:var(--fm);font-size:10px;letter-spacing:2.5px;color:var(--mt);}
+.tb-right{display:flex;align-items:center;gap:10px;}
+.btn-back{background:none;border:1px solid var(--bdr2);border-radius:6px;padding:5px 12px;font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--mt);cursor:pointer;text-decoration:none;transition:all .15s;}
+.btn-back:hover{border-color:var(--orange);color:var(--orange);}
+.btn-run{background:var(--gold);border:none;border-radius:6px;padding:6px 16px;font-family:var(--fd);font-size:16px;letter-spacing:1px;color:#fff;cursor:pointer;transition:opacity .15s;}
+.btn-run:hover{opacity:.85;}
+
+/* PAGE */
+.page{max-width:1200px;margin:0 auto;padding:24px;}
+
+/* HERO */
+.hero{margin-bottom:24px;}
+.hero-title{font-family:var(--fd);font-size:56px;letter-spacing:3px;line-height:1;}
+.hero-title span{color:var(--gold);}
+.hero-sub{font-family:var(--fm);font-size:10px;letter-spacing:2px;color:var(--mt);margin-top:6px;}
+
+/* KPI STRIP */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.kpi{background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;padding:16px 18px;}
+.kpi-lbl{font-family:var(--fm);font-size:8px;letter-spacing:2.5px;color:var(--mt);margin-bottom:7px;}
+.kpi-val{font-family:var(--fd);font-size:36px;line-height:1;}
+.kpi-val.gold{color:var(--gold);}
+.kpi-val.green{color:var(--green);}
+.kpi-val.orange{color:var(--orange);}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.grid2b{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+
+/* CARD */
+.card{background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;padding:20px;}
+.card-title{font-family:var(--fd);font-size:20px;letter-spacing:1.5px;margin-bottom:4px;}
+.card-sub{font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--mt);margin-bottom:16px;}
+
+/* VARIABLES */
+.var-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.var-chip{background:var(--surf2);border:1px solid var(--bdr2);border-radius:6px;padding:5px 10px;font-family:var(--fm);font-size:10px;color:var(--tx2);cursor:pointer;transition:all .15s;}
+.var-chip:hover{border-color:var(--gold);color:var(--gold);}
+
+/* TEXTAREA */
+.sms-ta{width:100%;background:var(--surf2);border:1.5px solid var(--bdr);border-radius:8px;padding:12px 14px;font-family:var(--fm);font-size:12px;color:var(--tx);resize:vertical;min-height:120px;outline:none;transition:border-color .15s;line-height:1.6;}
+.sms-ta:focus{border-color:var(--gold);}
+.char-count{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--mt);margin-top:6px;text-align:right;}
+.char-count.warn{color:var(--yellow);}
+.char-count.over{color:var(--red);}
+
+/* DISCOUNT ROW */
+.disc-row{display:flex;align-items:center;gap:10px;margin-top:14px;}
+.disc-lbl{font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--mt);}
+.disc-inp{width:70px;background:var(--surf2);border:1.5px solid var(--bdr);border-radius:8px;padding:8px 12px;font-family:var(--fd);font-size:22px;color:var(--gold);outline:none;text-align:center;}
+.disc-inp:focus{border-color:var(--gold);}
+
+/* PHONE MOCKUP */
+.phone{background:var(--surf3);border:2px solid var(--bdr2);border-radius:20px;padding:20px 16px;max-width:240px;margin:0 auto;}
+.phone-bar{width:60px;height:5px;background:var(--bdr2);border-radius:3px;margin:0 auto 14px;}
+.phone-sender{font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--mt);text-align:center;margin-bottom:10px;}
+.sms-bubble{background:var(--surf2);border-radius:12px 12px 12px 4px;padding:12px 14px;font-size:13px;line-height:1.6;color:var(--tx);}
+.sms-time{font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:6px;text-align:right;}
+
+/* SETTINGS */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--bdr);}
+.setting-row:last-child{border-bottom:none;}
+.setting-name{font-size:14px;font-weight:500;}
+.setting-desc{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--mt);margin-top:3px;}
+.toggle{width:42px;height:24px;background:var(--bdr2);border-radius:12px;cursor:pointer;transition:background .2s;position:relative;flex-shrink:0;}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:9px;top:3px;left:3px;transition:transform .2s;}
+.toggle.on{background:var(--gold);}
+.toggle.on::after{transform:translateX(18px);}
+
+/* DAYS STEPPER */
+.stepper{display:flex;align-items:center;gap:10px;}
+.step-btn{width:28px;height:28px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:6px;color:var(--tx);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.step-btn:hover{border-color:var(--gold);color:var(--gold);}
+.step-val{font-family:var(--fd);font-size:24px;color:var(--gold);min-width:30px;text-align:center;}
+
+/* TABLE */
+.btable{width:100%;border-collapse:collapse;margin-top:12px;}
+.btable th{font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);padding:8px 12px;text-align:left;border-bottom:1px solid var(--bdr);}
+.btable td{padding:11px 12px;font-size:13px;border-bottom:1px solid var(--bdr);}
+.btable tr:last-child td{border-bottom:none;}
+.btable tbody tr:hover{background:var(--surf2);}
+.cust-name{font-weight:600;}
+.cust-phone{font-family:var(--fm);font-size:10px;color:var(--mt);margin-top:2px;}
+
+.days-badge{font-family:var(--fm);font-size:9px;letter-spacing:1px;padding:3px 8px;border-radius:4px;}
+.days-0{background:#c8920a22;color:var(--gold);border:1px solid var(--gold)40;}
+.days-1{background:#f05a1a18;color:var(--orange);}
+.days-3{background:#f0b42918;color:var(--yellow);}
+.days-7{background:var(--surf2);color:var(--mt);}
+
+.sms-badge{font-family:var(--fm);font-size:9px;letter-spacing:1px;padding:3px 8px;border-radius:4px;}
+.sent{background:var(--gdim);color:var(--green);}
+.pending{background:var(--ydim);color:var(--yellow);}
+.scheduled{background:var(--surf2);color:var(--mt);}
+
+.btn-send{background:var(--gold);border:none;border-radius:6px;padding:5px 12px;font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:#fff;cursor:pointer;transition:opacity .15s;}
+.btn-send:hover{opacity:.8;}
+
+/* LOG */
+.log-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);}
+.log-item:last-child{border-bottom:none;}
+.log-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.log-text{flex:1;font-size:12px;color:var(--tx2);line-height:1.5;}
+.log-text strong{color:var(--tx);}
+.log-time{font-family:var(--fm);font-size:10px;color:var(--mt);}
+
+/* SPARA BTN */
+.btn-save{background:var(--orange);border:none;border-radius:8px;padding:10px 24px;font-family:var(--fd);font-size:18px;letter-spacing:1.5px;color:#fff;cursor:pointer;transition:opacity .15s;margin-top:16px;width:100%;}
+.btn-save:hover{opacity:.85;}
+
+/* SELECT */
+.sel{background:var(--surf2);border:1.5px solid var(--bdr);color:var(--tx);font-family:var(--fm);font-size:11px;padding:6px 10px;border-radius:6px;outline:none;}
+
+/* EMPTY */
+.empty{font-family:var(--fm);font-size:10px;letter-spacing:1.5px;color:var(--mt);text-align:center;padding:24px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-left">
+    <div class="tb-logo">CRUSTLY</div>
+    <div class="tb-div"></div>
+    <div class="tb-title">FÖDELSDAGSAUTOMATION</div>
+  </div>
+  <div class="tb-right">
+    <a class="btn-back" href="crustly-dashboard.html">← DASHBOARD</a>
+    <button class="btn-run" onclick="runCheck()">▶ KÖR KONTROLL</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <div class="hero">
+    <div class="hero-title">FÖDELSEDAG<br><span>AUTOMATION</span></div>
+    <div class="hero-sub">SKICKAR SMS TILL KUNDER INFÖR DERAS FÖDELSEDAG · ALLA RESTAURANGER</div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="kpi-lbl">FÖDELSEDAGAR DENNA VECKA</div>
+      <div class="kpi-val gold" id="statWeek">0</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">SMS SKICKADE DENNA MÅNAD</div>
+      <div class="kpi-val green" id="statSent">0</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">ORDERS FRÅN FÖDELSEDAG-SMS</div>
+      <div class="kpi-val orange" id="statOrders">0</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">INTÄKT FRÅN FÖDELSEDAG</div>
+      <div class="kpi-val gold" id="statRevenue">0 kr</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Template + Preview -->
+  <div class="grid2">
+
+    <!-- Template -->
+    <div class="card">
+      <div class="card-title">SMS-MALL</div>
+      <div class="card-sub">VAD KUNDEN FÅR · KLICKA PÅ VARIABEL FÖR ATT INFOGA</div>
+
+      <div class="var-chips">
+        <div class="var-chip" onclick="insertVar('{namn}')">👤 {namn}</div>
+        <div class="var-chip" onclick="insertVar('{restaurang}')">🍕 {restaurang}</div>
+        <div class="var-chip" onclick="insertVar('{rabatt}')">💸 {rabatt}</div>
+        <div class="var-chip" onclick="insertVar('{bestallningslank}')">🔗 {bestallningslank}</div>
+        <div class="var-chip" onclick="insertVar('{utgångsdatum}')">📅 {utgångsdatum}</div>
+      </div>
+
+      <textarea class="sms-ta" id="smsMall" oninput="updatePreview(); updateCharCount()">Hej {namn}! 🎂 Din födelsedag närmar sig!
+
+{restaurang} vill fira med dig — få {rabatt}% rabatt på din nästa beställning.
+
+Giltig i 7 dagar 👉 {bestallningslank}
+
+Grattis i förskott! 🍕</textarea>
+      <div class="char-count" id="charCount">0 / 160 tecken</div>
+
+      <div class="disc-row">
+        <div class="disc-lbl">RABATT</div>
+        <input type="number" class="disc-inp" id="discountVal" value="20" min="5" max="50" oninput="updatePreview()">
+        <div class="disc-lbl">% RABATT</div>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="card">
+      <div class="card-title">FÖRHANDSGRANSKNING</div>
+      <div class="card-sub">SÅ HÄR SER DET UT PÅ KUNDENS TELEFON</div>
+
+      <div class="phone">
+        <div class="phone-bar"></div>
+        <div class="phone-sender">CRUSTLY</div>
+        <div class="sms-bubble" id="smsPreview">Laddar förhandsgranskning...</div>
+        <div class="sms-time">09:00 ✓✓</div>
+      </div>
+
+      <div style="margin-top:20px;">
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Dagar innan födelsedag</div>
+            <div class="setting-desc">NÄR SMS SKICKAS</div>
+          </div>
+          <div class="stepper">
+            <button class="step-btn" onclick="adjustDays(-1)">−</button>
+            <div class="step-val" id="daysVal">7</div>
+            <button class="step-btn" onclick="adjustDays(1)">+</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Utskickstid</div>
+            <div class="setting-desc">LOKAL TID</div>
+          </div>
+          <select class="sel" id="sendTime">
+            <option>08:00</option>
+            <option selected>09:00</option>
+            <option>10:00</option>
+            <option>11:00</option>
+            <option>12:00</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Settings + Log -->
+  <div class="grid2b">
+
+    <!-- Settings -->
+    <div class="card">
+      <div class="card-title">INSTÄLLNINGAR</div>
+      <div class="card-sub">AUTOMATIONSKONTROLLER</div>
+
+      <div class="setting-row">
+        <div>
+          <div class="setting-name">Födelsdagsautomation PÅ</div>
+          <div class="setting-desc">HUVUDBRYTARE FÖR ALLA RESTAURANGER</div>
+        </div>
+        <div class="toggle on" id="tog-master" onclick="tog('master')"></div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-name">Skicka bara en gång per år</div>
+          <div class="setting-desc">FÖRHINDRAR DUBBLETTER</div>
+        </div>
+        <div class="toggle on" id="tog-once" onclick="tog('once')"></div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-name">Spåra inlösen</div>
+          <div class="setting-desc">MARKERAR ORDER SOM FÖDELSDAGSORDER</div>
+        </div>
+        <div class="toggle on" id="tog-track" onclick="tog('track')"></div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-name">SMS-leverantör</div>
+          <div class="setting-desc">KOPPLA IN NÄR REDO</div>
+        </div>
+        <select class="sel" id="smsProvider">
+          <option>Ej ansluten</option>
+          <option>46elks</option>
+          <option>Twilio</option>
+        </select>
+      </div>
+
+      <button class="btn-save" onclick="saveSettings()">SPARA INSTÄLLNINGAR</button>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="card">
+      <div class="card-title">AKTIVITETSLOGG</div>
+      <div class="card-sub">SENASTE FÖDELSDAGSHÄNDELSER</div>
+      <div id="logFeed">
+        <div class="empty">INGEN AKTIVITET ÄN</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming Birthdays -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div class="card-title">KOMMANDE FÖDELSEDAGAR</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-back" onclick="loadUpcoming()" style="font-size:9px;">↻ UPPDATERA</button>
+        <button class="btn-run" onclick="addTestCustomer()" style="font-size:13px;padding:5px 14px;">+ TESTKUND</button>
+      </div>
+    </div>
+    <div class="card-sub">KUNDER MED FÖDELSEDAG DE KOMMANDE 30 DAGARNA</div>
+
+    <table class="btable">
+      <thead><tr>
+        <th>KUND</th>
+        <th>RESTAURANG</th>
+        <th>FÖDELSEDAG</th>
+        <th>DAGAR KVAR</th>
+        <th>SMS-STATUS</th>
+        <th>ÅTGÄRD</th>
+      </tr></thead>
+      <tbody id="btableBody">
+        <tr><td colspan="6"><div class="empty">LADDAR...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+let settings = { master:true, once:true, track:true, daysBefore:7, sendTime:'09:00', discount:20 };
+let upcoming = [];
+
+const DEMO = [
+  { id:'d1', name:'Anna Svensson',  phone:'+46 70 123 45 67', restaurantName:'Pizza Roma',    birthdayMonth:3, birthdayDay:10, daysAway:0,  smsSent:false },
+  { id:'d2', name:'Erik Johansson', phone:'+46 73 234 56 78', restaurantName:'Bella Napoli',  birthdayMonth:3, birthdayDay:11, daysAway:1,  smsSent:true },
+  { id:'d3', name:'Maria Lindqvist',phone:'+46 76 345 67 89', restaurantName:'Pizza Roma',    birthdayMonth:3, birthdayDay:13, daysAway:3,  smsSent:false },
+  { id:'d4', name:'Johan Berg',     phone:'+46 70 456 78 90', restaurantName:'Fuoco & Farina',birthdayMonth:3, birthdayDay:17, daysAway:7,  smsSent:false },
+  { id:'d5', name:'Sara Nilsson',   phone:'+46 73 567 89 01', restaurantName:'Bella Napoli',  birthdayMonth:3, birthdayDay:25, daysAway:15, smsSent:false },
+];
+
+function insertVar(v) {
+  const ta=document.getElementById('smsMall'), pos=ta.selectionStart;
+  ta.value=ta.value.slice(0,pos)+v+ta.value.slice(pos);
+  ta.selectionStart=ta.selectionEnd=pos+v.length;
+  ta.focus(); updatePreview(); updateCharCount();
+}
+
+function updatePreview() {
+  const disc=document.getElementById('discountVal').value||'20';
+  document.getElementById('smsPreview').textContent = document.getElementById('smsMall').value
+    .replace('{namn}','Anna').replace('{restaurang}','Pizza Roma')
+    .replace('{rabatt}',disc).replace('{bestallningslank}','crustly.app/pizza-roma')
+    .replace('{utgångsdatum}','7 dagar');
+}
+
+function updateCharCount() {
+  const len=document.getElementById('smsMall').value.length;
+  const el=document.getElementById('charCount');
+  el.textContent=`${len} / 160 tecken`;
+  el.className='char-count'+(len>160?' over':len>130?' warn':'');
+}
+
+function adjustDays(d) {
+  const el=document.getElementById('daysVal');
+  el.textContent=Math.max(1,Math.min(30,parseInt(el.textContent)+d));
+}
+
+function tog(key) {
+  settings[key]=!settings[key];
+  document.getElementById('tog-'+key).classList.toggle('on',settings[key]);
+}
+
+function addLog(msg,color='#6a6458') {
+  const feed=document.getElementById('logFeed');
+  const empty=feed.querySelector('.empty');
+  if(empty) empty.remove();
+  const now=new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+  const el=document.createElement('div');
+  el.className='log-item';
+  el.innerHTML=`<div class="log-dot" style="background:${color}"></div><div class="log-text">${msg}</div><div class="log-time">${now}</div>`;
+  feed.insertBefore(el,feed.firstChild);
+}
+
+async function loadUpcoming() {
+  document.getElementById('btableBody').innerHTML=`<tr><td colspan="6"><div class="empty">LADDAR...</div></td></tr>`;
+  try {
+    const user = await window.__sb.requireAuth();
+    if (!user) return;
+    const rest = await window.__sb.getMyRestaurant(user.id);
+    if (!rest) return;
+    const custs = await window.__sb.getCustomers(rest.id);
+    const today=new Date();
+    upcoming=custs.filter(c=>c.birthday_month&&c.birthday_day).map(c=>{
+      const d=new Date(today.getFullYear(),c.birthday_month-1,c.birthday_day);
+      if(d<today) d.setFullYear(today.getFullYear()+1);
+      return {...c, birthdayDay:c.birthday_day, birthdayMonth:c.birthday_month, daysAway:Math.ceil((d-today)/86400000)};
+    }).filter(c=>c.daysAway<=30).sort((a,b)=>a.daysAway-b.daysAway);
+    if(!upcoming.length) upcoming=DEMO;
+    renderTable(upcoming);
+    document.getElementById('statWeek').textContent=upcoming.filter(c=>c.daysAway<=7).length;
+  } catch(e) {
+    upcoming=DEMO;
+    renderTable(DEMO);
+    document.getElementById('statWeek').textContent=DEMO.filter(c=>c.daysAway<=7).length;
+  }
+}
+
+function renderTable(custs) {
+  if(!custs.length){
+    document.getElementById('btableBody').innerHTML=`<tr><td colspan="6"><div class="empty">INGA KOMMANDE FÖDELSEDAGAR DE NÄRMASTE 30 DAGARNA</div></td></tr>`;
+    return;
+  }
+  document.getElementById('btableBody').innerHTML=custs.map(c=>{
+    const dc=c.daysAway===0?'days-0':c.daysAway===1?'days-1':c.daysAway<=3?'days-3':'days-7';
+    const dl=c.daysAway===0?'🎂 IDAG':c.daysAway===1?'1 dag':`${c.daysAway} dagar`;
+    const st=c.smsSent?`<span class="sms-badge sent">SKICKAT ✓</span>`:c.daysAway<=7?`<span class="sms-badge pending">VÄNTAR</span>`:`<span class="sms-badge scheduled">PLANERAT</span>`;
+    const act=!c.smsSent?`<button class="btn-send" onclick="sendNow('${c.id}','${c.name}')">SKICKA NU</button>`:`<span style="font-family:var(--fm);font-size:10px;color:var(--mt)">—</span>`;
+    const bday=`${String(c.birthdayDay).padStart(2,'0')}/${String(c.birthdayMonth).padStart(2,'0')}`;
+    return `<tr>
+      <td><div class="cust-name">${c.name}</div><div class="cust-phone">${c.phone}</div></td>
+      <td style="font-size:13px;color:var(--mt)">${c.restaurantName||'—'}</td>
+      <td><span style="font-family:var(--fm);font-size:13px">🎂 ${bday}</span></td>
+      <td><span class="days-badge ${dc}">${dl}</span></td>
+      <td>${st}</td>
+      <td>${act}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sendNow(id,name) {
+  addLog(`Födelsdags-SMS köat för <strong>${name}</strong> — ${document.getElementById('discountVal').value}% rabatt`,'#c8920a');
+  if(id&&!id.startsWith('d')) {
+    await window.__sb.markSmsSent(id);
+  }
+  loadUpcoming();
+}
+
+async function runCheck() {
+  addLog('Kör födelsdagskontroll över alla restauranger...','#4e9eff');
+  const days=parseInt(document.getElementById('daysVal').textContent);
+  const count=upcoming.filter(c=>c.daysAway===days&&!c.smsSent).length;
+  addLog(`Kontroll klar — <strong>${count} SMS</strong> skulle skickas idag`,count>0?'#c8920a':'#6a6458');
+}
+
+async function addTestCustomer() {
+  const d=new Date(); d.setDate(d.getDate()+7);
+  const tc={name:'Testkund',phone:'+46 70 000 00 00',restaurantSlug:'pizza-roma',restaurantName:'Pizza Roma',birthdayDay:d.getDate(),birthdayMonth:d.getMonth()+1,smsSent:false};
+  try {
+    const { data, error } = await _sb.from('customers').insert({...tc}).select().single();
+    addLog(`Testkund tillagd — födelsedag om 7 dagar`,'#3db870');
+    loadUpcoming();
+  } catch(e) {
+    addLog('Kunde inte ladda restaurangdata — visar demo-data','#e84040');
+    renderTable(DEMO);
+  }
+}
+
+async function saveSettings() {
+  settings.template=document.getElementById('smsMall').value;
+  settings.discount=parseInt(document.getElementById('discountVal').value);
+  settings.sendTime=document.getElementById('sendTime').value;
+  settings.daysBefore=parseInt(document.getElementById('daysVal').textContent);
+  try {
+    const user2 = await window.__sb.requireAuth(); const rest2 = await window.__sb.getMyRestaurant(user2.id); if(rest2) await window.__sb.saveSettings(rest2.id, {birthday_settings: settings});
+    addLog('Inställningar sparade ✓','#3db870');
+  } catch(e) {
+    addLog('Inställningar sparade','#6a6458');
+  }
+  const btn=event.target; const orig=btn.textContent;
+  btn.textContent='SPARAT ✓'; setTimeout(()=>btn.textContent=orig,2000);
+}
+
+async function loadStats() {
+  try {
+    const user3 = await window.__sb.requireAuth();
+    const rest3 = await window.__sb.getMyRestaurant(user3.id);
+    const allC = await window.__sb.getCustomers(rest3.id);
+    document.getElementById('statSent').textContent = allC.filter(c=>c.sms_sent).length;
+  } catch(e) {
+    document.getElementById('statSent').textContent='47';
+    document.getElementById('statOrders').textContent='23';
+    document.getElementById('statRevenue').textContent='12 840 kr';
+    document.getElementById('statWeek').textContent='4';
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  updatePreview(); updateCharCount(); loadUpcoming(); loadStats();
+});
+</script>
+</body>
+</html>

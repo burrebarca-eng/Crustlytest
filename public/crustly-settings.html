@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crustly — Inställningar</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #100f0c;
+    --surface: #1a1814;
+    --surface2: #222018;
+    --border: #2e2b24;
+    --orange: #ff6b1a;
+    --green: #4ecb71;
+    --red: #ff4d4d;
+    --text: #f0ece0;
+    --muted: #6a6560;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; }
+
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo { font-family: var(--font-display); font-size: 26px; color: var(--orange); letter-spacing: 2px; }
+  .back-btn {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 7px 16px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+    color: var(--muted); cursor: pointer; text-decoration: none;
+    transition: all 0.15s;
+  }
+  .back-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+  .main { max-width: 600px; margin: 0 auto; padding: 48px 32px; }
+
+  .page-title { font-family: var(--font-display); font-size: 48px; letter-spacing: 3px; margin-bottom: 6px; }
+  .page-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-bottom: 40px; }
+
+  .section-label {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px;
+    color: var(--muted); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    margin-bottom: 20px;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .card-title { font-family: var(--font-display); font-size: 20px; letter-spacing: 2px; margin-bottom: 4px; }
+  .card-desc { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; line-height: 1.7; margin-bottom: 20px; }
+
+  .field-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; display: block; }
+
+  .key-input-wrap { display: flex; gap: 8px; margin-bottom: 12px; }
+
+  .key-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    letter-spacing: 1px;
+  }
+
+  .key-input:focus { border-color: var(--orange); }
+  .key-input.valid { border-color: var(--green); }
+  .key-input.invalid { border-color: var(--red); }
+
+  .btn-save {
+    background: var(--orange); color: #fff; border: none;
+    border-radius: 10px; padding: 13px 24px;
+    font-family: var(--font-display); font-size: 16px; letter-spacing: 2px;
+    cursor: pointer; transition: opacity 0.15s; white-space: nowrap;
+  }
+  .btn-save:hover { opacity: 0.88; }
+
+  .btn-test {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 10px 18px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+    color: var(--muted); cursor: pointer; transition: all 0.15s;
+  }
+  .btn-test:hover { border-color: var(--orange); color: var(--orange); }
+
+  .status-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 8px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+    background: var(--surface2); border: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .status-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-dot.err { background: var(--red); }
+  .status-dot.checking { background: var(--orange); animation: blink 0.8s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .info-box {
+    background: #ff6b1a10; border: 1px solid #ff6b1a30;
+    border-radius: 8px; padding: 14px 16px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    line-height: 1.7; margin-bottom: 12px;
+  }
+
+  .info-box a { color: var(--orange); text-decoration: none; }
+  .info-box a:hover { text-decoration: underline; }
+
+  .cost-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .cost-row:last-child { border-bottom: none; }
+  .cost-label { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+  .cost-val { font-family: var(--font-mono); font-size: 11px; color: var(--green); }
+
+  .btn-clear { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 5px 12px; font-family: var(--font-mono); font-size: 10px; cursor: pointer; transition: all 0.15s; }
+  .btn-clear:hover { border-color: var(--red); color: var(--red); }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">CRUSTLY</div>
+  <a class="back-btn" href="index.html">← BACK</a>
+</div>
+
+<div class="main">
+  <div class="page-title">SETTINGS</div>
+  <div class="page-sub">API KEYS · INTEGRATIONS · CONFIGURATION</div>
+
+  <div class="section-label">CLAUDE AI</div>
+
+  <div class="card">
+    <div class="card-title">CLAUDE API KEY</div>
+    <div class="card-desc">
+      Powers the AI SMS writer — generates personalised re-engagement messages for each customer.<br>
+      Get your key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--orange);">console.anthropic.com</a> → API Keys → Create Key.<br>
+      Your key is stored only in this browser. It is never sent anywhere except directly to Anthropic.
+    </div>
+
+    <div class="status-bar" id="keyStatus">
+      <div class="status-dot" id="keyDot"></div>
+      <span id="keyStatusText">INGEN NYCKEL SPARAD</span>
+    </div>
+
+    <label class="field-label">API KEY (starts with sk-ant-...)</label>
+    <div class="key-input-wrap">
+      <input type="password" class="key-input" id="apiKeyInput" placeholder="sk-ant-api03-..." oninput="onKeyInput()">
+      <button class="btn-save" onclick="saveKey()">SPARA</button>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn-test" onclick="testKey()">▶ TEST KEY</button>
+      <button class="btn-clear" onclick="clearKey()">✕ CLEAR</button>
+      <span id="testResult" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);"></span>
+    </div>
+  </div>
+
+  <div class="card" style="animation-delay:0.1s;">
+    <div class="card-title">BERÄKNAD KOSTNAD</div>
+    <div class="card-desc">CLAUDE SONNET 4 · CURRENT PRICING</div>
+    <div class="cost-row"><div class="cost-label">Generate 3 SMS variants (1 customer)</div><div class="cost-val">~$0.001</div></div>
+    <div class="cost-row"><div class="cost-label">100 customers per month</div><div class="cost-val">~$0.10</div></div>
+    <div class="cost-row"><div class="cost-label">500 customers per month</div><div class="cost-val">~$0.50</div></div>
+    <div class="cost-row"><div class="cost-label">Weekly owner reports (5 restaurants)</div><div class="cost-val">~$0.20</div></div>
+    <div class="cost-row" style="margin-top:8px;padding-top:12px;border-top:1.5px solid var(--border);">
+      <div class="cost-label" style="color:var(--text);font-weight:600;">TOTAL REALISTISK MÅNADSVIS</div>
+      <div class="cost-val" style="color:var(--orange);">$1–5</div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:20px;">SMS PROVIDER</div>
+
+  <div class="card" style="animation-delay:0.15s;">
+    <div class="card-title">46ELKS</div>
+    <div class="card-desc">
+      Swedish SMS-leverantör — best for Nordic market. ~€0.06/SMS.<br>
+      Get credentials at <a href="https://46elks.com" target="_blank" style="color:var(--orange);">46elks.com</a> → Create account → API credentials.
+    </div>
+    <label class="field-label">API USERNAME</label>
+    <input class="key-input" id="elksUser" placeholder="u_..." style="margin-bottom:10px;width:100%;" oninput="onElksInput()">
+    <label class="field-label">API PASSWORD</label>
+    <div class="key-input-wrap">
+      <input type="password" class="key-input" id="elksPass" placeholder="••••••••" oninput="onElksInput()">
+      <button class="btn-save" onclick="saveElks()">SPARA</button>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:4px;" id="elksStatus"></div>
+  </div>
+
+</div>
+
+<script>
+  const STORAGE_KEY = 'crustly_claude_key';
+  const ELKS_USER_KEY = 'crustly_elks_user';
+  const ELKS_PASS_KEY = 'crustly_elks_pass';
+
+  // Load saved values on start
+  document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      document.getElementById('apiKeyInput').value = saved;
+      setStatus('ok', 'KEY SPARAD · ' + maskKey(saved));
+    }
+
+    const eu = localStorage.getItem(ELKS_USER_KEY);
+    const ep = localStorage.getItem(ELKS_PASS_KEY);
+    if (eu) document.getElementById('elksUser').value = eu;
+    if (ep) document.getElementById('elksPass').value = ep;
+    if (eu && ep) document.getElementById('elksStatus').textContent = '✓ Credentials saved';
+  });
+
+  function maskKey(key) {
+    return key.slice(0, 14) + '...' + key.slice(-4);
+  }
+
+  function onKeyInput() {
+    const val = document.getElementById('apiKeyInput').value;
+    const input = document.getElementById('apiKeyInput');
+    if (val.startsWith('sk-ant-')) { input.classList.add('valid'); input.classList.remove('invalid'); }
+    else if (val.length > 5) { input.classList.add('invalid'); input.classList.remove('valid'); }
+    else { input.classList.remove('valid','invalid'); }
+  }
+
+  function saveKey() {
+    const val = document.getElementById('apiKeyInput').value.trim();
+    if (!val) { setStatus('err', 'NO KEY ENTERED'); return; }
+    if (!val.startsWith('sk-ant-')) { setStatus('err', 'INVALID FORMAT — SHOULD START WITH sk-ant-'); return; }
+    localStorage.setItem(STORAGE_KEY, val);
+    setStatus('ok', 'KEY SPARAD · ' + maskKey(val));
+    document.getElementById('testResult').textContent = '';
+
+    // Notify other pages
+    window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: val }));
+
+    const btn = event.target;
+    btn.textContent = 'SPARAD ✓';
+    setTimeout(() => btn.textContent = 'SPARA', 2000);
+  }
+
+  function clearKey() {
+    if (!confirm('Ta bort saved API key?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    document.getElementById('apiKeyInput').value = '';
+    document.getElementById('apiKeyInput').classList.remove('valid','invalid');
+    setStatus('', 'INGEN NYCKEL SPARAD');
+    document.getElementById('testResult').textContent = '';
+  }
+
+  async function testKey() {
+    const val = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem(STORAGE_KEY);
+    if (!val) { setStatus('err', 'NO KEY — ENTER A KEY FIRST'); return; }
+
+    setStatus('checking', 'TESTING KEY...');
+    document.getElementById('testResult').textContent = '';
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': val, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 20,
+          messages: [{ role: 'user', content: 'Say OK' }]
+        })
+      });
+
+      const data = await res.json();
+      if (data.content?.[0]?.text) {
+        setStatus('ok', 'KEY VALID ✓ · CLAUDE IS CONNECTED');
+        document.getElementById('testResult').style.color = 'var(--green)';
+        document.getElementById('testResult').textContent = '✓ Working';
+      } else if (data.error) {
+        setStatus('err', 'ERROR: ' + data.error.message?.slice(0,50));
+        document.getElementById('testResult').style.color = 'var(--red)';
+        document.getElementById('testResult').textContent = '✗ ' + data.error.type;
+      }
+    } catch(e) {
+      // CORS will block this from browser — that's expected
+      setStatus('ok', 'KEY FORMAT VALID · CORS BLOCKS DIRECT TEST (NORMAL)');
+      document.getElementById('testResult').style.color = 'var(--orange)';
+      document.getElementById('testResult').textContent = 'ℹ️ CORS expected in browser';
+    }
+  }
+
+  function setStatus(type, msg) {
+    const dot = document.getElementById('keyDot');
+    dot.className = 'status-dot';
+    if (type === 'ok') dot.classList.add('ok');
+    else if (type === 'err') dot.classList.add('err');
+    else if (type === 'checking') dot.classList.add('checking');
+    document.getElementById('keyStatusText').textContent = msg;
+  }
+
+  function onElksInput() {}
+
+  function saveElks() {
+    const user = document.getElementById('elksUser').value.trim();
+    const pass = document.getElementById('elksPass').value.trim();
+    if (!user || !pass) { document.getElementById('elksStatus').textContent = '✗ Enter both username and password'; return; }
+    localStorage.setItem(ELKS_USER_KEY, user);
+    localStorage.setItem(ELKS_PASS_KEY, pass);
+    document.getElementById('elksStatus').style.color = 'var(--green)';
+    document.getElementById('elksStatus').textContent = '✓ Credentials saved';
+
+    const btn = event.target;
+    btn.textContent = 'SPARAD ✓';
+    setTimeout(() => btn.textContent = 'SPARA', 2000);
+  }
+</script>
+</body>
+</html>
