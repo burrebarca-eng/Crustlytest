@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
 <script>
   const { createClient } = supabase;
   const _sb = createClient(
@@ -1403,44 +1404,28 @@
         </div>
       </div>
 
-      <!-- Betalning method -->
+      <!-- Betalning -->
       <div style="margin-bottom:20px;">
-        <label style="display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;">PAYMENT METHOD</label>
+        <label style="display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;">BETALNINGSSÄTT</label>
         <div class="delivery-tabs">
-          <div class="delivery-tab active" onclick="setBetalning('swish')" id="tab-swish">📱 Swish</div>
-          <div class="delivery-tab" onclick="setBetalning('stripe')" id="tab-stripe">💳 Kort / Klarna</div>
+          <div class="delivery-tab active" onclick="setBetalning('card')" id="tab-card">💳 Kortbetalning</div>
+          <div class="delivery-tab" onclick="setBetalning('klarna')" id="tab-klarna">🛍️ Klarna</div>
         </div>
-        <!-- Swish panel -->
-        <div id="swishPanel" style="margin-top:12px;">
-          <div style="background:#edfaf3;border:1.5px solid #28c06040;border-radius:12px;padding:16px 18px;">
-            <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:#1a7a48;margin-bottom:8px;">BETALNING VIA SWISH</div>
-            <div style="font-size:13px;color:#1c1812;line-height:1.65;margin-bottom:12px;">
-              När du klickar "Lägg order" öppnas Swish-appen automatiskt med rätt belopp och mottagare ifyllt.
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e0f0e8;border-radius:8px;padding:10px 14px;">
-              <div style="font-size:22px;">📱</div>
-              <div>
-                <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:#7a8070;">SWISH-NUMMER</div>
-                <div style="font-family:var(--font-mono);font-size:16px;font-weight:600;color:#1c1812;" id="swishNumber">123 456 78 90</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-
-        <!-- Stripe Payment Element panel (kort + Klarna) -->
+        <!-- Stripe Payment Element panel -->
         <div id="stripePanel" style="display:none;margin-top:12px;">
           <div style="background:#f8f7f5;border:1.5px solid #e0ddd5;border-radius:12px;padding:16px 18px;">
-            <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:#555;margin-bottom:12px;">KORT / KLARNA / FLER ALTERNATIV</div>
+            <div id="stripe-loading" style="text-align:center;padding:16px;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:1px;">LADDAR BETALNING...</div>
             <div id="payment-element"></div>
             <div id="stripe-errors" style="display:none;color:#e74c3c;font-family:var(--font-mono);font-size:11px;margin-top:8px;padding:8px 12px;background:#fff0f0;border-radius:6px;"></div>
           </div>
         </div>
       </div>
 
+      </div>
+
       <div class="order-summary" id="orderSummary"></div>
 
-      <button class="btn-place-order" onclick="placeOrder()" id="placeOrderBtn">📱 Betala med Swish →</button>
+      <button class="btn-place-order" onclick="placeOrder()" id="placeOrderBtn">💳 Betala →</button>
     </div>
 
     <div class="order-success" id="orderSuccess">
@@ -2084,7 +2069,7 @@
     document.getElementById('deliveryFields').style.display = type === 'delivery' ? 'block' : 'none';
   }
 
-  let paymentMethod = 'swish';
+  let paymentMethod = 'card';
 
   // ── STRIPE PAYMENT ELEMENT SETUP ─────────────────────────
   const STRIPE_PK = 'pk_test_51TDR7bPMlGmjneRoNljUyHlcsRCGP5JtWLG7M9n2Tn8wANDNUg6k4AvxesxFh7uUlgxeiiNoxHlujo6NHUQwPkV100uafPUr95';
@@ -2093,18 +2078,23 @@
   let _stripeElements = null;
   let _stripeReady = false;
   let _stripeInitializing = false;
+  let _currentPaymentMethod = 'card'; // 'card' eller 'klarna'
 
-  async function initStripePaymentElement(amount) {
+  async function initStripePaymentElement(amount, method) {
     if (_stripeInitializing) return;
     _stripeInitializing = true;
+    _stripeReady = false;
 
     const errEl = document.getElementById('stripe-errors');
+    const loadEl = document.getElementById('stripe-loading');
+    const payEl = document.getElementById('payment-element');
     errEl.style.display = 'none';
+    if (loadEl) loadEl.style.display = 'block';
+    if (payEl) payEl.innerHTML = '';
 
     try {
       if (!_stripe) _stripe = Stripe(STRIPE_PK);
 
-      // Skapa PaymentIntent via Worker
       const res = await fetch(WORKER_URL + '/stripe/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2119,6 +2109,9 @@
       const data = await res.json();
       if (!data.clientSecret) throw new Error(data.error || 'Kunde inte starta betalning');
 
+      // Välj betalningsmetod baserat på vad kunden valde
+      const paymentMethodTypes = method === 'klarna' ? ['klarna'] : ['card'];
+
       _stripeElements = _stripe.elements({
         clientSecret: data.clientSecret,
         appearance: {
@@ -2131,10 +2124,15 @@
         }
       });
 
-      const paymentEl = _stripeElements.create('payment');
+      const paymentEl = _stripeElements.create('payment', {
+        layout: { type: 'tabs', defaultCollapsed: false },
+        paymentMethodOrder: paymentMethodTypes
+      });
       paymentEl.mount('#payment-element');
+      if (loadEl) loadEl.style.display = 'none';
       _stripeReady = true;
     } catch(e) {
+      if (loadEl) loadEl.style.display = 'none';
       errEl.textContent = 'Kunde inte ladda betalning: ' + e.message;
       errEl.style.display = 'block';
     }
@@ -2142,20 +2140,23 @@
   }
 
   function setBetalning(method) {
+    _currentPaymentMethod = method;
     paymentMethod = method;
-    document.getElementById('tab-swish').classList.toggle('active', method === 'swish');
-    document.getElementById('tab-stripe').classList.toggle('active', method === 'stripe');
+    document.getElementById('tab-card').classList.toggle('active', method === 'card');
+    document.getElementById('tab-klarna').classList.toggle('active', method === 'klarna');
+    document.getElementById('stripePanel').style.display = 'block';
 
-    document.getElementById('swishPanel').style.display = method === 'swish' ? 'block' : 'none';
-    document.getElementById('stripePanel').style.display = method === 'stripe' ? 'block' : 'none';
-
-    if (method === 'stripe') {
-      const subtotal = Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
-      initStripePaymentElement(subtotal || 1);
-      document.getElementById('placeOrderBtn').textContent = '💳 Betala med kort / Klarna →';
+    if (method === 'card') {
+      document.getElementById('placeOrderBtn').textContent = '💳 Betala med kort →';
     } else {
-      document.getElementById('placeOrderBtn').textContent = '📱 Betala med Swish →';
+      document.getElementById('placeOrderBtn').textContent = '🛍️ Betala med Klarna →';
     }
+
+    // Hämta aktuellt belopp och initiera Stripe
+    const subtotal = Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
+    _stripeReady = false;
+    _stripeInitializing = false;
+    initStripePaymentElement(subtotal || 1, method);
   }
 
   async function placeOrder() {
@@ -2164,32 +2165,30 @@
     if (!first || !phone) { alert('Fyll i ditt namn och telefonnummer.'); return; }
 
     // ── STRIPE BETALNING ────────────────────────────────────
-    if (paymentMethod === 'stripe') {
-      if (!_stripeReady || !_stripe || !_stripeElements) {
-        alert('Betalning är inte redo än. Vänta ett ögonblick och försök igen.');
-        return;
-      }
-      const btn = document.getElementById('placeOrderBtn');
-      btn.textContent = 'BEARBETAR...'; btn.disabled = true;
+    if (!_stripeReady || !_stripe || !_stripeElements) {
+      alert('Betalning är inte redo än. Välj kortbetalning eller Klarna och vänta tills formuläret laddats.');
+      return;
+    }
+    const btn = document.getElementById('placeOrderBtn');
+    btn.textContent = 'BEARBETAR...'; btn.disabled = true;
 
-      const { error } = await _stripe.confirmPayment({
-        elements: _stripeElements,
-        confirmParams: {
-          return_url: window.location.href + '?payment=success',
-          payment_method_data: {
-            billing_details: { name: first }
-          }
-        },
-        redirect: 'if_required'
-      });
+    const { error } = await _stripe.confirmPayment({
+      elements: _stripeElements,
+      confirmParams: {
+        return_url: window.location.href + '?payment=success',
+        payment_method_data: { billing_details: { name: first } }
+      },
+      redirect: 'if_required'
+    });
 
-      if (error) {
-        document.getElementById('stripe-errors').textContent = error.message;
-        document.getElementById('stripe-errors').style.display = 'block';
-        btn.textContent = '💳 Betala med kort / Klarna →'; btn.disabled = false;
-        return;
-      }
-      // Betalning lyckades — fortsätt med orderläggning nedan
+    if (error) {
+      document.getElementById('stripe-errors').textContent = error.message;
+      document.getElementById('stripe-errors').style.display = 'block';
+      btn.textContent = paymentMethod === 'klarna' ? '🛍️ Betala med Klarna →' : '💳 Betala med kort →';
+      btn.disabled = false;
+      return;
+    }
+    // Betalning lyckades — fortsätt med orderläggning nedan
     }
 
 
@@ -2261,14 +2260,6 @@
 
       const orderNum = 'ORD-' + Math.random().toString(36).substr(2,6).toUpperCase();
 
-      // Öppet Swish if chosen
-      if (paymentMethod === 'swish') {
-        const swishNum = (restaurant.swishNumber || '1234567890').replace(/\s/g,'');
-        const swishAmt = total.toFixed(2).replace('.','');
-        const msg = encodeURIComponent(restaurant.name + ' ' + orderNum);
-        const swishUrl = `swish://payment?data={"version":1,"payee":{"value":"${swishNum}"},"amount":{"value":${total.toFixed(0)}},"message":{"value":"${decodeURIComponent(msg)}"}}`;
-        setTimeout(() => { window.location.href = swishUrl; }, 200);
-      }
 
       // Visa tracking
       document.getElementById('checkoutForm').style.display = 'none';
@@ -2306,7 +2297,7 @@
 
       // Bygg orderinfo
       const dtype = deliveryType === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
-      const ptype = paymentMethod === 'swish' ? '📱 Swish' : '💵 Kontant';
+      const ptype = paymentMethod === 'klarna' ? '🛍️ Klarna' : '💳 Kortbetalning';
       document.getElementById('trackingInfo').innerHTML = `
         <div class="tracking-info-row"><span class="tracking-info-key">Namn</span><span class="tracking-info-val">${first}</span></div>
         <div class="tracking-info-row"><span class="tracking-info-key">Leveranssätt</span><span class="tracking-info-val">${dtype}</span></div>
@@ -2428,7 +2419,7 @@
 
       // Bygg orderinfo
       const dtype = order.delivery_type === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
-      const ptype = order.payment_method === 'swish' ? '📱 Swish' : '💵 Kontant';
+      const ptype = order.payment_method === 'klarna' ? '🛍️ Klarna' : '💳 Kortbetalning';
       document.getElementById('trackingInfo').innerHTML = `
         <div class="tracking-info-row"><span class="tracking-info-key">Namn</span><span class="tracking-info-val">${order.customer_name||'—'}</span></div>
         <div class="tracking-info-row"><span class="tracking-info-key">Leveranssätt</span><span class="tracking-info-val">${dtype}</span></div>
@@ -2486,7 +2477,7 @@
     document.getElementById('rcptName').textContent = orderInfo.customerName || '—';
     document.getElementById('rcptPhone').textContent = orderInfo.customerPhone || '—';
     document.getElementById('rcptDelivery').textContent = orderInfo.deliveryType === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
-    document.getElementById('rcptPayment').textContent = orderInfo.paymentMethod === 'swish' ? '📱 Swish' : '💵 Kontant';
+    document.getElementById('rcptPayment').textContent = orderInfo.paymentMethod === 'klarna' ? '🛍️ Klarna' : '💳 Kortbetalning';
     document.getElementById('rcptDate').textContent = new Date().toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
   }
 
