@@ -1612,9 +1612,19 @@ window.acceptUpsell = acceptUpsell;
     // Visa telefonsökning
     document.getElementById('phoneLookup').style.display = 'flex';
 
-    // Om kunden återvänder med ?order= i URL — visa spårning direkt
-    // Men bara om det är ett nytt sidladdning (inte direkt efter att order lagts)
     const params = new URLSearchParams(window.location.search);
+
+    // Stripe redirect tillbaka efter betalning
+    if (params.get('payment') === 'success' && params.get('payment_intent')) {
+      // Betalning bekräftad — visa success-skärm
+      document.getElementById('checkoutForm').style.display = 'none';
+      document.getElementById('orderSuccess').classList.add('show');
+      const orderNum = 'ORD-' + Math.random().toString(36).substr(2,6).toUpperCase();
+      document.getElementById('trackingNum').textContent = '#' + orderNum;
+      return;
+    }
+
+    // Om kunden återvänder med ?order= i URL — visa spårning direkt
     const savedOrder = params.get('order');
     if (savedOrder && restaurant && !window._orderJustPlaced) {
       resumeOrderTracking(savedOrder);
