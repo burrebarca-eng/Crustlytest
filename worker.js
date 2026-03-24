@@ -24,8 +24,12 @@ const ROUTES = {
   '/server.js': 'server.js',
 };
 
+import { getAssetFromKV } from '@cloudflare/kv-asset-handler';
+import manifestJSON from '__STATIC_CONTENT_MANIFEST';
+const assetManifest = JSON.parse(manifestJSON);
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -49,15 +53,14 @@ export default {
     }
 
     // ── STATIC FILES ───────────────────────────────────────
-    const file = ROUTES[path] || ROUTES[path.replace(/\/$/, '')] || null;
-
-    if (file) {
-      const asset = await env.ASSETS.fetch(new Request(request.url));
-      return asset;
+    try {
+      return await getAssetFromKV(
+        { request, waitUntil: ctx.waitUntil.bind(ctx) },
+        { ASSET_NAMESPACE: env.__STATIC_CONTENT, ASSET_MANIFEST: assetManifest }
+      );
+    } catch (e) {
+      return new Response('Not found', { status: 404 });
     }
-
-    // Fallback to assets
-    return env.ASSETS.fetch(request);
   }
 };
 
