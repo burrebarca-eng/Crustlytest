@@ -1664,10 +1664,7 @@ window.acceptUpsell = acceptUpsell;
         document.getElementById('heroLogo').innerHTML = `<div class="hero-logo-placeholder">${data.name[0]}</div>`;
       }
 
-      // Swish number
-      if (data.swishNumber) {
-        document.getElementById('swishNumber').textContent = data.swishNumber;
-      }
+      // Swish borttagen - Stripe används
 
       // Säkerställ settings är mappat
       restaurant.settings = data.settings || {};
@@ -2182,6 +2179,7 @@ window.acceptUpsell = acceptUpsell;
   }
 
   async function placeOrder() {
+    if (!restaurant) { alert('Restaurangen laddas fortfarande. Vänta ett ögonblick och försök igen.'); return; }
     const first = document.getElementById('custFirst').value.trim();
     const phone = document.getElementById('custPhone').value.trim();
     if (!first || !phone) { alert('Fyll i ditt namn och telefonnummer.'); return; }
