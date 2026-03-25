@@ -2278,7 +2278,7 @@
             .select('loyalty_points,total_orders')
             .eq('restaurant_id', restaurant.id)
             .eq('phone', custPhone)
-            .single();
+            .maybeSingle();
           if (custRows) {
             const pts = custRows.loyalty_points || 0;
             const orders = custRows.total_orders || 0;
