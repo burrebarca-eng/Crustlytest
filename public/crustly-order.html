@@ -2262,40 +2262,7 @@
 
       const orderNum = 'ORD-' + Math.random().toString(36).substr(2,6).toUpperCase();
 
-      // Betalning hanteras av Stripe
-
-      // Visa tracking — stäng modal och visa success
-      document.getElementById('checkoutForm').style.display = 'none';
-      document.getElementById('modalOverlay').classList.remove('show');
-      document.getElementById('orderSuccess').classList.add('show');
-      document.getElementById('trackingNum').textContent = '#' + orderNum;
-
-      // Visa lojalitetspoäng (vänta 1.5s så upsertCustomer hinner köra klart)
-      (async () => {
-        await new Promise(r => setTimeout(r, 1500));
-        try {
-          const custPhone = orderData.customer.phone;
-          const { data: custRows } = await _sb.from('customers')
-            .select('loyalty_points,total_orders')
-            .eq('restaurant_id', restaurant.id)
-            .eq('phone', custPhone)
-            .maybeSingle();
-          if (custRows) {
-            const pts = custRows.loyalty_points || 0;
-            const orders = custRows.total_orders || 0;
-            const nextReward = 50 - (pts % 50);
-            document.getElementById('loyaltyMsg').style.display = 'block';
-            document.getElementById('loyaltyPoints').textContent = pts + ' p';
-            document.getElementById('loyaltyNext').textContent =
-              nextReward <= 0
-                ? '🎉 Du har en belöning att använda!'
-                : nextReward + ' poäng till nästa belöning  •  ' + orders + ' orders totalt';
-          }
-        } catch(e) { /* tyst fel */ }
-      })();
-
       window._orderJustPlaced = true;
-      // Spara order i URL så kunden kan komma tillbaka
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.set('order', result?.order?.id || orderNum);
       window.history.replaceState({}, '', newUrl.toString());
@@ -2309,6 +2276,7 @@
         <div class="tracking-info-row"><span class="tracking-info-key">Betalning</span><span class="tracking-info-val">${ptype}</span></div>
         <div class="tracking-info-row"><span class="tracking-info-key">Totalt</span><span class="tracking-info-val">${total.toFixed(0)} kr</span></div>
       `;
+      document.getElementById('trackingNum').textContent = '#' + orderNum;
 
       // Bygg kvitto
       buildReceipt({
@@ -2322,16 +2290,38 @@
         paymentMethod: paymentMethod,
       });
 
-      // Dölj processing, visa success
-      document.getElementById('orderProcessing').style.display = 'none';
-      document.getElementById('orderSuccess').classList.add('show');
-
       // Starta polling
       if (result && result.order) {
         startOrderTracking(result.order.id, deliveryType);
       } else {
         updateTrackingUI('new', deliveryType);
       }
+
+      // Dölj processing → visa success
+      document.getElementById('orderProcessing').style.display = 'none';
+      document.getElementById('orderSuccess').classList.add('show');
+
+      // Visa lojalitetspoäng efter 2s (väntar på upsertCustomer)
+      setTimeout(async () => {
+        try {
+          const { data: custRows } = await _sb.from('customers')
+            .select('loyalty_points,total_orders')
+            .eq('restaurant_id', restaurant.id)
+            .eq('phone', orderData.customer.phone)
+            .maybeSingle();
+          if (custRows && custRows.loyalty_points != null) {
+            const pts = custRows.loyalty_points || 0;
+            const orders = custRows.total_orders || 0;
+            const nextReward = 50 - (pts % 50);
+            document.getElementById('loyaltyMsg').style.display = 'block';
+            document.getElementById('loyaltyPoints').textContent = pts + ' p';
+            document.getElementById('loyaltyNext').textContent =
+              nextReward <= 0
+                ? '🎉 Du har en belöning att använda!'
+                : nextReward + ' poäng till nästa belöning  •  ' + orders + ' orders totalt';
+          }
+        } catch(e) { console.warn('lojalitet:', e); }
+      }, 2000);
 
     } catch (e) {
       document.getElementById('orderProcessing').style.display = 'none';
