@@ -1624,12 +1624,20 @@
     const params = new URLSearchParams(window.location.search);
 
     // Stripe redirect tillbaka efter betalning
-    if (params.get('payment_intent') && params.get('redirect_status') === 'succeeded') {
-      const savedOrder = params.get('order');
-      document.getElementById('orderSuccess').classList.add('show');
-      document.getElementById('trackingNum').textContent = savedOrder ? '#' + savedOrder.slice(-6).toUpperCase() : '';
-      if (savedOrder) resumeOrderTracking(savedOrder);
-      return;
+    if (params.get('payment_intent') || params.get('stripe_redirect')) {
+      const redirectStatus = params.get('redirect_status');
+      if (redirectStatus === 'succeeded' || params.get('stripe_redirect')) {
+        // Visa success-sida direkt
+        document.getElementById('orderSuccess').classList.add('show');
+        const savedOrder = params.get('order');
+        if (savedOrder) {
+          document.getElementById('trackingNum').textContent = '#' + savedOrder.slice(-6).toUpperCase();
+          resumeOrderTracking(savedOrder);
+        }
+        return;
+      } else if (redirectStatus === 'failed') {
+        alert('Betalningen misslyckades. Försök igen.');
+      }
     }
 
     // Om kunden återvänder med ?order= i URL — visa spårning direkt
@@ -2171,7 +2179,7 @@
     const { error } = await _stripe.confirmPayment({
       elements: _stripeElements,
       confirmParams: {
-        return_url: window.location.href.split('?')[0] + '?r=' + (restaurant ? restaurant.slug : '') + '&redirect_status=succeeded&order=',
+        return_url: window.location.href.split('?')[0] + '?r=' + (restaurant ? restaurant.slug : '') + '&stripe_redirect=1',
         payment_method_data: { billing_details: { name: first } }
       },
       redirect: 'if_required'
