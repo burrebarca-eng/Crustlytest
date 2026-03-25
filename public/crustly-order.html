@@ -40,7 +40,7 @@
         .select('id,name,total_orders,total_spent,loyalty_points')
         .eq('restaurant_id', customerData.restaurant_id)
         .eq('phone', customerData.phone)
-        .single();
+        .maybeSingle();
 
       // Poäng: 1 poäng per 10 kr
       const earnedPoints = Math.floor((customerData.order_total || 0) / 10);
