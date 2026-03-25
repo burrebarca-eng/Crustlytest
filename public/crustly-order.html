@@ -823,93 +823,108 @@
   /* ---- RECEIPT ---- */
   .receipt-wrap {
     display: none;
-    padding: 0 0 40px;
     animation: fadeUp 0.4s ease both;
+    max-width: 480px;
+    margin: 0 auto;
   }
   .receipt-wrap.show { display: block; }
-
-  .receipt-header {
+  .receipt-card {
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #e8e4dc;
+  }
+  .receipt-hero {
+    background: #1c1812;
+    padding: 28px 24px;
     text-align: center;
-    padding: 32px 24px 24px;
-    border-bottom: 1px dashed var(--border);
-    margin-bottom: 24px;
+  }
+  .receipt-logo-circle {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: #c8380a;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 18px; font-weight: 600; color: #fff;
+    font-family: var(--font-display);
   }
   .receipt-restaurant {
+    color: #f0ece0;
     font-family: var(--font-display);
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 700;
     margin-bottom: 4px;
   }
   .receipt-addr {
     font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 12px;
+    color: #888;
   }
-  .receipt-num {
-    display: inline-block;
-    background: var(--primary);
-    color: #f0ece0;
+  .receipt-ribbon {
+    background: #c8380a;
+    padding: 8px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .receipt-ribbon span {
+    color: #fff;
     font-family: var(--font-mono);
     font-size: 11px;
-    letter-spacing: 2px;
-    padding: 6px 14px;
-    border-radius: 6px;
+    letter-spacing: 1.5px;
   }
-
-  .receipt-section {
-    padding: 0 24px;
-    margin-bottom: 20px;
-  }
+  .receipt-num { font-size: 13px !important; font-weight: 600 !important; }
+  .receipt-body { padding: 20px 24px; }
   .receipt-section-title {
     font-family: var(--font-mono);
     font-size: 9px;
     letter-spacing: 2px;
     color: var(--muted);
     text-transform: uppercase;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
   .receipt-row {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    padding: 7px 0;
-    border-bottom: 1px solid var(--border);
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0ece0;
     font-size: 14px;
   }
   .receipt-row:last-child { border-bottom: none; }
-  .receipt-row-name { flex: 1; color: var(--text); }
-  .receipt-row-qty  { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin: 0 12px; }
+  .receipt-row-name { color: var(--text); font-weight: 500; }
+  .receipt-row-qty { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-left: 6px; }
   .receipt-row-price { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
-
-  .receipt-divider {
-    border: none;
-    border-top: 1px dashed var(--border);
-    margin: 4px 24px 20px;
-  }
-
+  .receipt-divider { border: none; border-top: 1px solid #e8e4dc; margin: 4px 0 12px; }
   .receipt-total-row {
     display: flex;
     justify-content: space-between;
-    padding: 0 24px 4px;
+    padding: 4px 0;
     font-size: 13px;
     color: var(--muted);
   }
   .receipt-total-row.grand {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     color: var(--text);
-    padding-top: 8px;
+    padding: 12px 0 4px;
+    border-top: 2px solid #1c1812;
     margin-top: 4px;
-    border-top: 2px solid var(--text);
   }
-
+  .receipt-vat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    padding-bottom: 16px;
+  }
   .receipt-meta {
-    padding: 20px 24px 0;
+    background: #f9f7f3;
+    border-radius: 10px;
+    padding: 14px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+    margin-top: 4px;
   }
-  .receipt-meta-item {}
   .receipt-meta-key {
     font-family: var(--font-mono);
     font-size: 9px;
@@ -923,34 +938,32 @@
     font-weight: 600;
     color: var(--text);
   }
-
   .receipt-actions {
-    display: flex;
-    gap: 10px;
-    padding: 24px 24px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 16px;
   }
   .btn-print {
-    flex: 1;
-    background: var(--primary);
+    background: #1c1812;
     color: #f0ece0;
     border: none;
     border-radius: 10px;
-    padding: 14px;
+    padding: 13px;
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 11px;
     letter-spacing: 1.5px;
     cursor: pointer;
     text-transform: uppercase;
   }
   .btn-back-menu {
-    flex: 1;
     background: transparent;
     color: var(--text);
     border: 1.5px solid var(--border);
     border-radius: 10px;
-    padding: 14px;
+    padding: 13px;
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 11px;
     letter-spacing: 1.5px;
     cursor: pointer;
     text-transform: uppercase;
@@ -1475,55 +1488,56 @@
 
       <!-- Receipt view -->
       <div class="receipt-wrap" id="receiptWrap">
-        <div class="receipt-header">
-          <div class="receipt-restaurant" id="rcptRestaurant"></div>
-          <div class="receipt-addr" id="rcptAddr"></div>
-          <div class="receipt-num" id="rcptNum"></div>
-        </div>
-
-        <div class="receipt-section">
-          <div class="receipt-section-title">Din beställning</div>
-          <div id="rcptItems"></div>
-        </div>
-
-        <hr class="receipt-divider">
-
-        <div class="receipt-total-row" id="rcptDeliveryRow" style="display:none;">
-          <span>Leveransavgift</span><span id="rcptDeliveryFee">0 kr</span>
-        </div>
-        <div class="receipt-total-row">
-          <span>Serviceavgift</span><span>7 kr</span>
-        </div>
-        <div class="receipt-total-row grand">
-          <span>Totalt</span><span id="rcptTotal"></span>
-        </div>
-
-        <div class="receipt-meta">
-          <div class="receipt-meta-item">
-            <div class="receipt-meta-key">Kund</div>
-            <div class="receipt-meta-val" id="rcptName"></div>
+        <div class="receipt-card">
+          <div class="receipt-hero">
+            <div class="receipt-logo-circle" id="rcptLogoCircle">L</div>
+            <div class="receipt-restaurant" id="rcptRestaurant"></div>
+            <div class="receipt-addr" id="rcptAddr"></div>
           </div>
-          <div class="receipt-meta-item">
-            <div class="receipt-meta-key">Telefon</div>
-            <div class="receipt-meta-val" id="rcptPhone"></div>
+          <div class="receipt-ribbon">
+            <span>ORDER</span>
+            <span class="receipt-num" id="rcptNum"></span>
+            <span id="rcptDate"></span>
           </div>
-          <div class="receipt-meta-item">
-            <div class="receipt-meta-key">Leveranssätt</div>
-            <div class="receipt-meta-val" id="rcptDelivery"></div>
+          <div class="receipt-body">
+            <div class="receipt-section-title">Din beställning</div>
+            <div id="rcptItems"></div>
+            <hr class="receipt-divider">
+            <div class="receipt-total-row" id="rcptDeliveryRow" style="display:none;">
+              <span>Leveransavgift</span><span id="rcptDeliveryFee">0 kr</span>
+            </div>
+            <div class="receipt-total-row">
+              <span>Serviceavgift</span><span>7 kr</span>
+            </div>
+            <div class="receipt-total-row grand">
+              <span>Totalt</span><span id="rcptTotal"></span>
+            </div>
+            <div class="receipt-vat-row">
+              <span>varav moms 12%</span><span id="rcptVat"></span>
+            </div>
+            <div class="receipt-meta">
+              <div>
+                <div class="receipt-meta-key">Kund</div>
+                <div class="receipt-meta-val" id="rcptName"></div>
+              </div>
+              <div>
+                <div class="receipt-meta-key">Telefon</div>
+                <div class="receipt-meta-val" id="rcptPhone"></div>
+              </div>
+              <div>
+                <div class="receipt-meta-key">Leveranssätt</div>
+                <div class="receipt-meta-val" id="rcptDelivery"></div>
+              </div>
+              <div>
+                <div class="receipt-meta-key">Betalning</div>
+                <div class="receipt-meta-val" id="rcptPayment"></div>
+              </div>
+            </div>
+            <div class="receipt-actions">
+              <button class="btn-print" onclick="window.print()">SKRIV UT</button>
+              <button class="btn-back-menu" onclick="hideReceipt()">← TILLBAKA</button>
+            </div>
           </div>
-          <div class="receipt-meta-item">
-            <div class="receipt-meta-key">Betalning</div>
-            <div class="receipt-meta-val" id="rcptPayment"></div>
-          </div>
-          <div class="receipt-meta-item">
-            <div class="receipt-meta-key">Datum</div>
-            <div class="receipt-meta-val" id="rcptDate"></div>
-          </div>
-        </div>
-
-        <div class="receipt-actions">
-          <button class="btn-print" onclick="window.print()">🖨️ SKRIV UT</button>
-          <button class="btn-back-menu" onclick="hideReceipt()">← TILLBAKA</button>
         </div>
       </div>
 
@@ -2040,6 +2054,7 @@
     const serviceFee = 7;
     const total = subtotal + serviceFee;
 
+    const vat = subtotal / 1.12 * 0.12;
     document.getElementById('orderSummary').innerHTML = `
       <div class="order-summary-title">ORDERSAMMANFATTNING</div>
       ${Object.values(cart).map(v => {
@@ -2049,6 +2064,7 @@
       <div class="summary-rätt" style="color:var(--muted)"><span>Leverans</span><span>0 kr</span></div>
       <div class="summary-rätt" style="color:var(--muted)"><span>Serviceavgift</span><span>7 kr</span></div>
       <div class="summary-total"><span>Totalt</span><span>${total.toFixed(0)} kr</span></div>
+      <div class="summary-rätt" style="color:var(--muted);font-size:11px;margin-top:4px;"><span>varav moms 12%</span><span>${vat.toFixed(2)} kr</span></div>
     `;
 
     document.getElementById('checkoutForm').style.display = 'block';
@@ -2416,30 +2432,35 @@
 
   function buildReceipt(orderInfo) {
     receiptData = orderInfo;
-    // Restaurant info
-    document.getElementById('rcptRestaurant').textContent = orderInfo.restaurantName || restaurant.name;
+    const name = orderInfo.restaurantName || restaurant.name;
+
+    // Logo-cirkel med första bokstaven
+    document.getElementById('rcptLogoCircle').textContent = name[0].toUpperCase();
+    document.getElementById('rcptRestaurant').textContent = name;
     document.getElementById('rcptAddr').textContent = restaurant.address || '';
-    document.getElementById('rcptNum').textContent = 'Order #' + orderInfo.orderNum;
+    document.getElementById('rcptNum').textContent = '#' + orderInfo.orderNum;
+    document.getElementById('rcptDate').textContent = new Date().toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
 
     // Items
     const itemsHtml = (orderInfo.items || []).map(i => `
       <div class="receipt-row">
-        <span class="receipt-row-name">${i.name}</span>
-        <span class="receipt-row-qty">${i.quantity || i.qty || 1}×</span>
+        <span class="receipt-row-name">${i.name}<span class="receipt-row-qty">${i.quantity || i.qty || 1}×</span></span>
         <span class="receipt-row-price">${((i.price||0) * (i.quantity||i.qty||1)).toFixed(0)} kr</span>
       </div>
     `).join('');
     document.getElementById('rcptItems').innerHTML = itemsHtml;
 
-    // Total
+    // Total + moms (beräknat på subtotal exkl. serviceavgift)
+    const subtotal = orderInfo.total - 7;
+    const vat = subtotal / 1.12 * 0.12;
     document.getElementById('rcptTotal').textContent = orderInfo.total.toFixed(0) + ' kr';
+    document.getElementById('rcptVat').textContent = vat.toFixed(2) + ' kr';
 
     // Meta
     document.getElementById('rcptName').textContent = orderInfo.customerName || '—';
     document.getElementById('rcptPhone').textContent = orderInfo.customerPhone || '—';
-    document.getElementById('rcptDelivery').textContent = orderInfo.deliveryType === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
-    document.getElementById('rcptPayment').textContent = '💳 Kortbetalning / Klarna';
-    document.getElementById('rcptDate').textContent = new Date().toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+    document.getElementById('rcptDelivery').textContent = orderInfo.deliveryType === 'delivery' ? 'Leverans' : 'Avhämtning';
+    document.getElementById('rcptPayment').textContent = 'Kort / Klarna';
   }
 
   function showReceipt() {
