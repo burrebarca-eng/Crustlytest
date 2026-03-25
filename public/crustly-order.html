@@ -2207,8 +2207,9 @@
 
       // Betalning hanteras av Stripe
 
-      // Visa tracking
+      // Visa tracking — stäng modal och visa success
       document.getElementById('checkoutForm').style.display = 'none';
+      document.getElementById('modalOverlay').classList.remove('show');
       document.getElementById('orderSuccess').classList.add('show');
       document.getElementById('trackingNum').textContent = '#' + orderNum;
 
