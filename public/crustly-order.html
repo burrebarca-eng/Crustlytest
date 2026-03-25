@@ -2246,10 +2246,10 @@
 
         if (result && !result.success) console.error('Order-fel:', result.error);
 
-        // Spara kund + födelsedag
+        // Spara kund + födelsedag (fristående — stoppar inte orderflödet vid fel)
         const bdayMonth = parseInt(document.getElementById('custBdayMonth').value);
         const bdayDay   = parseInt(document.getElementById('custBdayDay').value);
-        await upsertCustomer({
+        upsertCustomer({
           restaurant_id:   restaurant.id,
           restaurant_slug: restaurant.slug,
           name:            orderData.customer.name,
@@ -2257,7 +2257,7 @@
           birthday_month:  bdayMonth || null,
           birthday_day:    bdayDay   || null,
           order_total:     orderData.total || 0,
-        });
+        }).catch(e => console.warn('upsertCustomer:', e));
       }
 
       const orderNum = 'ORD-' + Math.random().toString(36).substr(2,6).toUpperCase();
