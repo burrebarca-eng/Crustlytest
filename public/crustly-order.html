@@ -703,12 +703,22 @@
   /* ---- ORDER SUCCESS ---- */
   .order-success {
     display: none;
-    text-align: center;
-    padding: 48px 36px;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: var(--bg, #f5f2eb);
+    overflow-y: auto;
     animation: fadeUp 0.4s ease both;
   }
 
   .order-success.show { display: block; }
+  
+  .order-success-inner {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    text-align: center;
+  }
 
   .success-emoji { font-size: 56px; margin-bottom: 16px; }
 
@@ -1422,6 +1432,7 @@
     </div>
 
     <div class="order-success" id="orderSuccess">
+    <div class="order-success-inner">
 
       <!-- Tracking view -->
       <div class="tracking-wrap show" id="trackingWrap">
@@ -1516,6 +1527,7 @@
         </div>
       </div>
 
+    </div>
     </div>
   </div>
 </div>
