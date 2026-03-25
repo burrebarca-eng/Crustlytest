@@ -1521,28 +1521,6 @@
 </div>
 
 <script type="module">
-
-// Exponera funktioner globalt (krävs med type="module")
-window.addItem = addItem;
-window.removeItem = removeItem;
-window.cartQtyChange = cartQtyChange;
-window.openExtras = openExtras;
-window.closeExtrasOutside = closeExtrasOutside;
-window.confirmExtras = confirmExtras;
-window.extrasQtyChange = extrasQtyChange;
-window.toggleExtra = toggleExtra;
-window.openCheckout = openCheckout;
-window.closeModal = closeModal;
-window.closeModalOutside = closeModalOutside;
-window.placeOrder = placeOrder;
-window.setBetalning = setBetalning;
-window.setLeverans = setLeverans;
-window.scrollToCat = scrollToCat;
-window.lookupByPhone = lookupByPhone;
-window.showReceipt = showReceipt;
-window.hideReceipt = hideReceipt;
-window.acceptUpsell = acceptUpsell;
-
   // ============================================================
   // STATE
   // ============================================================
@@ -2334,6 +2312,8 @@ window.acceptUpsell = acceptUpsell;
 
     } catch (e) {
       alert('Something went wrong: ' + e.message);
+      const btn = document.getElementById('placeOrderBtn');
+      if (btn) { btn.textContent = '💳 Betala →'; btn.disabled = false; }
     }
 
 
@@ -2560,6 +2540,28 @@ window.acceptUpsell = acceptUpsell;
     updateCartFromObjects();
     document.getElementById('upsellBox').classList.remove('show');
   }
+
+// Exponera funktioner globalt (krävs med type="module")
+window.addItem = addItem;
+window.removeItem = removeItem;
+window.cartQtyChange = cartQtyChange;
+window.openExtras = openExtras;
+window.closeExtrasOutside = closeExtrasOutside;
+window.confirmExtras = confirmExtras;
+window.extrasQtyChange = extrasQtyChange;
+window.toggleExtra = toggleExtra;
+window.openCheckout = openCheckout;
+window.closeModal = closeModal;
+window.closeModalOutside = closeModalOutside;
+window.placeOrder = placeOrder;
+window.setBetalning = setBetalning;
+window.setLeverans = setLeverans;
+window.scrollToCat = scrollToCat;
+window.lookupByPhone = lookupByPhone;
+window.showReceipt = showReceipt;
+window.hideReceipt = hideReceipt;
+window.acceptUpsell = acceptUpsell;
+
 </script>
 </body>
 </html>
