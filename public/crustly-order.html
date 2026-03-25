@@ -1408,7 +1408,7 @@
       <div style="margin-bottom:20px;">
         <label style="display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;">BETALNING</label>
         <div style="background:#f8f7f5;border:1.5px solid #e0ddd5;border-radius:12px;padding:16px 18px;">
-          <div id="stripe-loading" style="text-align:center;padding:16px;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:1px;">LADDAR BETALNING...</div>
+          <div id="stripe-loading" style="text-align:center;padding:16px;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:1px;">VÄLJ BETALNINGSSÄTT NEDAN</div>
           <div id="payment-element"></div>
           <div id="stripe-errors" style="display:none;color:#e74c3c;font-family:var(--font-mono);font-size:11px;margin-top:8px;padding:8px 12px;background:#fff0f0;border-radius:6px;"></div>
         </div>
@@ -1583,19 +1583,9 @@
     // Visa telefonsökning
     document.getElementById('phoneLookup').style.display = 'flex';
 
-    const params = new URLSearchParams(window.location.search);
-
-    // Stripe redirect tillbaka efter betalning
-    if (params.get('payment') === 'success' && params.get('payment_intent')) {
-      // Betalning bekräftad — visa success-skärm
-      document.getElementById('checkoutForm').style.display = 'none';
-      document.getElementById('orderSuccess').classList.add('show');
-      const orderNum = 'ORD-' + Math.random().toString(36).substr(2,6).toUpperCase();
-      document.getElementById('trackingNum').textContent = '#' + orderNum;
-      return;
-    }
-
     // Om kunden återvänder med ?order= i URL — visa spårning direkt
+    // Men bara om det är ett nytt sidladdning (inte direkt efter att order lagts)
+    const params = new URLSearchParams(window.location.search);
     const savedOrder = params.get('order');
     if (savedOrder && restaurant && !window._orderJustPlaced) {
       resumeOrderTracking(savedOrder);
@@ -1645,7 +1635,7 @@
         document.getElementById('heroLogo').innerHTML = `<div class="hero-logo-placeholder">${data.name[0]}</div>`;
       }
 
-      // Swish borttagen - Stripe används
+      // Swish ej längre använt
 
       // Säkerställ settings är mappat
       restaurant.settings = data.settings || {};
@@ -2052,9 +2042,7 @@
     document.getElementById('checkoutForm').style.display = 'block';
     document.getElementById('orderSuccess').classList.remove('show');
     document.getElementById('modalOverlay').classList.add('show');
-
-    // Initiera Stripe Payment Element direkt
-    initStripePaymentElement(subtotal, 'card');
+    initStripePaymentElement(subtotal);
   }
 
   function closeModal() {
@@ -2074,85 +2062,59 @@
 
   let paymentMethod = 'card';
 
-  // ── STRIPE PAYMENT ELEMENT SETUP ─────────────────────────
+  // ── STRIPE PAYMENT ELEMENT ───────────────────────────────
   const STRIPE_PK = 'pk_test_51TDR7bPMlGmjneRoNljUyHlcsRCGP5JtWLG7M9n2Tn8wANDNUg6k4AvxesxFh7uUlgxeiiNoxHlujo6NHUQwPkV100uafPUr95';
   const WORKER_URL = 'https://crustly-worker.burrebarca.workers.dev';
   let _stripe = null;
   let _stripeElements = null;
   let _stripeReady = false;
   let _stripeInitializing = false;
-  let _currentPaymentMethod = 'card'; // 'card' eller 'klarna'
+  let paymentMethod = 'card';
 
-  async function initStripePaymentElement(amount, method) {
+  async function initStripePaymentElement(amount) {
     if (_stripeInitializing) return;
     _stripeInitializing = true;
     _stripeReady = false;
-
     const errEl = document.getElementById('stripe-errors');
     const loadEl = document.getElementById('stripe-loading');
     const payEl = document.getElementById('payment-element');
-    errEl.style.display = 'none';
+    if (errEl) errEl.style.display = 'none';
     if (loadEl) loadEl.style.display = 'block';
     if (payEl) payEl.innerHTML = '';
-
     try {
       if (!_stripe) _stripe = Stripe(STRIPE_PK);
-
       const res = await fetch(WORKER_URL + '/stripe/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: amount || 1,
-          currency: 'sek',
-          restaurantName: restaurant?.name || '',
-          orderId: ''
-        })
+        body: JSON.stringify({ amount: amount || 1, currency: 'sek', restaurantName: restaurant ? restaurant.name : '', orderId: '' })
       });
-
       const data = await res.json();
       if (!data.clientSecret) throw new Error(data.error || 'Kunde inte starta betalning');
-
-      // Välj betalningsmetod baserat på vad kunden valde
       _stripeElements = _stripe.elements({
         clientSecret: data.clientSecret,
-        appearance: {
-          theme: 'stripe',
-          variables: {
-            colorPrimary: '#f05a1a',
-            fontFamily: 'Plus Jakarta Sans, sans-serif',
-            borderRadius: '8px',
-          }
-        }
+        appearance: { theme: 'stripe', variables: { colorPrimary: '#f05a1a', fontFamily: 'Plus Jakarta Sans, sans-serif', borderRadius: '8px' } }
       });
-
-      const paymentEl = _stripeElements.create('payment', {
-        layout: { type: 'tabs', defaultCollapsed: false }
-      });
+      const paymentEl = _stripeElements.create('payment', { layout: { type: 'tabs', defaultCollapsed: false } });
       paymentEl.mount('#payment-element');
       if (loadEl) loadEl.style.display = 'none';
       _stripeReady = true;
     } catch(e) {
       if (loadEl) loadEl.style.display = 'none';
-      errEl.textContent = 'Kunde inte ladda betalning: ' + e.message;
-      errEl.style.display = 'block';
+      if (errEl) { errEl.textContent = 'Kunde inte ladda betalning: ' + e.message; errEl.style.display = 'block'; }
     }
     _stripeInitializing = false;
   }
 
-  function setBetalning(method) {
-    // Stripe Payment Element hanterar alla betalningsmetoder automatiskt
-    paymentMethod = method || 'card';
-  }
+  function setBetalning(method) { paymentMethod = method || 'card'; }
 
   async function placeOrder() {
-    if (!restaurant) { alert('Restaurangen laddas fortfarande. Vänta ett ögonblick och försök igen.'); return; }
     const first = document.getElementById('custFirst').value.trim();
     const phone = document.getElementById('custPhone').value.trim();
     if (!first || !phone) { alert('Fyll i ditt namn och telefonnummer.'); return; }
 
     // ── STRIPE BETALNING ────────────────────────────────────
     if (!_stripeReady || !_stripe || !_stripeElements) {
-      alert('Betalning är inte redo än. Välj kortbetalning eller Klarna och vänta tills formuläret laddats.');
+      alert('Betalning är inte redo. Vänta ett ögonblick och försök igen.');
       return;
     }
     const btn = document.getElementById('placeOrderBtn');
@@ -2170,12 +2132,10 @@
     if (error) {
       document.getElementById('stripe-errors').textContent = error.message;
       document.getElementById('stripe-errors').style.display = 'block';
-      btn.textContent = paymentMethod === 'klarna' ? '🛍️ Betala med Klarna →' : '💳 Betala med kort →';
-      btn.disabled = false;
+      btn.textContent = '💳 Betala →'; btn.disabled = false;
       return;
     }
     // Betalning lyckades — fortsätt med orderläggning nedan
-    }
 
 
 
@@ -2246,6 +2206,7 @@
 
       const orderNum = 'ORD-' + Math.random().toString(36).substr(2,6).toUpperCase();
 
+      // Betalning hanteras av Stripe
 
       // Visa tracking
       document.getElementById('checkoutForm').style.display = 'none';
@@ -2283,7 +2244,7 @@
 
       // Bygg orderinfo
       const dtype = deliveryType === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
-      const ptype = paymentMethod === 'klarna' ? '🛍️ Klarna' : '💳 Kortbetalning';
+      const ptype = '💳 Kortbetalning / Klarna';
       document.getElementById('trackingInfo').innerHTML = `
         <div class="tracking-info-row"><span class="tracking-info-key">Namn</span><span class="tracking-info-val">${first}</span></div>
         <div class="tracking-info-row"><span class="tracking-info-key">Leveranssätt</span><span class="tracking-info-val">${dtype}</span></div>
@@ -2311,10 +2272,11 @@
       }
 
     } catch (e) {
-      alert('Something went wrong: ' + e.message);
-      const btn = document.getElementById('placeOrderBtn');
-      if (btn) { btn.textContent = '💳 Betala →'; btn.disabled = false; }
+      alert('Något gick fel: ' + e.message);
+      const catchBtn = document.getElementById('placeOrderBtn');
+      if (catchBtn) { catchBtn.textContent = '💳 Betala →'; catchBtn.disabled = false; }
     }
+  }
 
 
 
@@ -2406,7 +2368,7 @@
 
       // Bygg orderinfo
       const dtype = order.delivery_type === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
-      const ptype = order.payment_method === 'klarna' ? '🛍️ Klarna' : '💳 Kortbetalning';
+      const ptype = '💳 Kortbetalning / Klarna';
       document.getElementById('trackingInfo').innerHTML = `
         <div class="tracking-info-row"><span class="tracking-info-key">Namn</span><span class="tracking-info-val">${order.customer_name||'—'}</span></div>
         <div class="tracking-info-row"><span class="tracking-info-key">Leveranssätt</span><span class="tracking-info-val">${dtype}</span></div>
@@ -2464,7 +2426,7 @@
     document.getElementById('rcptName').textContent = orderInfo.customerName || '—';
     document.getElementById('rcptPhone').textContent = orderInfo.customerPhone || '—';
     document.getElementById('rcptDelivery').textContent = orderInfo.deliveryType === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
-    document.getElementById('rcptPayment').textContent = orderInfo.paymentMethod === 'klarna' ? '🛍️ Klarna' : '💳 Kortbetalning';
+    document.getElementById('rcptPayment').textContent = '💳 Kortbetalning / Klarna';
     document.getElementById('rcptDate').textContent = new Date().toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
   }
 
