@@ -1131,6 +1131,7 @@
     40% { transform: scale(1); opacity: 1; }
   }
 
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
@@ -1443,6 +1444,16 @@
       <div class="order-summary" id="orderSummary"></div>
 
       <button class="btn-place-order" onclick="placeOrder()" id="placeOrderBtn">💳 Betala →</button>
+    </div>
+
+    <!-- Processing screen -->
+    <div id="orderProcessing" style="display:none;position:fixed;inset:0;z-index:210;background:var(--bg,#f5f2eb);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;">
+      <div style="font-size:56px;animation:bounce 1s ease infinite;">🍕</div>
+      <div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--text);">Din order behandlas...</div>
+      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:2px;color:var(--muted);">VÄNLIGEN VÄNTA</div>
+      <div style="width:48px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+        <div id="processingBar" style="height:100%;background:var(--accent,#c8380a);border-radius:2px;width:0%;transition:width 3s ease;"></div>
+      </div>
     </div>
 
     <div class="order-success" id="orderSuccess">
@@ -2172,9 +2183,16 @@
       btn.textContent = '💳 Betala →'; btn.disabled = false;
       return;
     }
-    // Betalning lyckades — fortsätt med orderläggning nedan
-
-
+    // Betalning lyckades — visa processing-skärm direkt
+    document.getElementById('modalOverlay').classList.remove('show');
+    document.getElementById('checkoutForm').style.display = 'none';
+    const processingEl = document.getElementById('orderProcessing');
+    processingEl.style.display = 'flex';
+    // Animera progress bar
+    setTimeout(() => {
+      const bar = document.getElementById('processingBar');
+      if (bar) bar.style.width = '100%';
+    }, 100);
 
     const subtotal = Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
     const total = subtotal;
@@ -2302,9 +2320,8 @@
         paymentMethod: paymentMethod,
       });
 
-      // Visa success-skärm
-      document.getElementById('checkoutForm').style.display = 'none';
-      document.getElementById('modalOverlay').classList.remove('show');
+      // Dölj processing, visa success
+      document.getElementById('orderProcessing').style.display = 'none';
       document.getElementById('orderSuccess').classList.add('show');
 
       // Starta polling
