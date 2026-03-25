@@ -1610,9 +1610,18 @@
     // Visa telefonsökning
     document.getElementById('phoneLookup').style.display = 'flex';
 
-    // Om kunden återvänder med ?order= i URL — visa spårning direkt
-    // Men bara om det är ett nytt sidladdning (inte direkt efter att order lagts)
     const params = new URLSearchParams(window.location.search);
+
+    // Stripe redirect tillbaka efter betalning
+    if (params.get('payment_intent') && params.get('redirect_status') === 'succeeded') {
+      const savedOrder = params.get('order');
+      document.getElementById('orderSuccess').classList.add('show');
+      document.getElementById('trackingNum').textContent = savedOrder ? '#' + savedOrder.slice(-6).toUpperCase() : '';
+      if (savedOrder) resumeOrderTracking(savedOrder);
+      return;
+    }
+
+    // Om kunden återvänder med ?order= i URL — visa spårning direkt
     const savedOrder = params.get('order');
     if (savedOrder && restaurant && !window._orderJustPlaced) {
       resumeOrderTracking(savedOrder);
@@ -2151,7 +2160,7 @@
     const { error } = await _stripe.confirmPayment({
       elements: _stripeElements,
       confirmParams: {
-        return_url: window.location.href + '?payment=success',
+        return_url: window.location.href.split('?')[0] + '?r=' + (restaurant ? restaurant.slug : '') + '&redirect_status=succeeded&order=',
         payment_method_data: { billing_details: { name: first } }
       },
       redirect: 'if_required'
@@ -2292,6 +2301,11 @@
         deliveryType: deliveryType,
         paymentMethod: paymentMethod,
       });
+
+      // Visa success-skärm
+      document.getElementById('checkoutForm').style.display = 'none';
+      document.getElementById('modalOverlay').classList.remove('show');
+      document.getElementById('orderSuccess').classList.add('show');
 
       // Starta polling
       if (result && result.order) {
