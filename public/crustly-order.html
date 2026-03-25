@@ -2270,8 +2270,9 @@
       document.getElementById('orderSuccess').classList.add('show');
       document.getElementById('trackingNum').textContent = '#' + orderNum;
 
-      // Visa lojalitetspoäng
+      // Visa lojalitetspoäng (vänta 1.5s så upsertCustomer hinner köra klart)
       (async () => {
+        await new Promise(r => setTimeout(r, 1500));
         try {
           const custPhone = orderData.customer.phone;
           const { data: custRows } = await _sb.from('customers')
