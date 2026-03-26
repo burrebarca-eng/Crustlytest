@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Din order — Crustly</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --bg: #f5f2eb;
+    --text: #1c1812;
+    --muted: #7a7570;
+    --border: #e0dbd0;
+    --accent: #c8380a;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; padding: 24px 16px 80px; }
+
+  .page { max-width: 480px; margin: 0 auto; }
+
+  /* Loading */
+  .loading { text-align: center; padding: 80px 24px; }
+  .loading-pizza { font-size: 48px; animation: bounce 1s ease infinite; display: block; margin-bottom: 16px; }
+  .loading-text { font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: var(--muted); }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+  /* Status banner */
+  .status-banner {
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: fadeUp 0.4s ease both;
+  }
+  .status-banner.new { background: #fff8f0; border: 1.5px solid #f5c842; }
+  .status-banner.preparing { background: #fff3e0; border: 1.5px solid #ff9800; }
+  .status-banner.ready { background: #edfaf3; border: 1.5px solid #28c060; }
+  .status-icon { font-size: 24px; flex-shrink: 0; }
+  .status-text { font-size: 14px; font-weight: 500; }
+  .status-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Tracking steps */
+  .tracking-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 20px;
+    animation: fadeUp 0.4s 0.05s ease both;
+  }
+  .step { text-align: center; flex: 1; }
+  .step-icon {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: #e8e4dc; display: flex; align-items: center;
+    justify-content: center; font-size: 18px; margin: 0 auto 6px;
+    transition: all 0.3s;
+  }
+  .step-icon.active { background: var(--accent); box-shadow: 0 0 0 4px #c8380a20; }
+  .step-icon.done { background: #28c060; }
+  .step-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+  .step-connector { flex: 1; height: 2px; background: #e8e4dc; max-width: 40px; }
+  .step-connector.done { background: #28c060; }
+
+  /* Receipt card */
+  .receipt-card {
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #e8e4dc;
+    animation: fadeUp 0.4s 0.1s ease both;
+    margin-bottom: 16px;
+  }
+  .receipt-hero { background: #1c1812; padding: 24px; text-align: center; }
+  .receipt-logo-circle {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 10px;
+    font-size: 18px; font-weight: 600; color: #fff;
+    font-family: var(--font-display);
+  }
+  .receipt-restaurant { color: #f0ece0; font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+  .receipt-addr { font-size: 12px; color: #888; }
+  .receipt-ribbon {
+    background: var(--accent); padding: 8px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .receipt-ribbon span { color: #fff; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; }
+  .receipt-body { padding: 20px; }
+  .section-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+  .receipt-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid #f0ece0; font-size: 14px;
+  }
+  .receipt-row:last-child { border-bottom: none; }
+  .receipt-row-name { color: var(--text); font-weight: 500; }
+  .receipt-row-qty { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-left: 6px; }
+  .receipt-row-price { font-family: var(--font-mono); font-size: 13px; }
+  hr.divider { border: none; border-top: 1px solid #e8e4dc; margin: 4px 0 10px; }
+  .total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; color: var(--muted); }
+  .total-row.grand { font-size: 17px; font-weight: 700; color: var(--text); padding: 10px 0 3px; border-top: 2px solid #1c1812; margin-top: 4px; }
+  .vat-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding-bottom: 14px; }
+  .meta-grid { background: #f9f7f3; border-radius: 10px; padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .meta-key { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; }
+  .meta-val { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  /* Loyalty */
+  .loyalty-card {
+    background: #fff8f0;
+    border: 1.5px solid #f5c842;
+    border-radius: 14px;
+    padding: 16px 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    animation: fadeUp 0.4s 0.15s ease both;
+  }
+  .loyalty-pts { font-family: var(--font-display); font-size: 36px; font-weight: 600; color: var(--text); }
+  .loyalty-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+  .loyalty-next { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* Actions */
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; animation: fadeUp 0.4s 0.2s ease both; }
+  .btn-primary { background: #1c1812; color: #f0ece0; border: none; border-radius: 12px; padding: 14px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; cursor: pointer; text-transform: uppercase; }
+  .btn-secondary { background: transparent; color: var(--text); border: 1.5px solid var(--border); border-radius: 12px; padding: 14px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; cursor: pointer; text-transform: uppercase; }
+
+  /* Error */
+  .error-state { text-align: center; padding: 60px 24px; }
+  .error-state h2 { font-family: var(--font-display); font-size: 28px; margin-bottom: 8px; }
+  .error-state p { color: var(--muted); font-size: 14px; }
+
+  @media print {
+    body * { visibility: hidden; }
+    .receipt-card, .receipt-card * { visibility: visible; }
+    .receipt-card { position: absolute; top: 0; left: 0; width: 100%; border: none; }
+    .actions { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page" id="page">
+  <!-- Loading -->
+  <div class="loading" id="loadingState">
+    <span class="loading-pizza">🍕</span>
+    <div class="loading-text">LADDAR DIN ORDER...</div>
+  </div>
+</div>
+
+<script>
+  const { createClient } = supabase;
+  const _sb = createClient(
+    'https://febybrpterkybwzhigte.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
+  );
+
+  const params = new URLSearchParams(window.location.search);
+  const orderId = params.get('order');
+  const slug = params.get('r');
+
+  async function init() {
+    if (!orderId) { showError('Ingen order hittades.'); return; }
+
+    // Hämta order från Supabase
+    const { data: order, error } = await _sb.from('orders').select('*').eq('id', orderId).single();
+    if (error || !order) { showError('Kunde inte hitta ordern.'); return; }
+
+    // Hämta restaurang
+    const { data: rest } = await _sb.from('restaurants').select('name,address,slug,accent_color').eq('id', order.restaurant_id).single();
+
+    renderPage(order, rest);
+
+    // Starta polling för status
+    startPolling(orderId);
+  }
+
+  function renderPage(order, rest) {
+    const page = document.getElementById('page');
+    const items = order.items || [];
+    const subtotal = order.total - 7;
+    const vat = (subtotal / 1.12 * 0.12).toFixed(2);
+    const orderNum = order.id.slice(-6).toUpperCase();
+    const date = new Date(order.created_at).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+    const restName = rest ? rest.name : order.restaurant_name || 'Restaurang';
+    const restAddr = rest ? rest.address : '';
+    const restInitial = restName[0].toUpperCase();
+    const dtype = order.delivery_type === 'delivery' ? 'Leverans' : 'Avhämtning';
+
+    page.innerHTML = `
+      <div id="statusBanner" class="status-banner new">
+        <span class="status-icon" id="statusIcon">⏳</span>
+        <div>
+          <div class="status-text" id="statusText">Restaurangen har tagit emot din order</div>
+          <div class="status-sub" id="statusSub">Vi meddelar dig när ordern är redo</div>
+        </div>
+      </div>
+
+      <div class="tracking-steps">
+        <div class="step">
+          <div class="step-icon done" id="step0">✅</div>
+          <div class="step-label">Mottagen</div>
+        </div>
+        <div class="step-connector" id="conn0"></div>
+        <div class="step">
+          <div class="step-icon" id="step1">🍕</div>
+          <div class="step-label">Tillagas</div>
+        </div>
+        <div class="step-connector" id="conn1"></div>
+        <div class="step">
+          <div class="step-icon" id="step2">${order.delivery_type === 'delivery' ? '🛵' : '🏠'}</div>
+          <div class="step-label">${order.delivery_type === 'delivery' ? 'På väg' : 'Redo'}</div>
+        </div>
+      </div>
+
+      <div class="receipt-card">
+        <div class="receipt-hero">
+          <div class="receipt-logo-circle">${restInitial}</div>
+          <div class="receipt-restaurant">${restName}</div>
+          <div class="receipt-addr">${restAddr}</div>
+        </div>
+        <div class="receipt-ribbon">
+          <span>ORDER</span>
+          <span style="font-size:13px;font-weight:600;">#${orderNum}</span>
+          <span>${date}</span>
+        </div>
+        <div class="receipt-body">
+          <div class="section-label">Din beställning</div>
+          <div id="itemsList">
+            ${items.map(i => `
+              <div class="receipt-row">
+                <span class="receipt-row-name">${i.name}<span class="receipt-row-qty">${i.quantity || i.qty || 1}×</span></span>
+                <span class="receipt-row-price">${((i.price||0) * (i.quantity||i.qty||1)).toFixed(0)} kr</span>
+              </div>
+            `).join('')}
+          </div>
+          <hr class="divider">
+          <div class="total-row"><span>Serviceavgift</span><span>7 kr</span></div>
+          <div class="total-row grand"><span>Totalt</span><span>${order.total.toFixed(0)} kr</span></div>
+          <div class="vat-row"><span>varav moms 12%</span><span>${vat} kr</span></div>
+          <div class="meta-grid">
+            <div>
+              <div class="meta-key">Kund</div>
+              <div class="meta-val">${order.customer_name || '—'}</div>
+            </div>
+            <div>
+              <div class="meta-key">Telefon</div>
+              <div class="meta-val">${order.customer_phone || '—'}</div>
+            </div>
+            <div>
+              <div class="meta-key">Leveranssätt</div>
+              <div class="meta-val">${dtype}</div>
+            </div>
+            <div>
+              <div class="meta-key">Betalning</div>
+              <div class="meta-val">Kort / Klarna</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="loyaltyCard" style="display:none;" class="loyalty-card">
+        <div class="loyalty-label">Dina lojalitetspoäng</div>
+        <div class="loyalty-pts" id="loyaltyPts">0 p</div>
+        <div class="loyalty-next" id="loyaltyNext"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" onclick="window.print()">SKRIV UT</button>
+        <button class="btn-secondary" onclick="window.location.href='crustly-order.html?r=${slug || order.restaurant_slug}'">← TILLBAKA</button>
+      </div>
+    `;
+
+    updateStatus(order.status, order.delivery_type);
+
+    // Hämta lojalitetspoäng
+    if (order.customer_phone && order.restaurant_id) {
+      setTimeout(async () => {
+        const { data } = await _sb.from('customers')
+          .select('loyalty_points,total_orders')
+          .eq('restaurant_id', order.restaurant_id)
+          .eq('phone', order.customer_phone)
+          .maybeSingle();
+        if (data) {
+          const pts = data.loyalty_points || 0;
+          const nextReward = 50 - (pts % 50);
+          document.getElementById('loyaltyCard').style.display = 'block';
+          document.getElementById('loyaltyPts').textContent = pts + ' p';
+          document.getElementById('loyaltyNext').textContent = nextReward <= 0
+            ? '🎉 Du har en belöning att använda!'
+            : nextReward + ' poäng till nästa belöning';
+        }
+      }, 1500);
+    }
+  }
+
+  function updateStatus(status, deliveryType) {
+    const banner = document.getElementById('statusBanner');
+    const icon = document.getElementById('statusIcon');
+    const text = document.getElementById('statusText');
+    const sub = document.getElementById('statusSub');
+    const s1 = document.getElementById('step1');
+    const s2 = document.getElementById('step2');
+    const c0 = document.getElementById('conn0');
+    const c1 = document.getElementById('conn1');
+    if (!banner) return;
+
+    if (status === 'preparing') {
+      banner.className = 'status-banner preparing';
+      icon.textContent = '🍕';
+      text.textContent = 'Din order tillagas just nu!';
+      sub.textContent = 'Kocken har börjat laga din mat';
+      s1.className = 'step-icon active';
+      c0.className = 'step-connector done';
+    } else if (status === 'ready' || status === 'done') {
+      banner.className = 'status-banner ready';
+      icon.textContent = deliveryType === 'delivery' ? '🛵' : '✅';
+      text.textContent = deliveryType === 'delivery' ? 'Din order är på väg!' : 'Din order är redo för avhämtning!';
+      sub.textContent = deliveryType === 'delivery' ? 'Föraren är på väg till dig' : 'Gå och hämta din mat';
+      s1.className = 'step-icon done'; s1.textContent = '✅';
+      s2.className = 'step-icon done'; s2.textContent = deliveryType === 'delivery' ? '🛵' : '✅';
+      c0.className = 'step-connector done';
+      c1.className = 'step-connector done';
+    }
+  }
+
+  let pollingInterval = null;
+  function startPolling(orderId) {
+    pollingInterval = setInterval(async () => {
+      const { data } = await _sb.from('orders').select('status,delivery_type').eq('id', orderId).single();
+      if (data) {
+        updateStatus(data.status, data.delivery_type);
+        if (data.status === 'done' || data.status === 'ready') {
+          clearInterval(pollingInterval);
+        }
+      }
+    }, 5000);
+  }
+
+  function showError(msg) {
+    document.getElementById('page').innerHTML = `
+      <div class="error-state">
+        <div style="font-size:48px;margin-bottom:16px;">😕</div>
+        <h2>Något gick fel</h2>
+        <p>${msg}</p>
+        <button class="btn-secondary" style="margin-top:20px;" onclick="history.back()">← Tillbaka</button>
+      </div>
+    `;
+  }
+
+  init();
+</script>
+</body>
+</html>

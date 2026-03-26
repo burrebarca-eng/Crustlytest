@@ -2273,25 +2273,56 @@
     const btn = document.getElementById('placeOrderBtn');
     btn.textContent = 'BEARBETAR...'; btn.disabled = true;
 
-    // Spara kunddata innan redirect (ifall Stripe Link redirectar)
-    localStorage.setItem('pendingOrder', JSON.stringify({
-      first, phone,
-      slug: restaurant ? restaurant.slug : '',
-      restaurantId: restaurant ? restaurant.id : '',
-      deliveryType,
-      items: Object.values(cart).map(v => ({
-        name: v.rätt.name, quantity: v.qty,
-        price: v.rätt.price + v.extraCost,
-        total: (v.rätt.price + v.extraCost) * v.qty,
-        extras: v.extras
-      })),
-      subtotal: Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0),
+    // Spara order i Supabase INNAN betalning
+    const subtotal = Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
+    const total = subtotal + 7;
+    const items = Object.values(cart).map(v => ({
+      name: v.rätt.name, quantity: v.qty,
+      price: v.rätt.price + v.extraCost,
+      total: (v.rätt.price + v.extraCost) * v.qty,
+      extras: v.extras
     }));
+
+    let savedOrderId = null;
+    if (restaurant && restaurant.id) {
+      try {
+        const result = await saveOrderToSupabase({
+          restaurant_id:    restaurant.id,
+          restaurant_name:  restaurant.name,
+          restaurant_slug:  restaurant.slug,
+          customer_name:    first + ' ' + (document.getElementById('custLast').value.trim()),
+          customer_phone:   phone,
+          items:            items,
+          total:            total,
+          delivery_type:    deliveryType,
+          delivery_address: deliveryType === 'delivery' ? document.getElementById('custAddress').value.trim() : 'PICKUP',
+          payment_method:   'card',
+          special_instructions: document.getElementById('custNotes').value.trim(),
+        });
+        if (result && result.order) {
+          savedOrderId = result.order.id;
+          // Spara kund
+          const bdayMonth = parseInt(document.getElementById('custBdayMonth').value);
+          const bdayDay = parseInt(document.getElementById('custBdayDay').value);
+          upsertCustomer({
+            restaurant_id: restaurant.id,
+            restaurant_slug: restaurant.slug,
+            name: first,
+            phone: phone,
+            birthday_month: bdayMonth || null,
+            birthday_day: bdayDay || null,
+            order_total: total,
+          }).catch(e => console.warn('upsertCustomer:', e));
+        }
+      } catch(e) { console.warn('pre-payment order save:', e); }
+    }
+
+    const receiptUrl = window.location.href.split('/').slice(0,-1).join('/') + '/crustly-receipt.html?r=' + (restaurant ? restaurant.slug : '') + (savedOrderId ? '&order=' + savedOrderId : '');
 
     const { error } = await _stripe.confirmPayment({
       elements: _stripeElements,
       confirmParams: {
-        return_url: window.location.href.split('?')[0] + '?r=' + (restaurant ? restaurant.slug : '') + '&stripe_redirect=1',
+        return_url: receiptUrl,
         payment_method_data: { billing_details: { name: first } }
       }
     });
