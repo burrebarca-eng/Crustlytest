@@ -273,15 +273,15 @@
     // Bygg kvitto
     buildReceipt(order, rest);
 
-    // Lojalitetspoäng
-    setTimeout(async () => {
+    // Lojalitetspoäng — försök direkt, retry efter 3s om customer inte finns än
+    async function fetchLoyalty() {
       if (!order.customer_phone || !order.restaurant_id) return;
       const { data } = await _sb.from('customers')
         .select('loyalty_points,total_orders')
         .eq('restaurant_id', order.restaurant_id)
         .eq('phone', order.customer_phone)
         .maybeSingle();
-      if (data) {
+      if (data && data.loyalty_points != null) {
         const pts = data.loyalty_points || 0;
         const next = 50 - (pts % 50);
         document.getElementById('loyaltyMsg').style.display = 'block';
@@ -290,8 +290,16 @@
           ? '🎉 Du har en belöning att använda!'
           : next + ' poäng till nästa belöning  •  ' + data.total_orders + ' orders totalt';
         document.getElementById('loyaltyLink').style.display = 'inline-block';
+        return true;
       }
-    }, 2000);
+      return false;
+    }
+    // Försök direkt, sen efter 2s och 5s
+    fetchLoyalty().then(ok => {
+      if (!ok) setTimeout(() => fetchLoyalty().then(ok2 => {
+        if (!ok2) setTimeout(fetchLoyalty, 5000);
+      }), 2000);
+    });
 
     // Visa success-sidan
     document.getElementById('loadingState').style.display = 'none';
