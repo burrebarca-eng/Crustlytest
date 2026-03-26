@@ -228,30 +228,28 @@
 
   /* ---- STICKY CAT NAV ---- */
   .cat-nav {
-    background: var(--surface);
+    background: var(--bg);
     border-bottom: 1px solid var(--border);
     position: sticky; top: 0; z-index: 50;
-    padding: 0 48px;
-    box-shadow: 0 1px 0 #eeeeee, 0 2px 12px rgba(0,0,0,0.03);
+    padding: 10px 48px;
   }
   .cat-nav-inner {
     max-width: 900px; margin: 0 auto;
-    display: flex; gap: 0;
+    display: flex; gap: 6px;
     overflow-x: auto; scrollbar-width: none;
   }
   .cat-nav-inner::-webkit-scrollbar { display: none; }
   .cat-btn {
-    font-family: var(--font-mono);
-    font-size: 10px; letter-spacing: 2px;
-    padding: 17px 20px;
-    background: none; border: none;
-    border-bottom: 2px solid transparent;
+    font-family: var(--font-body);
+    font-size: 13px; font-weight: 600;
+    padding: 7px 16px;
+    background: #fff; border: 1.5px solid var(--border);
+    border-radius: 50px;
     color: var(--muted); cursor: pointer;
     white-space: nowrap; transition: all 0.15s;
-    text-transform: uppercase;
   }
-  .cat-btn:hover { color: var(--text); }
-  .cat-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .cat-btn:hover { color: var(--text); border-color: #c0bab0; }
+  .cat-btn.active { background: var(--primary); color: #f5f0e8; border-color: var(--primary); }
 
   /* ---- MAIN LAYOUT ---- */
   .page-body {
@@ -265,76 +263,77 @@
   }
 
   /* ---- MENU ---- */
-  .menu-section { margin-bottom: 48px; }
+  .menu-section { margin-bottom: 32px; }
 
+  .section-title-wrap {
+    display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px;
+  }
   .section-title {
     font-family: var(--font-display);
-    font-size: 30px; font-weight: 600; font-style: italic;
-    color: var(--text); margin-bottom: 18px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid #eeeeee;
-    letter-spacing: -0.5px;
+    font-size: 26px; font-weight: 600; font-style: italic;
+    color: var(--text); letter-spacing: -0.3px;
+  }
+  .section-count {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 1.5px; color: var(--muted);
   }
 
   .menu-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    display: flex; flex-direction: column; gap: 0;
+    background: var(--surface);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #ece7de;
   }
 
   .menu-card {
-    background: var(--surface);
-    border: 1px solid #f0f0f0;
-    border-radius: 14px;
-    padding: 18px;
-    display: flex; flex-direction: column;
-    justify-content: space-between;
-    gap: 10px;
-    transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+    display: flex; align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f5f0e8;
+    gap: 14px;
+    transition: background 0.1s;
     animation: fadeUp 0.3s ease both;
-    min-height: 110px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    cursor: pointer;
+  }
+  .menu-card:last-child { border-bottom: none; }
+  .menu-card:hover { background: #fdfaf6; }
+
+  .menu-card-emoji {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: #fdf3ed; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; flex-shrink: 0;
   }
 
-  .menu-card:hover {
-    border-color: var(--accent);
-    box-shadow: 0 6px 24px rgba(200,56,10,0.1);
-    transform: translateY(-2px);
-  }
-
-  .menu-card-info { flex: 1; }
+  .menu-card-info { flex: 1; min-width: 0; }
 
   .menu-card-name {
-    font-family: var(--font-display);
-    font-size: 17px; font-weight: 600; font-style: italic;
-    color: var(--text); margin-bottom: 5px; line-height: 1.2;
+    font-family: var(--font-body);
+    font-size: 14px; font-weight: 600;
+    color: var(--text); margin-bottom: 2px;
   }
 
   .menu-card-desc {
-    font-size: 11.5px; color: var(--muted);
-    line-height: 1.55;
+    font-size: 12px; color: var(--muted);
+    line-height: 1.4; margin-bottom: 4px;
   }
   .menu-card-tag {
     display: inline-block;
     font-family: var(--font-mono);
-    font-size: 8px; letter-spacing: 1.5px;
-    color: var(--accent);
-    background: var(--accent-dim);
+    font-size: 10px; letter-spacing: 0.5px;
+    color: #8a8078;
+    background: #f0ece4;
     border-radius: 4px;
-    padding: 3px 8px;
-    margin-top: 8px;
-    text-transform: uppercase;
+    padding: 2px 7px;
   }
 
   .menu-card-right {
-    display: flex; align-items: center;
-    justify-content: space-between;
-    margin-top: 8px;
+    display: flex; flex-direction: column;
+    align-items: flex-end; gap: 8px; flex-shrink: 0;
   }
 
   .menu-card-price {
-    font-family: var(--font-mono);
-    font-size: 15px; font-weight: 500; color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px; font-weight: 600; color: var(--text);
   }
 
   .btn-add {
@@ -1759,6 +1758,26 @@
   // ============================================================
   // MENU
   // ============================================================
+  const catEmoji = {
+    'PIZZOR': '🍕', 'PIZZA': '🍕',
+    'VEGANMENY': '🌱', 'VEGAN': '🌱',
+    'SALLADER': '🥗', 'SALLAD': '🥗',
+    'PASTA': '🍝', 'PASTA RÄTTER': '🍝',
+    'KEBAB': '🥙', 'KEBABRÄTTER': '🥙',
+    'GRILL': '🔥', 'GRILL RÄTTER': '🔥',
+    'SMASHBURGARE': '🍔', 'BURGER': '🍔',
+    'DRYCKER': '🥤', 'DRYCK': '🥤',
+    'DESSERT': '🍰', 'DESSERTER': '🍰',
+    'ÖVRIG': '🍽️',
+  };
+  function getEmoji(cat) {
+    const key = (cat||'').toUpperCase();
+    for (const k of Object.keys(catEmoji)) {
+      if (key.includes(k)) return catEmoji[k];
+    }
+    return '🍽️';
+  }
+
   function buildMeny(rätter) {
     const cats = [...new Set(rätter.map(i => i.cat))].filter(Boolean);
     const container = document.getElementById('menuContainer');
@@ -1772,12 +1791,17 @@
     // Sections
     container.innerHTML = cats.map(cat => {
       const catItems = rätter.filter(i => i.cat === cat);
+      const emoji = getEmoji(cat);
       return `
         <div class="menu-section" id="cat-${cat}">
-          <div class="section-title">${cat}</div>
+          <div class="section-title-wrap">
+            <div class="section-title">${cat}</div>
+            <div class="section-count">${catItems.length} RÄTTER</div>
+          </div>
           <div class="menu-grid">
             ${catItems.map((rätt, idx) => `
-              <div class="menu-card" style="animation-delay:${idx * 0.04}s">
+              <div class="menu-card" style="animation-delay:${idx * 0.04}s" onclick="openExtras('${rätt.id}')">
+                <div class="menu-card-emoji">${emoji}</div>
                 <div class="menu-card-info">
                   <div class="menu-card-name">${rätt.name}</div>
                   ${rätt.description ? `<div class="menu-card-desc">${rätt.description}</div>` : ''}
@@ -1786,7 +1810,7 @@
                 <div class="menu-card-right">
                   <div class="menu-card-price">${Number(rätt.price).toFixed(0)} kr</div>
                   <div id="ctrl-${rätt.id}">
-                    <button class="btn-add" onclick="openExtras('${rätt.id}')">+</button>
+                    <button class="btn-add" onclick="event.stopPropagation();openExtras('${rätt.id}')">+</button>
                   </div>
                 </div>
               </div>
