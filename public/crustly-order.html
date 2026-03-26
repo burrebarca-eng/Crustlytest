@@ -2078,7 +2078,6 @@
     cart[key].qty++;
     updateQtyCtrl(id);
     updateCartFromObjects();
-    triggerUpsell(rätt);
   }
 
   function removeItem(id) {
@@ -2113,16 +2112,7 @@
   }
 
 
-  function triggerUpsell(addedItem) {
-    const rule = upsellRules[addedItem.cat];
-    if (!rule) return;
-    const suggestion = restaurant.menu.find(i => i.cat === rule.suggest && !cart[i.id]);
-    if (!suggestion) return;
 
-    upsellItem = suggestion;
-    document.getElementById('upsellText').textContent = rule.msg;
-    document.getElementById('upsellBox').classList.add('show');
-  }
 
   function acceptUpsell() {
     if (upsellItem) {
