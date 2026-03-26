@@ -147,26 +147,8 @@
     letter-spacing: 1.5px; cursor: pointer; display: flex; align-items: center; gap: 8px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.25); z-index: 100; white-space: nowrap;
   }
-  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 150; }
-  .overlay.show { display: block; }
-  .search-panel {
-    display: none; position: fixed; bottom: 0; left: 0; right: 0;
-    background: #fff; border-radius: 20px 20px 0 0; padding: 20px 20px 40px;
-    box-shadow: 0 -4px 30px rgba(0,0,0,0.15); z-index: 200;
-  }
-  .search-panel.show { display: block; }
-  .panel-handle { width: 40px; height: 4px; background: #e0dbd0; border-radius: 2px; margin: 0 auto 18px; }
-  .panel-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-  .panel-sub { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 14px; }
-  .input-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .phone-inp { flex: 1; background: #f5f2eb; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; font-family: var(--font-body); font-size: 15px; outline: none; }
-  .phone-inp:focus { border-color: var(--accent); }
-  .search-btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 12px 18px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; cursor: pointer; }
-  .result-item { background: #f9f7f3; border-radius: 10px; padding: 14px; margin-bottom: 8px; cursor: pointer; border: 1.5px solid transparent; transition: border-color 0.15s; }
-  .result-item:hover { border-color: var(--accent); }
-  .result-num { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
-  .result-info { font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .result-empty { text-align: center; padding: 20px; font-size: 13px; color: var(--muted); }
+
+
 
   @media print {
     .success-screen, .fab, .overlay, .search-panel { display: none !important; }
@@ -233,19 +215,6 @@
   </div>
 </div>
 
-<!-- FAB -->
-<button class="fab" onclick="openSearch()">🔍 HITTA DIN ORDER</button>
-<div class="overlay" id="overlay" onclick="closeSearch()"></div>
-<div class="search-panel" id="searchPanel">
-  <div class="panel-handle"></div>
-  <div class="panel-title">Hitta din order</div>
-  <div class="panel-sub">ANGE DITT TELEFONNUMMER</div>
-  <div class="input-row">
-    <input class="phone-inp" id="phoneInput" type="tel" placeholder="+46701234567" onkeydown="if(event.key==='Enter')searchOrders()">
-    <button class="search-btn" onclick="searchOrders()">SÖK</button>
-  </div>
-  <div id="searchResults"></div>
-</div>
 
 <script>
   const { createClient } = supabase;
@@ -415,48 +384,7 @@
     document.getElementById('successScreen').classList.add('show');
   }
 
-  // Phone search
-  function openSearch() {
-    document.getElementById('overlay').classList.add('show');
-    document.getElementById('searchPanel').classList.add('show');
-    setTimeout(() => document.getElementById('phoneInput').focus(), 100);
-  }
-  function closeSearch() {
-    document.getElementById('overlay').classList.remove('show');
-    document.getElementById('searchPanel').classList.remove('show');
-  }
 
-  async function searchOrders() {
-    let phone = document.getElementById('phoneInput').value.trim();
-    if (!phone) return;
-    if (!phone.startsWith('+')) phone = '+46' + phone.replace(/^0/, '');
-    const resultsEl = document.getElementById('searchResults');
-    resultsEl.innerHTML = '<div class="result-empty">Söker...</div>';
-
-    const { data: orders } = await _sb.from('orders')
-      .select('id,status,total,created_at,delivery_type,restaurant_name')
-      .eq('customer_phone', phone)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (!orders || orders.length === 0) {
-      resultsEl.innerHTML = '<div class="result-empty">Inga orders hittades för detta nummer.</div>';
-      return;
-    }
-
-    const statusLabels = { new: '⏳ Mottagen', preparing: '🍕 Tillagas', ready: '✅ Redo', done: '✅ Klar' };
-    resultsEl.innerHTML = orders.map(o => `
-      <div class="result-item" onclick="goToOrder('${o.id}')">
-        <div class="result-num">#${o.id.slice(-6).toUpperCase()} — ${o.restaurant_name || ''}</div>
-        <div class="result-info">${statusLabels[o.status] || o.status} · ${o.total.toFixed(0)} kr · ${new Date(o.created_at).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' })}</div>
-      </div>
-    `).join('');
-  }
-
-  function goToOrder(id) {
-    closeSearch();
-    window.location.href = 'crustly-receipt.html?r=' + slug + '&order=' + id;
-  }
 
   init();
 </script>

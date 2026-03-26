@@ -2323,16 +2323,10 @@
         return;
       }
 
-      msg.style.display = 'none';
-      const order = match;
-
-      // Uppdatera URL
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('order', order.id);
-      window.history.replaceState({}, '', newUrl.toString());
-
-      // Visa spårning
-      resumeOrderTracking(order.id);
+      // Redirecta till receipt-sidan
+      msg.textContent = 'Order hittad! Öppnar...';
+      const slug = restaurant ? restaurant.slug : '';
+      window.location.href = 'crustly-receipt.html?r=' + slug + '&order=' + match.id;
 
     } catch(e) {
       msg.textContent = 'Något gick fel, försök igen.';
