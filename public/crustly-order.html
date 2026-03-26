@@ -1627,8 +1627,8 @@
     const isStripeRedirect = params.get('payment_intent') || params.get('stripe_redirect');
     const redirectStatus = params.get('redirect_status');
     if (isStripeRedirect && (redirectStatus === 'succeeded' || !redirectStatus)) {
-      const pending = sessionStorage.getItem('pendingOrder');
-      sessionStorage.removeItem('pendingOrder');
+      const pending = localStorage.getItem('pendingOrder');
+      localStorage.removeItem('pendingOrder');
 
       if (pending) {
         const p = JSON.parse(pending);
@@ -1701,8 +1701,8 @@
       return;
     }
 
-    const pending = JSON.parse(sessionStorage.getItem('pendingOrder') || 'null');
-    sessionStorage.removeItem('pendingOrder');
+    const pending = JSON.parse(localStorage.getItem('pendingOrder') || 'null');
+    localStorage.removeItem('pendingOrder');
 
     const subtotal = pending ? pending.subtotal : 0;
     const total = subtotal + 7;
@@ -2274,7 +2274,7 @@
     btn.textContent = 'BEARBETAR...'; btn.disabled = true;
 
     // Spara kunddata innan redirect (ifall Stripe Link redirectar)
-    sessionStorage.setItem('pendingOrder', JSON.stringify({
+    localStorage.setItem('pendingOrder', JSON.stringify({
       first, phone,
       slug: restaurant ? restaurant.slug : '',
       restaurantId: restaurant ? restaurant.id : '',
