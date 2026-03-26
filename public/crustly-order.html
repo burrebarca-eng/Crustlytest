@@ -2099,13 +2099,13 @@
       .filter(([k]) => k === String(id) || k.startsWith(String(id) + '|'))
       .reduce((s, [, v]) => s + v.qty, 0);
     if (qty === 0) {
-      ctrl.innerHTML = `<button class="btn-add" onclick="addItem('${id}')">+</button>`;
+      ctrl.innerHTML = `<button class="btn-add" onclick="openExtras('${id}')">+</button>`;
     } else {
       ctrl.innerHTML = `
         <div class="qty-control">
           <button class="qty-btn" onclick="removeItem('${id}')">−</button>
           <span class="qty-num">${qty}</span>
-          <button class="qty-btn" onclick="addItem('${id}')">+</button>
+          <button class="qty-btn" onclick="openExtras('${id}')">+</button>
         </div>
       `;
     }
