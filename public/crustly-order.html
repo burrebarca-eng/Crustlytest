@@ -35,12 +35,14 @@
 
   async function upsertCustomer(customerData) {
     try {
-      // Hämta befintlig kund
-      const { data: existing } = await _sb.from('customers')
+      // Hämta befintlig kund (tar senaste om det finns dubletter)
+      const { data: existingRows } = await _sb.from('customers')
         .select('id,name,total_orders,total_spent,loyalty_points')
         .eq('restaurant_id', customerData.restaurant_id)
         .eq('phone', customerData.phone)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const existing = existingRows && existingRows.length > 0 ? existingRows[0] : null;
 
       // Poäng: 1 poäng per 10 kr
       const earnedPoints = Math.floor((customerData.order_total || 0) / 10);

@@ -276,11 +276,13 @@
     // Lojalitetspoäng — försök direkt, retry efter 3s om customer inte finns än
     async function fetchLoyalty() {
       if (!order.customer_phone || !order.restaurant_id) return;
-      const { data } = await _sb.from('customers')
+      const { data: rows } = await _sb.from('customers')
         .select('loyalty_points,total_orders')
         .eq('restaurant_id', order.restaurant_id)
         .eq('phone', order.customer_phone)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const data = rows && rows.length > 0 ? rows[0] : null;
       if (data && data.loyalty_points != null) {
         const pts = data.loyalty_points || 0;
         const next = 50 - (pts % 50);
