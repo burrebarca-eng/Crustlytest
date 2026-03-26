@@ -2293,166 +2293,18 @@
       confirmParams: {
         return_url: window.location.href.split('?')[0] + '?r=' + (restaurant ? restaurant.slug : '') + '&stripe_redirect=1',
         payment_method_data: { billing_details: { name: first } }
-      },
-      redirect: 'if_required'
+      }
     });
 
+    // Om vi når hit finns ett fel (annars har Stripe redirectat)
     if (error) {
       document.getElementById('stripe-errors').textContent = error.message;
       document.getElementById('stripe-errors').style.display = 'block';
       btn.textContent = '💳 Betala →'; btn.disabled = false;
       return;
     }
-    // Betalning lyckades — visa processing-skärm direkt
-    document.getElementById('modalOverlay').classList.remove('show');
-    document.getElementById('checkoutForm').style.display = 'none';
-    const processingEl = document.getElementById('orderProcessing');
-    processingEl.style.display = 'flex';
-    // Animera progress bar
-    setTimeout(() => {
-      const bar = document.getElementById('processingBar');
-      if (bar) bar.style.width = '100%';
-    }, 100);
-
-    const subtotal = Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
-    const serviceFee = 7;
-    const total = subtotal + serviceFee;
-    const crustlyCut = 7;
-
-    const orderData = {
-      restaurantId: restaurant.id || 'demo',
-      restaurantSlug: restaurant.slug,
-      restaurantName: restaurant.name,
-      customer: {
-        name: `${first} ${document.getElementById('custLast').value.trim()}`,
-        phone,
-        address: deliveryType === 'delivery' ? document.getElementById('custAddress').value.trim() : 'PICKUP',
-        notes: document.getElementById('custNotes').value.trim(),
-      },
-      rätter: Object.values(cart).map(v => ({
-        name: v.rätt.name, quantity: v.qty,
-        price: v.rätt.price + v.extraCost,
-        total: (v.rätt.price + v.extraCost) * v.qty,
-        extras: v.extras
-      })),
-      deliveryType,
-      paymentMethod,
-      subtotal,
-      deliveryFee: 0,
-      serviceFee: 7,
-      total,
-      crustlyCut: Math.round(crustlyCut * 100) / 100,
-      status: 'new',
-      createdAt: new Date().toISOString()
-    };
-
-    try {
-      let result = null;
-      if (restaurant.id) {
-        // Spara order i Supabase
-        result = await saveOrderToSupabase({
-          restaurant_id:    restaurant.id,
-          restaurant_name:  restaurant.name,
-          restaurant_slug:  restaurant.slug,
-          customer_name:    orderData.customer.name,
-          customer_phone:   orderData.customer.phone,
-          items:            orderData.rätter,
-          total:            orderData.total,
-          delivery_type:    orderData.deliveryType,
-          delivery_address: orderData.customer.address,
-          payment_method:   orderData.paymentMethod,
-          special_instructions: orderData.customer.notes,
-        });
-
-        if (result && !result.success) console.error('Order-fel:', result.error);
-
-        // Spara kund + födelsedag (fristående — stoppar inte orderflödet vid fel)
-        const bdayMonth = parseInt(document.getElementById('custBdayMonth').value);
-        const bdayDay   = parseInt(document.getElementById('custBdayDay').value);
-        upsertCustomer({
-          restaurant_id:   restaurant.id,
-          restaurant_slug: restaurant.slug,
-          name:            orderData.customer.name,
-          phone:           orderData.customer.phone,
-          birthday_month:  bdayMonth || null,
-          birthday_day:    bdayDay   || null,
-          order_total:     orderData.total || 0,
-        }).catch(e => console.warn('upsertCustomer:', e));
-      }
-
-      const orderNum = 'ORD-' + Math.random().toString(36).substr(2,6).toUpperCase();
-
-      window._orderJustPlaced = true;
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('order', result?.order?.id || orderNum);
-      window.history.replaceState({}, '', newUrl.toString());
-
-      // Bygg orderinfo
-      const dtype = deliveryType === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
-      const ptype = '💳 Kortbetalning / Klarna';
-      document.getElementById('trackingInfo').innerHTML = `
-        <div class="tracking-info-row"><span class="tracking-info-key">Namn</span><span class="tracking-info-val">${first}</span></div>
-        <div class="tracking-info-row"><span class="tracking-info-key">Leveranssätt</span><span class="tracking-info-val">${dtype}</span></div>
-        <div class="tracking-info-row"><span class="tracking-info-key">Betalning</span><span class="tracking-info-val">${ptype}</span></div>
-        <div class="tracking-info-row"><span class="tracking-info-key">Totalt</span><span class="tracking-info-val">${total.toFixed(0)} kr</span></div>
-      `;
-      document.getElementById('trackingNum').textContent = '#' + orderNum;
-
-      // Bygg kvitto
-      buildReceipt({
-        restaurantName: restaurant.name,
-        orderNum: orderNum,
-        items: orderData.rätter,
-        total: total,
-        customerName: orderData.customer.name,
-        customerPhone: orderData.customer.phone,
-        deliveryType: deliveryType,
-        paymentMethod: paymentMethod,
-      });
-
-      // Starta polling
-      if (result && result.order) {
-        startOrderTracking(result.order.id, deliveryType);
-      } else {
-        updateTrackingUI('new', deliveryType);
-      }
-
-      // Dölj processing → visa success
-      document.getElementById('orderProcessing').style.display = 'none';
-      document.getElementById('orderSuccess').classList.add('show');
-
-      // Visa lojalitetspoäng efter 2s (väntar på upsertCustomer)
-      setTimeout(async () => {
-        try {
-          const { data: custRows } = await _sb.from('customers')
-            .select('loyalty_points,total_orders')
-            .eq('restaurant_id', restaurant.id)
-            .eq('phone', orderData.customer.phone)
-            .maybeSingle();
-          if (custRows && custRows.loyalty_points != null) {
-            const pts = custRows.loyalty_points || 0;
-            const orders = custRows.total_orders || 0;
-            const nextReward = 50 - (pts % 50);
-            document.getElementById('loyaltyMsg').style.display = 'block';
-            document.getElementById('loyaltyPoints').textContent = pts + ' p';
-            document.getElementById('loyaltyNext').textContent =
-              nextReward <= 0
-                ? '🎉 Du har en belöning att använda!'
-                : nextReward + ' poäng till nästa belöning  •  ' + orders + ' orders totalt';
-          }
-        } catch(e) { console.warn('lojalitet:', e); }
-      }, 2000);
-
-    } catch (e) {
-      document.getElementById('orderProcessing').style.display = 'none';
-      document.getElementById('modalOverlay').classList.add('show');
-      document.getElementById('checkoutForm').style.display = 'block';
-      const catchBtn = document.getElementById('placeOrderBtn');
-      if (catchBtn) { catchBtn.textContent = '💳 Betala →'; catchBtn.disabled = false; }
-      const errEl = document.getElementById('stripe-errors');
-      if (errEl) { errEl.textContent = 'Något gick fel: ' + e.message; errEl.style.display = 'block'; }
-    }
   }
+
 
 
 
