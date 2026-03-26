@@ -1688,67 +1688,6 @@
     init();
   }
 
-  // Kör Stripe redirect-hantering efter att restaurant laddats
-  document.addEventListener('restaurantLoaded', async () => {
-    const params = new URLSearchParams(window.location.search);
-    const paymentIntent = params.get('payment_intent');
-    const redirectStatus = params.get('redirect_status');
-    const stripeRedirect = params.get('stripe_redirect');
-
-    if (!paymentIntent && !stripeRedirect) return;
-    if (redirectStatus && redirectStatus !== 'succeeded') {
-      alert('Betalningen misslyckades. Försök igen.');
-      return;
-    }
-
-    const pending = JSON.parse(localStorage.getItem('pendingOrder') || 'null');
-    localStorage.removeItem('pendingOrder');
-
-    const subtotal = pending ? pending.subtotal : 0;
-    const total = subtotal + 7;
-    const orderNum = 'ORD-' + Math.random().toString(36).substr(2,6).toUpperCase();
-    const items = pending ? pending.items : [];
-    const firstName = pending ? pending.first : '';
-    const phone = pending ? pending.phone : '';
-    const dType = pending ? pending.deliveryType : 'pickup';
-
-    // Spara order i Supabase
-    if (restaurant && restaurant.id) {
-      try {
-        const result = await saveOrderToSupabase({
-          restaurant_id: restaurant.id,
-          restaurant_name: restaurant.name,
-          restaurant_slug: restaurant.slug,
-          customer_name: firstName,
-          customer_phone: phone,
-          items: items,
-          total: total,
-          delivery_type: dType,
-          payment_method: 'card',
-          special_instructions: '',
-        });
-        if (result && result.order) {
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.set('order', result.order.id);
-          window.history.replaceState({}, '', newUrl.toString());
-          startOrderTracking(result.order.id, dType);
-        }
-      } catch(e) { console.warn('order save error:', e); }
-    }
-
-    // Visa success
-    const dtype = dType === 'delivery' ? '🛵 Leverans' : '🏠 Avhämtning';
-    document.getElementById('trackingNum').textContent = '#' + orderNum;
-    document.getElementById('trackingInfo').innerHTML = `
-      <div class="tracking-info-row"><span class="tracking-info-key">Namn</span><span class="tracking-info-val">${firstName}</span></div>
-      <div class="tracking-info-row"><span class="tracking-info-key">Leveranssätt</span><span class="tracking-info-val">${dtype}</span></div>
-      <div class="tracking-info-row"><span class="tracking-info-key">Betalning</span><span class="tracking-info-val">💳 Kortbetalning</span></div>
-      <div class="tracking-info-row"><span class="tracking-info-key">Totalt</span><span class="tracking-info-val">${total} kr</span></div>
-    `;
-    updateTrackingUI('new', dType);
-    document.getElementById('orderSuccess').classList.add('show');
-  });
-
   async function loadFromSupabase(slug) {
     try {
       const data = await getRestaurantBySlug(slug);
