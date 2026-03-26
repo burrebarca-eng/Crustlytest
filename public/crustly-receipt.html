@@ -197,6 +197,7 @@
       <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--accent);margin-bottom:4px;">DINA LOJALITETSPOÄNG</div>
       <div class="loyalty-pts" id="loyaltyPoints">0 p</div>
       <div class="loyalty-next" id="loyaltyNext"></div>
+      <a id="loyaltyLink" href="crustly-loyalty-customer.html" style="display:none;margin-top:10px;font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:20px;padding:6px 14px;">SE ALLA POÄNG & BELÖNINGAR →</a>
     </div>
 
     <button class="btn-back-menu" id="btnBack">Tillbaka till menyn</button>
@@ -288,6 +289,7 @@
         document.getElementById('loyaltyNext').textContent = next <= 0
           ? '🎉 Du har en belöning att använda!'
           : next + ' poäng till nästa belöning  •  ' + data.total_orders + ' orders totalt';
+        document.getElementById('loyaltyLink').style.display = 'inline-block';
       }
     }, 2000);
 
