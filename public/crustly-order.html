@@ -1324,12 +1324,12 @@
         <div class="cart-title">Din Order</div>
         <div class="cart-count" id="cartCount">0 ITEMS</div>
         <div class="cart-items" id="cartItems">
-          <div class="cart-empty">No rätter yet.<br>Add something delicious!</div>
+          <div class="cart-empty">Inga rätter valda ännu.<br>Lägg till något gott!</div>
         </div>
 
         <!-- AI Upsell -->
         <div class="upsell-box" id="upsellBox">
-          <div class="upsell-label">🤖 SUGGESTED FOR YOU</div>
+          <div class="upsell-label">🤖 FÖRSLAG FÖR DIG</div>
           <div class="upsell-text" id="upsellText"></div>
           <button class="upsell-btn" id="upsellBtn" onclick="acceptUpsell()">Lägg till i order</button>
         </div>
@@ -1680,7 +1680,7 @@
     }
   }
 
-  // Run after DOM + Firebase both ready
+  // Kör efter DOM är redo
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
@@ -1708,8 +1708,8 @@
       restaurant = data;
 
       // Apply branding
-      document.documentElement.style.setProperty('--primary', data.primaryColor || '#1c1812');
-      document.documentElement.style.setProperty('--accent', data.accentColor || '#c8380a');
+      document.documentElement.style.setProperty('--primary', data.primary_color || '#1c1812');
+      document.documentElement.style.setProperty('--accent', data.accent_color || '#c8380a');
       document.title = `Order — ${data.name}`;
 
       // Hero
@@ -1717,8 +1717,8 @@
       document.getElementById('heroDesc').textContent = data.description || '';
       document.getElementById('heroAddress').textContent = data.address || '';
 
-      if (data.logoUrl) {
-        document.getElementById('heroLogo').innerHTML = `<img src="${data.logoUrl}" class="hero-logo" alt="Logo">`;
+      if (data.logo_url) {
+        document.getElementById('heroLogo').innerHTML = `<img src="${data.logo_url}" class="hero-logo" alt="Logo">`;
       } else {
         document.getElementById('heroLogo').innerHTML = `<div class="hero-logo-placeholder">${data.name[0]}</div>`;
       }
@@ -1732,10 +1732,10 @@
       buildMeny(data.menu || []);
 
       // Leverans options
-      const hasLeverans = data.orderOptions?.delivery !== false && !!data.orderOptions?.delivery;
-      const hasPickup = data.orderOptions?.pickup !== false && !!data.orderOptions?.pickup;
-      const showLeverans = !data.orderOptions || hasLeverans;
-      const showAvhämtning = !data.orderOptions || hasPickup;
+      const hasLeverans = !!data.settings?.delivery;
+      const hasPickup = !!data.settings?.pickup;
+      const showLeverans = !data.settings || hasLeverans;
+      const showAvhämtning = !data.settings || hasPickup;
 
       const deliveryTab = document.getElementById('tab-delivery');
       const pickupTab = document.getElementById('tab-pickup');
@@ -2459,15 +2459,16 @@
   function updateTrackingUI(status, dtype) {
     const isDelivery = dtype === 'delivery';
     const steps = [
-      { id: 0, statuses: ['new', 'progress', 'done'], icon: '✅', label: 'Mottagen' },
-      { id: 1, statuses: ['progress', 'done'],         icon: '🍕', label: 'Tillagas' },
-      { id: 2, statuses: ['done'],                     icon: isDelivery ? '🛵' : '🏠', label: isDelivery ? 'Ute för leverans' : 'Redo för avhämtning' },
+      { id: 0, statuses: ['new', 'preparing', 'ready', 'done'], icon: '✅', label: 'Mottagen' },
+      { id: 1, statuses: ['preparing', 'ready', 'done'],        icon: '🍕', label: 'Tillagas' },
+      { id: 2, statuses: ['ready', 'done'],                     icon: isDelivery ? '🛵' : '🏠', label: isDelivery ? 'Ute för leverans' : 'Redo för avhämtning' },
     ];
 
     const msgs = {
-      new:      'Restaurangen har tagit emot din order och börjar snart.',
-      progress: '🍕 Din mat tillagas just nu!',
-      done:     isDelivery ? '🛵 Din order är på väg till dig!' : '🏠 Din order är redo för avhämtning!',
+      new:       'Restaurangen har tagit emot din order och börjar snart.',
+      preparing: '🍕 Din mat tillagas just nu!',
+      ready:     isDelivery ? '🛵 Din order är på väg till dig!' : '🏠 Din order är redo för avhämtning!',
+      done:      isDelivery ? '✅ Levererad! Smaklig måltid!' : '✅ Hämtad! Smaklig måltid!',
     };
 
     document.getElementById('trackingMsg').textContent = msgs[status] || msgs['new'];
@@ -2475,7 +2476,7 @@
     steps.forEach(step => {
       const icon = document.getElementById('step' + step.id);
       const lbl  = document.getElementById('stepLbl' + step.id);
-      const isActive = status === (['new','progress','done'][step.id]);
+      const isActive = status === (['new','preparing','ready'][step.id]);
       const isDone   = step.statuses.includes(status) && !isActive;
 
       icon.className = 'step-icon' + (isActive ? ' active' : isDone ? ' done' : '');
