@@ -6,14 +6,12 @@
 <title>Order — Crustly</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
+<script src="crustly-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://js.stripe.com/v3/"></script>
 <script>
   const { createClient } = supabase;
-  const _sb = createClient(
-    'https://febybrpterkybwzhigte.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
-  );
+  const _sb = createClient(SUPA_URL, SUPA_KEY);
 
   async function getRestaurantBySlug(slug) {
     const { data, error } = await _sb.from('restaurants').select('*').eq('slug', slug).single();
@@ -2319,11 +2317,11 @@
       // Prova både med och utan mellanslag/bindestreck
       const phoneClean = phone.replace(/[\s\-]/g,'');
       const res = await fetch(
-        'https://febybrpterkybwzhigte.supabase.co/rest/v1/orders?restaurant_id=eq.' + restaurantId +
+        SUPA_URL + '/rest/v1/orders?restaurant_id=eq.' + restaurantId +
         '&order=created_at.desc&limit=20',
         { headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + SUPA_KEY
         } }
       );
       const data = await res.json();
@@ -2357,10 +2355,10 @@
   async function resumeOrderTracking(orderId) {
     try {
       const res = await fetch(
-        'https://febybrpterkybwzhigte.supabase.co/rest/v1/orders?id=eq.' + orderId + '&select=*',
+        SUPA_URL + '/rest/v1/orders?id=eq.' + orderId + '&select=*',
         { headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + SUPA_KEY
         }}
       );
       const data = await res.json();

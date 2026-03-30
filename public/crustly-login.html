@@ -203,10 +203,11 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;}
   <a class="back-link" href="index.html">← Tillbaka till startsidan</a>
 </div>
 
+<script src="crustly-config.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
   const { createClient } = supabase;
-  const _sb = createClient('https://febybrpterkybwzhigte.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ');
+  const _sb = createClient(SUPA_URL, SUPA_KEY);
 
   // Om redan inloggad → gå direkt till ägarportalen
   _sb.auth.getSession().then(({ data: { session } }) => {
@@ -224,7 +225,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;}
     if (data?.user) {
       window.location.href = 'crustly-owner.html';
     } else {
-      err(error?.message || 'Fel e-post eller lösenord.');
+      err(friendlyError(error?.message || ''));
       btn.classList.remove('loading'); btn.disabled = false;
     }
   }
@@ -234,7 +235,9 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;}
     const btn   = document.getElementById('resetBtn');
     if (!email) { err2('Ange din e-postadress.'); return; }
     btn.classList.add('loading'); btn.disabled = true;
-    const { error } = await _sb.auth.resetPasswordForEmail(email);
+    const { error } = await _sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/crustly-login.html'
+    });
     btn.classList.remove('loading'); btn.disabled = false;
     if (!error) {
       const s = document.getElementById('sucBox');
@@ -242,7 +245,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;}
       s.classList.add('show');
       document.getElementById('errBox2').classList.remove('show');
     } else {
-      err2(error.message);
+      err2(friendlyError(error.message));
     }
   }
 
@@ -251,6 +254,21 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;}
   function showLogin() { document.getElementById('loginForm').classList.remove('hide'); document.getElementById('resetForm').classList.remove('show'); }
   function err(m)  { const b=document.getElementById('errBox');  b.textContent=m; b.classList.add('show'); }
   function err2(m) { const b=document.getElementById('errBox2'); b.textContent=m; b.classList.add('show'); }
+
+  function friendlyError(msg) {
+    const errors = {
+      'Invalid login credentials':        'Fel e-post eller lösenord.',
+      'Email not confirmed':              'Bekräfta din e-post först.',
+      'User already registered':          'E-postadressen används redan.',
+      'Password should be at least 6':    'Lösenordet måste vara minst 6 tecken.',
+      'Unable to validate email address': 'Ogiltig e-postadress.',
+      'Rate limit exceeded':              'För många försök. Vänta en stund.',
+    };
+    for (const [key, val] of Object.entries(errors)) {
+      if (msg.includes(key)) return val;
+    }
+    return 'Ett fel uppstod. Försök igen.';
+  }
 </script>
 </body>
 </html>
