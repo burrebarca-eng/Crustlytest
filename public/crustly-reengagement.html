@@ -1001,9 +1001,9 @@ Beställ nu 👉 {order_link}
     document.getElementById('statSent').textContent = '24';
     document.getElementById('statWonTillbaka').textContent = '9';
     document.getElementById('statIntäkt').textContent = '€1,840';
-    document.getElementById('statSentChange').textContent = '↑ vs last month';
-    document.getElementById('statWonChange').textContent = '37% win-back rate';
-    document.getElementById('statRevChange').textContent = 'FROM WIN-BACKS';
+    document.getElementById('statSentChange').textContent = '↑ vs förra månaden';
+    document.getElementById('statWonChange').textContent = '37% återaktiverade';
+    document.getElementById('statRevChange').textContent = 'FRÅN ÅTERAKTIVERADE';
   }
 
   function renderCustomerTable(customers) {
@@ -1011,12 +1011,12 @@ Beställ nu 👉 {order_link}
     tbody.innerHTML = customers.map(c => {
       const daysClass = c.daysLapsed >= 30 ? 'days-30' : c.daysLapsed >= 21 ? 'days-21' : 'days-14';
       const statusHtml = c.reengageSent
-        ? `<span class="sms-badge sms-sent">SENT ✓</span>`
-        : `<span class="sms-badge sms-pending">PENDING</span>`;
+        ? `<span class="sms-badge sms-sent">SKICKAT ✓</span>`
+        : `<span class="sms-badge sms-pending">VÄNTAR</span>`;
       const actionHtml = !c.reengageSent
         ? `<div style="display:flex;gap:6px;">
              <button class="btn-ai" onclick="openAiModal(${JSON.stringify(c)})">✨ AI</button>
-             <button class="btn-send" onclick="sendToCustomer('${c.id}','${c.name}')">SEND</button>
+             <button class="btn-send" onclick="sendToCustomer('${c.id}','${c.name}')">SKICKA</button>
            </div>`
         : `<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">—</span>`;
 
@@ -1032,7 +1032,7 @@ Beställ nu 👉 {order_link}
           </td>
           <td style="color:var(--muted);font-size:13px;">${c.restaurantName || '—'}</td>
           <td><span class="mono">${lastOrderLabel}</span></td>
-          <td><span class="days-chip ${daysClass}">${c.daysLapsed} days</span></td>
+          <td><span class="days-chip ${daysClass}">${c.daysLapsed} dagar</span></td>
           <td><span class="mono">${c.orderCount || '—'} orders</span></td>
           <td>${statusHtml}</td>
           <td>${actionHtml}</td>
@@ -1044,30 +1044,30 @@ Beställ nu 👉 {order_link}
   // ============================================================
   // SEND LOGIC
   // ============================================================
-  function sendToCustomer(customerId, customerName) {
+  async function sendToCustomer(customerId, customerName) {
     templates[activeTemplate] = document.getElementById('templateText').value;
     const discount = document.getElementById('discountVal').value;
 
     // Log it
-    addLog(`SMS queued for <strong>${customerName}</strong> — ${discount}% win-back avfer`, 'accent');
+    addLog(`SMS köat för <strong>${customerName}</strong> — ${discount}% återaktiveringserbjudande`, 'accent');
 
     // Spara till Supabase
     if (!customerId.startsWith('d')) {
       await _sb.from('customers').update({
-        reengageSent: true,
-        reengageSentAt: _sb)
-      });
+        reengagement_sent: true,
+        reengagement_sent_at: new Date().toISOString()
+      }).eq('id', customerId);
     }
 
-    alert(`✅ SMS queued for ${customerName}\n\nWhen you connect 46elks or Twilio, this sends automatically.`);
+    alert(`✅ SMS köat för ${customerName}\n\nNär du ansluter 46elks skickas detta automatiskt.`);
     loadKunder();
   }
 
   function sendToAll() {
     const pending = DEMO_CUSTOMERS.filter(c => !c.reengageSent);
-    pending.forEach(c => addLog(`SMS queued for <strong>${c.name}</strong>`, 'accent'));
-    addLog(`Bulk send complete — <strong>${pending.length} SMS</strong> queued`, 'green');
-    alert(`✅ ${pending.length} SMS queued!\n\nConnect your SMS-leverantör to send for real.`);
+    pending.forEach(c => addLog(`SMS köat för <strong>${c.name}</strong>`, 'accent'));
+    addLog(`Massskickning klar — <strong>${pending.length} SMS</strong> köade`, 'green');
+    alert(`✅ ${pending.length} SMS köade!\n\nAnslut din SMS-leverantör för att skicka på riktigt.`);
   }
 
   async function addTestCustomer() {
@@ -1075,19 +1075,17 @@ Beställ nu 👉 {order_link}
     lastOrder.setDate(lastOrder.getDate() - 17);
 
     const testCustomer = {
-      name: 'Test Customer',
+      name: 'Testkund',
       phone: '+46 70 000 00 00',
-      restaurantName: 'Pizza Roma',
-      restaurantSlug: 'pizza-roma',
-      lastOrderAt: _sb),
-      orderCount: 3,
-      reengageSent: false,
-      createdAt: _sb)
+      last_order_at: new Date(Date.now() - 17*86400000).toISOString(),
+      order_count: 3,
+      reengagement_sent: false,
+      created_at: new Date().toISOString()
     };
 
     try {
-      await _sb.from('customers').insert(testCustomer);
-      addLog(`Test customer added (ID: ${ref.id.slice(0,8)}...)`, 'blue');
+      const { data } = await _sb.from('customers').insert(testCustomer).select().single();
+      addLog(`Testkund tillagd (ID: ${data?.id?.slice(0,8)||'—'}...)`, 'blue');
       loadKunder();
     } catch(e) {
       addLog('Visar demo-data', 'muted');
@@ -1099,11 +1097,11 @@ Beställ nu 👉 {order_link}
   // ============================================================
   async function runCheck() {
     const days = parseInt(document.getElementById('daysVal').textContent);
-    addLog(`Running re-engagement check — looking for customers inactive ${days}+ days...`, 'blue');
+    addLog(`Kör återaktiveringskontroll — söker kunder inaktiva ${days}+ dagar...`, 'blue');
 
     setTimeout(() => {
       const count = DEMO_CUSTOMERS.filter(c => !c.reengageSent && c.daysLapsed >= days).length;
-      addLog(`Check complete — <strong>${count} customers</strong> qualify for re-engagement SMS today`, count > 0 ? 'accent' : 'muted');
+      addLog(`Kontroll klar — <strong>${count} kunder</strong> kvalificerar för återaktiverings-SMS idag`, count > 0 ? 'accent' : 'muted');
     }, 800);
   }
 
@@ -1274,17 +1272,17 @@ Respond ONLY with a JSON array av 3 strings, no other text. Example:
 
     btn.disabled = false;
     spinner.style.display = 'none';
-    btnText.textContent = '↻ REGENERATE';
+    btnText.textContent = '↻ GENERERA IGEN';
   }
 
   function renderVariants(variants) {
-    const labels = ['FRIENDLY & CASUAL', 'CREATES URGENCY', 'MAKES THEM FEEL SPECIAL'];
+    const labels = ['VÄNLIG & AVSLAPPNAD', 'SKAPAR URGENCY', 'GER ETT SPECIELLT ERBJUDANDE'];
     const el = document.getElementById('aiVariants');
 
     el.innerHTML = variants.map((text, i) => `
       <div class="ai-variant" onclick="selectVariant(${i}, this)" data-text="${text.replace(/"/g,'&quot;')}">
         <div class="ai-variant-label">
-          <span>OPTION ${i+1} · ${labels[i] || 'VARIANT'}</span>
+          <span>ALTERNATIV ${i+1} · ${labels[i] || 'VARIANT'}</span>
           <div class="ai-select-indicator">${i === 0 ? '✓' : ''}</div>
         </div>
         <div class="ai-variant-text">${text}</div>

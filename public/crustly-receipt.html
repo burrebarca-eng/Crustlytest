@@ -265,7 +265,7 @@
       <div class="tracking-info-row"><span class="tracking-info-key">Namn</span><span class="tracking-info-val">${order.customer_name || '—'}</span></div>
       <div class="tracking-info-row"><span class="tracking-info-key">Leveranssätt</span><span class="tracking-info-val">${isDelivery ? '🛵 Leverans' : '🏠 Avhämtning'}</span></div>
       <div class="tracking-info-row"><span class="tracking-info-key">Betalning</span><span class="tracking-info-val">💳 Kortbetalning / Klarna</span></div>
-      <div class="tracking-info-row"><span class="tracking-info-key">Totalt</span><span class="tracking-info-val">${order.total.toFixed(0)} kr</span></div>
+      <div class="tracking-info-row"><span class="tracking-info-key">Totalt</span><span class="tracking-info-val">${(order.total || 0).toFixed(0)} kr</span></div>
     `;
 
     // Bygg kvitto
@@ -340,7 +340,7 @@
         `).join('')}
         <hr class="divider">
         <div class="tot-row"><span>Serviceavgift</span><span>7 kr</span></div>
-        <div class="tot-row grand"><span>Totalt</span><span>${order.total.toFixed(0)} kr</span></div>
+        <div class="tot-row grand"><span>Totalt</span><span>${(order.total || 0).toFixed(0)} kr</span></div>
         <div class="vat-row"><span>varav moms 12%</span><span>${vat} kr</span></div>
         <div class="meta-grid">
           <div><div class="meta-key">Kund</div><div class="meta-val">${order.customer_name || '—'}</div></div>

@@ -480,7 +480,7 @@ function renderTable(custs) {
     const bday=`${String(c.birthdayDay).padStart(2,'0')}/${String(c.birthdayMonth).padStart(2,'0')}`;
     return `<tr>
       <td><div class="cust-name">${c.name}</div><div class="cust-phone">${c.phone}</div></td>
-      <td style="font-size:13px;color:var(--mt)">${c.restaurantName||'—'}</td>
+      <td style="font-size:13px;color:var(--mt)">${c.restaurant_name||c.restaurantName||'—'}</td>
       <td><span style="font-family:var(--fm);font-size:13px">🎂 ${bday}</span></td>
       <td><span class="days-badge ${dc}">${dl}</span></td>
       <td>${st}</td>
@@ -489,7 +489,7 @@ function renderTable(custs) {
   }).join('');
 }
 
-function sendNow(id,name) {
+async function sendNow(id,name) {
   addLog(`Födelsdags-SMS köat för <strong>${name}</strong> — ${document.getElementById('discountVal').value}% rabatt`,'#c8920a');
   if(id&&!id.startsWith('d')) {
     await window.__sb.markSmsSent(id);
@@ -506,7 +506,7 @@ async function runCheck() {
 
 async function addTestCustomer() {
   const d=new Date(); d.setDate(d.getDate()+7);
-  const tc={name:'Testkund',phone:'+46 70 000 00 00',restaurantSlug:'pizza-roma',restaurantName:'Pizza Roma',birthdayDay:d.getDate(),birthdayMonth:d.getMonth()+1,smsSent:false};
+  const tc={name:'Testkund',phone:'+46 70 000 00 00',birthday_day:d.getDate(),birthday_month:d.getMonth()+1,sms_sent:false};
   try {
     const { data, error } = await _sb.from('customers').insert({...tc}).select().single();
     addLog(`Testkund tillagd — födelsedag om 7 dagar`,'#3db870');

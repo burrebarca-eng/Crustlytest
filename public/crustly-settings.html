@@ -145,12 +145,12 @@
 
 <div class="header">
   <div class="logo">CRUSTLY</div>
-  <a class="back-btn" href="index.html">← BACK</a>
+  <a class="back-btn" href="index.html">← TILLBAKA</a>
 </div>
 
 <div class="main">
-  <div class="page-title">SETTINGS</div>
-  <div class="page-sub">API KEYS · INTEGRATIONS · CONFIGURATION</div>
+  <div class="page-title">INSTÄLLNINGAR</div>
+  <div class="page-sub">API-NYCKLAR · INTEGRATIONER · KONFIGURATION</div>
 
   <div class="section-label">CLAUDE AI</div>
 
@@ -182,7 +182,7 @@
 
   <div class="card" style="animation-delay:0.1s;">
     <div class="card-title">BERÄKNAD KOSTNAD</div>
-    <div class="card-desc">CLAUDE SONNET 4 · CURRENT PRICING</div>
+    <div class="card-desc">CLAUDE SONNET 4 · AKTUELLA PRISER</div>
     <div class="cost-row"><div class="cost-label">Generate 3 SMS variants (1 customer)</div><div class="cost-val">~$0.001</div></div>
     <div class="cost-row"><div class="cost-label">100 customers per month</div><div class="cost-val">~$0.10</div></div>
     <div class="cost-row"><div class="cost-label">500 customers per month</div><div class="cost-val">~$0.50</div></div>
@@ -247,8 +247,8 @@
 
   function saveKey() {
     const val = document.getElementById('apiKeyInput').value.trim();
-    if (!val) { setStatus('err', 'NO KEY ENTERED'); return; }
-    if (!val.startsWith('sk-ant-')) { setStatus('err', 'INVALID FORMAT — SHOULD START WITH sk-ant-'); return; }
+    if (!val) { setStatus('err', 'INGEN NYCKEL ANGIVEN'); return; }
+    if (!val.startsWith('sk-ant-')) { setStatus('err', 'OGILTIGT FORMAT — MÅSTE BÖRJA MED sk-ant-'); return; }
     localStorage.setItem(STORAGE_KEY, val);
     setStatus('ok', 'KEY SPARAD · ' + maskKey(val));
     document.getElementById('testResult').textContent = '';
@@ -262,7 +262,7 @@
   }
 
   function clearKey() {
-    if (!confirm('Ta bort saved API key?')) return;
+    if (!confirm('Ta bort sparad API-nyckel?')) return;
     localStorage.removeItem(STORAGE_KEY);
     document.getElementById('apiKeyInput').value = '';
     document.getElementById('apiKeyInput').classList.remove('valid','invalid');
@@ -272,9 +272,9 @@
 
   async function testKey() {
     const val = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem(STORAGE_KEY);
-    if (!val) { setStatus('err', 'NO KEY — ENTER A KEY FIRST'); return; }
+    if (!val) { setStatus('err', 'INGEN NYCKEL — ANGE EN NYCKEL FÖRST'); return; }
 
-    setStatus('checking', 'TESTING KEY...');
+    setStatus('checking', 'TESTAR NYCKEL...');
     document.getElementById('testResult').textContent = '';
 
     try {
@@ -290,9 +290,9 @@
 
       const data = await res.json();
       if (data.content?.[0]?.text) {
-        setStatus('ok', 'KEY VALID ✓ · CLAUDE IS CONNECTED');
+        setStatus('ok', 'NYCKEL GILTIG ✓ · CLAUDE ANSLUTEN');
         document.getElementById('testResult').style.color = 'var(--green)';
-        document.getElementById('testResult').textContent = '✓ Working';
+        document.getElementById('testResult').textContent = '✓ Fungerar';
       } else if (data.error) {
         setStatus('err', 'ERROR: ' + data.error.message?.slice(0,50));
         document.getElementById('testResult').style.color = 'var(--red)';
@@ -300,7 +300,7 @@
       }
     } catch(e) {
       // CORS will block this from browser — that's expected
-      setStatus('ok', 'KEY FORMAT VALID · CORS BLOCKS DIRECT TEST (NORMAL)');
+      setStatus('ok', 'NYCKELFORMAT GILTIGT · CORS BLOCKERAR DIREKT TEST (NORMALT)');
       document.getElementById('testResult').style.color = 'var(--orange)';
       document.getElementById('testResult').textContent = 'ℹ️ CORS expected in browser';
     }
@@ -320,11 +320,11 @@
   function saveElks() {
     const user = document.getElementById('elksUser').value.trim();
     const pass = document.getElementById('elksPass').value.trim();
-    if (!user || !pass) { document.getElementById('elksStatus').textContent = '✗ Enter both username and password'; return; }
+    if (!user || !pass) { document.getElementById('elksStatus').textContent = '✗ Ange både användarnamn och lösenord'; return; }
     localStorage.setItem(ELKS_USER_KEY, user);
     localStorage.setItem(ELKS_PASS_KEY, pass);
     document.getElementById('elksStatus').style.color = 'var(--green)';
-    document.getElementById('elksStatus').textContent = '✓ Credentials saved';
+    document.getElementById('elksStatus').textContent = '✓ Inloggningsuppgifter sparade';
 
     const btn = event.target;
     btn.textContent = 'SPARAD ✓';
