@@ -104,7 +104,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);overflow:hidden;
 /* Status badges */
 .badge{font-family:var(--fm);font-size:8px;letter-spacing:1.5px;padding:3px 8px;border-radius:4px;white-space:nowrap;}
 .badge-new{background:var(--odim);color:var(--orange);}
-.badge-progress{background:var(--ydim);color:var(--yellow);}
+.badge-preparing{background:var(--ydim);color:var(--yellow);}
 .badge-done{background:var(--gdim);color:var(--green);}
 .badge-cancelled{background:var(--rdim);color:var(--red);}
 
@@ -327,14 +327,14 @@ const DEMO = {
     openHours:'11:00–22:00',
   },
   orders: [
-    { id:'o1', num:'#1042', rätter:[{name:'Margherita',qty:2,price:139},{name:'Läsk',qty:2,price:29}], total:336, customerName:'Anna Svensson', type:'delivery', status:'new', createdAt:new Date(Date.now()-8*60000) },
-    { id:'o2', num:'#1041', rätter:[{name:'Pepperoni',qty:1,price:159},{name:'Vitlöksbröd',qty:1,price:49}], total:208, customerName:'Erik Johansson', type:'pickup', status:'progress', createdAt:new Date(Date.now()-22*60000) },
-    { id:'o3', num:'#1040', rätter:[{name:'Quattro Stagioni',qty:1,price:169}], total:169, customerName:'Maria Lindqvist', type:'delivery', status:'done', createdAt:new Date(Date.now()-45*60000) },
-    { id:'o4', num:'#1039', rätter:[{name:'Margherita',qty:1,price:139},{name:'Tiramisu',qty:2,price:59}], total:257, customerName:'Johan Berg', type:'pickup', status:'done', createdAt:new Date(Date.now()-90*60000) },
-    { id:'o5', num:'#1038', rätter:[{name:'Pepperoni',qty:2,price:159},{name:'Läsk',qty:3,price:29}], total:405, customerName:'Sara Nilsson', type:'delivery', status:'done', createdAt:new Date(Date.now()-130*60000) },
-    { id:'o6', num:'#1037', rätter:[{name:'Quattro Stagioni',qty:2,price:169},{name:'Vitlöksbröd',qty:2,price:49}], total:436, customerName:'Lars Persson', type:'delivery', status:'done', createdAt:new Date(Date.now()-200*60000) },
-    { id:'o7', num:'#1036', rätter:[{name:'Margherita',qty:3,price:139}], total:417, customerName:'Karin Svensson', type:'pickup', status:'done', createdAt:new Date(Date.now()-270*60000) },
-    { id:'o8', num:'#1035', rätter:[{name:'Pepperoni',qty:1,price:159},{name:'Tiramisu',qty:1,price:59}], total:218, customerName:'Mikael Berg', type:'delivery', status:'cancelled', createdAt:new Date(Date.now()-320*60000) },
+    { id:'o1', num:'#1042', items:[{name:'Margherita',qty:2,price:139},{name:'Läsk',qty:2,price:29}], total:336, customer_name:'Anna Svensson', delivery_type:'delivery', status:'new', created_at:new Date(Date.now()-8*60000) },
+    { id:'o2', num:'#1041', items:[{name:'Pepperoni',qty:1,price:159},{name:'Vitlöksbröd',qty:1,price:49}], total:208, customer_name:'Erik Johansson', delivery_type:'pickup', status:'preparing', created_at:new Date(Date.now()-22*60000) },
+    { id:'o3', num:'#1040', items:[{name:'Quattro Stagioni',qty:1,price:169}], total:169, customer_name:'Maria Lindqvist', delivery_type:'delivery', status:'done', created_at:new Date(Date.now()-45*60000) },
+    { id:'o4', num:'#1039', items:[{name:'Margherita',qty:1,price:139},{name:'Tiramisu',qty:2,price:59}], total:257, customer_name:'Johan Berg', delivery_type:'pickup', status:'done', created_at:new Date(Date.now()-90*60000) },
+    { id:'o5', num:'#1038', items:[{name:'Pepperoni',qty:2,price:159},{name:'Läsk',qty:3,price:29}], total:405, customer_name:'Sara Nilsson', delivery_type:'delivery', status:'done', created_at:new Date(Date.now()-130*60000) },
+    { id:'o6', num:'#1037', items:[{name:'Quattro Stagioni',qty:2,price:169},{name:'Vitlöksbröd',qty:2,price:49}], total:436, customer_name:'Lars Persson', delivery_type:'delivery', status:'done', created_at:new Date(Date.now()-200*60000) },
+    { id:'o7', num:'#1036', items:[{name:'Margherita',qty:3,price:139}], total:417, customer_name:'Karin Svensson', delivery_type:'pickup', status:'done', created_at:new Date(Date.now()-270*60000) },
+    { id:'o8', num:'#1035', items:[{name:'Pepperoni',qty:1,price:159},{name:'Tiramisu',qty:1,price:59}], total:218, customer_name:'Mikael Berg', delivery_type:'delivery', status:'cancelled', created_at:new Date(Date.now()-320*60000) },
   ],
   customers: [
     { id:'c1', name:'Anna Svensson', phone:'+46 70 123 45 67', email:'anna@email.se', orderCount:12, totalSpent:2880, lastOrder:new Date(Date.now()-8*60000) },
@@ -589,11 +589,11 @@ function renderÖversikt() {
 // ============================================================
 function renderOrders(filter='all') {
   const filtered = filter==='all' ? orders : orders.filter(o=>o.status===filter);
-  const counts = {all:orders.length, new:orders.filter(o=>o.status==='new').length, progress:orders.filter(o=>o.status==='progress').length, done:orders.filter(o=>o.status==='done').length};
+  const counts = {all:orders.length, new:orders.filter(o=>o.status==='new').length, preparing:orders.filter(o=>o.status==='preparing').length, done:orders.filter(o=>o.status==='done').length};
 
   return `
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-    ${[['all','ALLA',counts.all],['new','NYA',counts.new],['progress','PÅGÅENDE',counts.progress],['done','KLARA',counts.done]].map(([k,l,n])=>`
+    ${[['all','ALLA',counts.all],['new','NYA',counts.new],['preparing','PÅGÅENDE',counts.preparing],['done','KLARA',counts.done]].map(([k,l,n])=>`
       <button onclick="filterOrders('${k}')" style="font-family:var(--fm);font-size:9px;letter-spacing:2px;padding:7px 14px;border-radius:6px;cursor:pointer;border:1.5px solid ${filter===k?'var(--orange)':'var(--bdr)'};background:${filter===k?'var(--odim)':'none'};color:${filter===k?'var(--orange)':'var(--mt)'};">${l} (${n})</button>
     `).join('')}
   </div>
@@ -606,7 +606,7 @@ function renderOrders(filter='all') {
             <td><span class="mono orange">${o.id.slice(0,8).toUpperCase()}</span></td>
             <td style="max-width:180px;font-size:12px;color:var(--tx2);">${(o.items||[]).map(i=>`${i.quantity||i.qty||1}× ${i.name}`).join(', ')}</td>
             <td>${o.customer_name||'—'}</td>
-            <td><span style="font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--mt);">${o.type==='delivery'?'🚴 LEVERANS':'🏠 AVHÄMTNING'}</span></td>
+            <td><span style="font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--mt);">${o.delivery_type==='delivery'?'🚴 LEVERANS':'🏠 AVHÄMTNING'}</span></td>
             <td><span class="mono">${sek(o.total||0)}</span></td>
             <td><span style="font-family:var(--fm);font-size:10px;color:var(--mt);">${timeAgo(o.created_at)}</span></td>
             <td>${statusBadge(o.status)}</td>
@@ -1468,7 +1468,7 @@ function isThisMonth(d) {
 }
 
 function statusBadge(s) {
-  const map = { new:'badge-new', progress:'badge-progress', done:'badge-done', cancancelled:'badge-cancelled' };
+  const map = { new:'badge-new', preparing:'badge-preparing', ready:'badge-preparing', done:'badge-done', cancelled:'badge-cancelled' };
   return `<span class="badge ${map[s]||''}">${s||'—'}</span>`;
 }
 </script>
