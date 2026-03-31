@@ -63,6 +63,7 @@ window.__sb = { getAllRestaurants, getAllOrders };
   --red:#e84040;--rdim:#e8404018;
   --yellow:#f0b429;--ydim:#f0b42918;
   --blue:#4e9eff;--bdim:#4e9eff18;
+  --purple:#8b5cf6;--pdim:#8b5cf618;
   --tx:#f0ece0;--tx2:#c4bfb0;--mt:#6a6458;
   --fd:'Bebas Neue',sans-serif;--fm:'DM Mono',monospace;--fb:'DM Sans',sans-serif;
 }
@@ -109,12 +110,14 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;fle
 .kpi.g::before{background:var(--green);}
 .kpi.y::before{background:var(--yellow);}
 .kpi.b::before{background:var(--blue);}
+.kpi.p::before{background:var(--purple);}
 .kpi-lbl{font-family:var(--fm);font-size:8px;letter-spacing:2.5px;color:var(--mt);margin-bottom:8px;}
 .kpi-val{font-family:var(--fd);font-size:36px;line-height:1;}
 .kpi-val.o{color:var(--orange);}
 .kpi-val.g{color:var(--green);}
 .kpi-val.y{color:var(--yellow);}
 .kpi-val.b{color:var(--blue);}
+.kpi-val.p{color:var(--purple);}
 .kpi-sub{font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:5px;}
 .up{color:var(--green);}
 
@@ -242,7 +245,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;fle
   <div class="content">
 
     <!-- KPIs -->
-    <div class="kpi-strip">
+    <div class="kpi-strip" style="grid-template-columns:repeat(5,1fr);">
       <div class="kpi o">
         <div class="kpi-lbl">DIN INTÄKT — MÅNADEN</div>
         <div class="kpi-val o" id="kpiCut">0 kr</div>
@@ -262,6 +265,11 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;fle
         <div class="kpi-lbl">ORDERS IDAG</div>
         <div class="kpi-val b" id="kpiToday">0</div>
         <div class="kpi-sub" id="kpiTodaySub">IDAG</div>
+      </div>
+      <div class="kpi p">
+        <div class="kpi-lbl">STRIPE AVGIFTER — MÅNADEN</div>
+        <div class="kpi-val p" id="kpiStripeFee">—</div>
+        <div class="kpi-sub" id="kpiStripeSub">LADDAR...</div>
       </div>
     </div>
 
@@ -292,6 +300,46 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;fle
         <div class="card">
           <div class="card-head"><div class="card-title">ORDERTYPER</div></div>
           <div class="card-body" id="breakdown"><div class="empty">INGEN DATA ÄN</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STRIPE AVGIFTER -->
+    <div style="margin-bottom:14px;">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">💳 STRIPE AVGIFTER</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <select id="stripeMonthSel" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--mt);outline:none;cursor:pointer;" onchange="loadStripeData()"></select>
+            <div class="card-tag" id="stripeTag">DENNA MÅNAD</div>
+          </div>
+        </div>
+        <div id="stripeContent">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--bdr);">
+            <div style="padding:16px 20px;border-right:1px solid var(--bdr);">
+              <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">TOTALA AVGIFTER</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:#8b5cf6;" id="stripeTotalFee">—</div>
+              <div style="font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:4px;" id="stripeFeeAvg">AV TOTAL VOLYM</div>
+            </div>
+            <div style="padding:16px 20px;border-right:1px solid var(--bdr);">
+              <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">VOLYM VIA STRIPE</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--tx);" id="stripeVolume">—</div>
+              <div style="font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:4px;" id="stripeTxCount">— TRANSAKTIONER</div>
+            </div>
+            <div style="padding:16px 20px;">
+              <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">NETTO EFTER AVGIFTER</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--green);" id="stripeNet">—</div>
+              <div style="font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:4px;" id="stripeNetSub">UTBETALAT TILL KONTO</div>
+            </div>
+          </div>
+          <table class="rtable">
+            <thead><tr>
+              <th>TIDPUNKT</th><th>BESKRIVNING</th><th>BELOPP</th><th>AVGIFT</th><th>NETTO</th><th>AVGIFT %</th>
+            </tr></thead>
+            <tbody id="stripeTxBody">
+              <tr><td colspan="6"><div class="empty">LADDAR STRIPE-DATA...</div></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -533,6 +581,92 @@ async function loadDashboard() {
     render(); status('live');
     document.getElementById('lastUpd').textContent='LIVE · '+new Date().toLocaleTimeString('sv-SE');
   } catch(e) { status('err'); render(); }
+  initStripeMonthSelector();
+  loadStripeData();
+}
+
+// ── STRIPE ───────────────────────────────────────────────
+function initStripeMonthSelector() {
+  const sel = document.getElementById('stripeMonthSel');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const lbl = d.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' });
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+    sel.appendChild(opt);
+  }
+}
+
+async function loadStripeData() {
+  const sel = document.getElementById('stripeMonthSel');
+  const month = sel ? sel.value : null;
+  const query = month ? '?month=' + month : '';
+
+  set('stripeTotalFee', '...');
+  set('stripeVolume', '...');
+  set('stripeNet', '...');
+  set('stripeTxBody', '<tr><td colspan="6"><div class="empty">HÄMTAR STRIPE-DATA...</div></td></tr>');
+
+  try {
+    const res = await fetch('/stripe/fees' + query);
+    const d = await res.json();
+
+    if (d.error) {
+      const msg = d.error === 'Stripe ej konfigurerat'
+        ? 'Stripe API-nyckel ej konfigurerad i Cloudflare Worker-miljön.'
+        : d.error;
+      set('stripeTxBody', `<tr><td colspan="6"><div class="empty">⚠️ ${msg}</div></td></tr>`);
+      set('kpiStripeFee', '—');
+      set('kpiStripeSub', 'STRIPE EJ KONFIGURERAT');
+      return;
+    }
+
+    const fees   = d.total_fees   / 100;
+    const volume = d.total_volume / 100;
+    const net    = d.net_volume   / 100;
+    const feeAvg = volume > 0 ? ((fees / volume) * 100).toFixed(2) : '0';
+
+    set('stripeTotalFee', sek(fees));
+    set('stripeVolume',   sek(volume));
+    set('stripeNet',      sek(net));
+    set('stripeFeeAvg',   feeAvg + '% AV TOTAL VOLYM');
+    set('stripeTxCount',  d.transaction_count + (d.has_more ? '+ ' : ' ') + 'TRANSAKTIONER');
+    set('stripeNetSub',   'NETTO EFTER ' + sek(fees) + ' AVGIFTER');
+    set('kpiStripeFee',   sek(fees));
+    set('kpiStripeSub',   d.transaction_count + ' TX · ' + feeAvg + '% SNITT');
+
+    if (!d.recent || !d.recent.length) {
+      set('stripeTxBody', '<tr><td colspan="6"><div class="empty">INGA STRIPE-TRANSAKTIONER DENNA MÅNAD</div></td></tr>');
+      return;
+    }
+
+    set('stripeTxBody', d.recent.map(t => {
+      const amt  = t.amount / 100;
+      const fee  = t.fee    / 100;
+      const net  = t.net    / 100;
+      const pct  = amt > 0 ? ((fee / amt) * 100).toFixed(2) : '0';
+      const time = new Date(t.created * 1000).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const desc = t.description || t.source || '—';
+      return `<tr>
+        <td><span class="mono" style="font-size:11px;color:var(--mt);">${time}</span></td>
+        <td style="font-size:12px;color:var(--tx2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${desc}</td>
+        <td><span class="mono">${sek(amt)}</span></td>
+        <td><span class="mono" style="color:#8b5cf6;">${sek(fee)}</span></td>
+        <td><span class="mono" style="color:var(--green);">${sek(net)}</span></td>
+        <td><span class="mono" style="font-size:11px;color:var(--mt);">${pct}%</span></td>
+      </tr>`;
+    }).join(''));
+
+  } catch(e) {
+    set('stripeTxBody', '<tr><td colspan="6"><div class="empty">KAN INTE NÅ STRIPE — KONTROLLERA NÄTVERKET</div></td></tr>');
+    set('kpiStripeFee', '—');
+    set('kpiStripeSub', 'FEL VID HÄMTNING');
+  }
 }
 
 // ── MENU IMPORT ──────────────────────────────────────────

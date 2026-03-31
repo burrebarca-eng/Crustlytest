@@ -51,6 +51,9 @@ export default {
     if (path === '/stripe/create-payment-intent' && request.method === 'POST') {
       return handleStripePaymentIntent(request, env);
     }
+    if (path === '/stripe/fees' && request.method === 'GET') {
+      return handleStripeFees(request, env);
+    }
 
     // ── STATIC FILES ───────────────────────────────────────
     try {
@@ -110,6 +113,64 @@ async function handleStripePaymentIntent(request, env) {
     return Response.json({
       clientSecret:    data.client_secret,
       paymentIntentId: data.id
+    }, { headers: corsHeaders });
+
+  } catch(e) {
+    return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ── STRIPE FEES HANDLER ─────────────────────────────────────
+async function handleStripeFees(request, env) {
+  try {
+    if (!env.STRIPE_SECRET_KEY) {
+      return Response.json({ error: 'Stripe ej konfigurerat' }, { status: 400, headers: corsHeaders });
+    }
+
+    const url = new URL(request.url);
+    const now = new Date();
+    // Hämta innevarande månad som standard, eller ?month=YYYY-MM från query
+    const monthParam = url.searchParams.get('month');
+    let start, end;
+    if (monthParam) {
+      const [y, m] = monthParam.split('-').map(Number);
+      start = Math.floor(new Date(y, m - 1, 1).getTime() / 1000);
+      end   = Math.floor(new Date(y, m, 1).getTime() / 1000);
+    } else {
+      start = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
+      end   = Math.floor(new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() / 1000);
+    }
+
+    const res = await fetch(
+      `https://api.stripe.com/v1/balance_transactions?type=charge&limit=100&created[gte]=${start}&created[lt]=${end}`,
+      { headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY } }
+    );
+    const data = await res.json();
+
+    if (!res.ok) {
+      return Response.json({ error: data.error?.message || 'Stripe-fel' }, { status: 400, headers: corsHeaders });
+    }
+
+    const txns = data.data || [];
+    const total_fees   = txns.reduce((s, t) => s + (t.fee || 0), 0);
+    const total_volume = txns.reduce((s, t) => s + (t.amount || 0), 0);
+    const net_volume   = txns.reduce((s, t) => s + (t.net || 0), 0);
+
+    return Response.json({
+      total_fees,        // i ören
+      total_volume,      // i ören
+      net_volume,        // i ören
+      transaction_count: txns.length,
+      has_more: data.has_more || false,
+      recent: txns.slice(0, 15).map(t => ({
+        id: t.id,
+        amount: t.amount,
+        fee: t.fee,
+        net: t.net,
+        description: t.description || '',
+        created: t.created,
+        source: t.source
+      }))
     }, { headers: corsHeaders });
 
   } catch(e) {
