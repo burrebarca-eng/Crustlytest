@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Crustly — Kontrollcenter</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="crustly-config.js"></script>
 <style>
 :root {
   --bg:#0e0d0a; --surf:#161410; --surf2:#1e1c17; --surf3:#252219;
@@ -292,8 +293,8 @@ body::after{content:'';position:fixed;inset:0;
   const lbl = document.getElementById('sbLbl');
   const sub = document.getElementById('sbSub');
   try {
-    const res = await fetch('https://febybrpterkybwzhigte.supabase.co/rest/v1/restaurants?select=id,name&limit=10', {
-      headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ' }
+    const res = await fetch(SUPA_URL + '/rest/v1/restaurants?select=id,name&limit=10', {
+      headers: { 'apikey': SUPA_KEY }
     });
     const data = await res.json();
     if (res.ok) {

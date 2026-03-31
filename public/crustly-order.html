@@ -6,14 +6,12 @@
 <title>Order — Crustly</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
+<script src="crustly-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://js.stripe.com/v3/"></script>
 <script>
   const { createClient } = supabase;
-  const _sb = createClient(
-    'https://febybrpterkybwzhigte.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
-  );
+  const _sb = createClient(SUPA_URL, SUPA_KEY);
 
   async function getRestaurantBySlug(slug) {
     const { data, error } = await _sb.from('restaurants').select('*').eq('slug', slug).single();
@@ -1326,12 +1324,12 @@
         <div class="cart-title">Din Order</div>
         <div class="cart-count" id="cartCount">0 ITEMS</div>
         <div class="cart-items" id="cartItems">
-          <div class="cart-empty">No rätter yet.<br>Add something delicious!</div>
+          <div class="cart-empty">Inga rätter valda ännu.<br>Lägg till något gott!</div>
         </div>
 
         <!-- AI Upsell -->
         <div class="upsell-box" id="upsellBox">
-          <div class="upsell-label">🤖 SUGGESTED FOR YOU</div>
+          <div class="upsell-label">🤖 FÖRSLAG FÖR DIG</div>
           <div class="upsell-text" id="upsellText"></div>
           <button class="upsell-btn" id="upsellBtn" onclick="acceptUpsell()">Lägg till i order</button>
         </div>
@@ -1682,7 +1680,7 @@
     }
   }
 
-  // Run after DOM + Firebase both ready
+  // Kör efter DOM är redo
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
@@ -1710,8 +1708,8 @@
       restaurant = data;
 
       // Apply branding
-      document.documentElement.style.setProperty('--primary', data.primaryColor || '#1c1812');
-      document.documentElement.style.setProperty('--accent', data.accentColor || '#c8380a');
+      document.documentElement.style.setProperty('--primary', data.primary_color || '#1c1812');
+      document.documentElement.style.setProperty('--accent', data.accent_color || '#c8380a');
       document.title = `Order — ${data.name}`;
 
       // Hero
@@ -1719,8 +1717,8 @@
       document.getElementById('heroDesc').textContent = data.description || '';
       document.getElementById('heroAddress').textContent = data.address || '';
 
-      if (data.logoUrl) {
-        document.getElementById('heroLogo').innerHTML = `<img src="${data.logoUrl}" class="hero-logo" alt="Logo">`;
+      if (data.logo_url) {
+        document.getElementById('heroLogo').innerHTML = `<img src="${data.logo_url}" class="hero-logo" alt="Logo">`;
       } else {
         document.getElementById('heroLogo').innerHTML = `<div class="hero-logo-placeholder">${data.name[0]}</div>`;
       }
@@ -1734,10 +1732,10 @@
       buildMeny(data.menu || []);
 
       // Leverans options
-      const hasLeverans = data.orderOptions?.delivery !== false && !!data.orderOptions?.delivery;
-      const hasPickup = data.orderOptions?.pickup !== false && !!data.orderOptions?.pickup;
-      const showLeverans = !data.orderOptions || hasLeverans;
-      const showAvhämtning = !data.orderOptions || hasPickup;
+      const hasLeverans = !!data.settings?.delivery;
+      const hasPickup = !!data.settings?.pickup;
+      const showLeverans = !data.settings || hasLeverans;
+      const showAvhämtning = !data.settings || hasPickup;
 
       const deliveryTab = document.getElementById('tab-delivery');
       const pickupTab = document.getElementById('tab-pickup');
@@ -2319,11 +2317,11 @@
       // Prova både med och utan mellanslag/bindestreck
       const phoneClean = phone.replace(/[\s\-]/g,'');
       const res = await fetch(
-        'https://febybrpterkybwzhigte.supabase.co/rest/v1/orders?restaurant_id=eq.' + restaurantId +
+        SUPA_URL + '/rest/v1/orders?restaurant_id=eq.' + restaurantId +
         '&order=created_at.desc&limit=20',
         { headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + SUPA_KEY
         } }
       );
       const data = await res.json();
@@ -2357,10 +2355,10 @@
   async function resumeOrderTracking(orderId) {
     try {
       const res = await fetch(
-        'https://febybrpterkybwzhigte.supabase.co/rest/v1/orders?id=eq.' + orderId + '&select=*',
+        SUPA_URL + '/rest/v1/orders?id=eq.' + orderId + '&select=*',
         { headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ'
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + SUPA_KEY
         }}
       );
       const data = await res.json();
@@ -2461,15 +2459,16 @@
   function updateTrackingUI(status, dtype) {
     const isDelivery = dtype === 'delivery';
     const steps = [
-      { id: 0, statuses: ['new', 'progress', 'done'], icon: '✅', label: 'Mottagen' },
-      { id: 1, statuses: ['progress', 'done'],         icon: '🍕', label: 'Tillagas' },
-      { id: 2, statuses: ['done'],                     icon: isDelivery ? '🛵' : '🏠', label: isDelivery ? 'Ute för leverans' : 'Redo för avhämtning' },
+      { id: 0, statuses: ['new', 'preparing', 'ready', 'done'], icon: '✅', label: 'Mottagen' },
+      { id: 1, statuses: ['preparing', 'ready', 'done'],        icon: '🍕', label: 'Tillagas' },
+      { id: 2, statuses: ['ready', 'done'],                     icon: isDelivery ? '🛵' : '🏠', label: isDelivery ? 'Ute för leverans' : 'Redo för avhämtning' },
     ];
 
     const msgs = {
-      new:      'Restaurangen har tagit emot din order och börjar snart.',
-      progress: '🍕 Din mat tillagas just nu!',
-      done:     isDelivery ? '🛵 Din order är på väg till dig!' : '🏠 Din order är redo för avhämtning!',
+      new:       'Restaurangen har tagit emot din order och börjar snart.',
+      preparing: '🍕 Din mat tillagas just nu!',
+      ready:     isDelivery ? '🛵 Din order är på väg till dig!' : '🏠 Din order är redo för avhämtning!',
+      done:      isDelivery ? '✅ Levererad! Smaklig måltid!' : '✅ Hämtad! Smaklig måltid!',
     };
 
     document.getElementById('trackingMsg').textContent = msgs[status] || msgs['new'];
@@ -2477,7 +2476,7 @@
     steps.forEach(step => {
       const icon = document.getElementById('step' + step.id);
       const lbl  = document.getElementById('stepLbl' + step.id);
-      const isActive = status === (['new','progress','done'][step.id]);
+      const isActive = status === (['new','preparing','ready'][step.id]);
       const isDone   = step.statuses.includes(status) && !isActive;
 
       icon.className = 'step-icon' + (isActive ? ' active' : isDone ? ' done' : '');

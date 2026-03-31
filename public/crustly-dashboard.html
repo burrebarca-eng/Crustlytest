@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Crustly — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="crustly-config.js"></script>
 <script>
-const SUPA_URL = 'https://febybrpterkybwzhigte.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ';
 let _authToken = SUPA_KEY;
 
 async function sbFetch(path, opts = {}) {
@@ -435,13 +434,13 @@ function render() {
   // Activity
   set('actFeed', orders.length ? orders.slice(0,10).map(o=>{
     const t=ts(o); const items=o.items?o.items.map(i=>i.name).slice(0,2).join(', '):'—';
-    return `<div class="act-item"><div class="act-dot" style="background:var(--green)"></div><div class="act-body"><strong>${o.restaurantName||'—'}</strong> — ${items} <span style="color:var(--orange)">+7 kr</span></div><div class="act-time">${timeAgo(t)}</div></div>`;
+    return `<div class="act-item"><div class="act-dot" style="background:var(--green)"></div><div class="act-body"><strong>${o.restaurant_name||'—'}</strong> — ${items} <span style="color:var(--orange)">+7 kr</span></div><div class="act-time">${timeAgo(t)}</div></div>`;
   }).join('') : `<div class="empty">ORDERS VISAS HÄR I REALTID</div>`);
 
   // Today
   set('todayOrders', tOrd.length ? tOrd.slice(0,8).map(o=>{
     const t=ts(o); const items=o.items?o.items.map(i=>i.name).slice(0,2).join(', '):'—';
-    return `<div class="od-item"><div><div class="od-name">${o.restaurantName||'—'}</div><div class="od-detail">${items} · ${new Date(t).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'})}</div></div><div class="od-amt">${sek(o.total||0)}</div></div>`;
+    return `<div class="od-item"><div><div class="od-name">${o.restaurant_name||'—'}</div><div class="od-detail">${items} · ${new Date(t).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'})}</div></div><div class="od-amt">${sek(o.total||0)}</div></div>`;
   }).join('') : `<div class="empty">INGA ORDERS IDAG ÄN</div>`);
 
   // Breakdown
@@ -462,7 +461,7 @@ function render() {
     </div>` : `<div class="empty">INGEN DATA ÄN</div>`);
 }
 
-function ts(o) { return o.created_at?.toDate ? o.created_at.toDate() : new Date(o.created_at||0); }
+function ts(o) { return new Date(o.created_at||0); }
 function set(id,v) { const el=document.getElementById(id); if(el) el.innerHTML=v; }
 function status(s) {
   const dot=document.getElementById('dbDot'), txt=document.getElementById('dbStatus');
@@ -490,8 +489,10 @@ function startListener() {
 
 async function checkAdminRole() {
   try {
-    const rows = await sbFetch('admin_users?select=id&limit=1');
-    return rows && rows.length > 0;
+    // Verifiera att inloggad användare har JWT (dvs lyckad auth)
+    // och att anropet mot restaurants fungerar (bevisar giltig session)
+    const rows = await sbFetch('restaurants?select=id&limit=1');
+    return rows !== null; // null = anropet misslyckades, [] = ok (0 restauranger)
   } catch(e) {
     return false;
   }

@@ -6,10 +6,11 @@
 <title>Crustly — Add Restaurant</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+<script src="crustly-config.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script>
   const { createClient } = supabase;
-  const _sb = createClient('https://febybrpterkybwzhigte.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlYnlicnB0ZXJreWJ3emhpZ3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjU0ODUsImV4cCI6MjA4ODQwMTQ4NX0.XFQV0sct_vspo-8uc5XQOFN1QqpDOjm-4dTc2I1DObQ');
+  const _sb = createClient(SUPA_URL, SUPA_KEY);
 
   async function createRestaurantUser(email, password, restaurantData) {
     // 1. Skapa auth-användare i Supabase
@@ -1074,7 +1075,7 @@
 
   let currentSteg = 1;
   let menuItems = [];
-  let currentCat = 'ALL';
+  let currentCat = 'ALLA';
   let savedRestaurantId = null;
 
   // Supabase status
@@ -1251,7 +1252,7 @@
     renderMeny();
   }
 
-  // Spara to Firebase
+  // Spara till Supabase
   async function saveRestaurant() {
     const saveBtn = document.getElementById('saveBtn');
     saveBtn.disabled = true;
