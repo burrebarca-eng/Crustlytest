@@ -988,11 +988,11 @@ Beställ nu 👉 {order_link}
   }
 
   const DEMO_CUSTOMERS = [
-    { id: 'd1', name: 'Anna Svensson', phone: '+46 70 123 45 67', restaurantName: 'Pizza Roma', daysLapsed: 31, orderCount: 8, reengageSent: false },
-    { id: 'd2', name: 'Erik Johansson', phone: '+46 73 234 56 78', restaurantName: 'Bella Napoli', daysLapsed: 22, orderCount: 5, reengageSent: true },
-    { id: 'd3', name: 'Maria Lindqvist', phone: '+46 76 345 67 89', restaurantName: 'Pizza Roma', daysLapsed: 18, orderCount: 3, reengageSent: false },
-    { id: 'd4', name: 'Johan Berg', phone: '+46 70 456 78 90', restaurantName: 'Fuoco & Farina', daysLapsed: 16, orderCount: 12, reengageSent: false },
-    { id: 'd5', name: 'Sara Nilsson', phone: '+46 73 567 89 01', restaurantName: 'Bella Napoli', daysLapsed: 14, orderCount: 2, reengageSent: false },
+    { id: 'd1', name: 'Anna Svensson', phone: '+46 70 123 45 67', restaurant_name: 'Pizza Roma', daysLapsed: 31, orderCount: 8, reengagement_sent: false },
+    { id: 'd2', name: 'Erik Johansson', phone: '+46 73 234 56 78', restaurant_name: 'Bella Napoli', daysLapsed: 22, orderCount: 5, reengagement_sent: true },
+    { id: 'd3', name: 'Maria Lindqvist', phone: '+46 76 345 67 89', restaurant_name: 'Pizza Roma', daysLapsed: 18, orderCount: 3, reengagement_sent: false },
+    { id: 'd4', name: 'Johan Berg', phone: '+46 70 456 78 90', restaurant_name: 'Fuoco & Farina', daysLapsed: 16, orderCount: 12, reengagement_sent: false },
+    { id: 'd5', name: 'Sara Nilsson', phone: '+46 73 567 89 01', restaurant_name: 'Bella Napoli', daysLapsed: 14, orderCount: 2, reengagement_sent: false },
   ];
 
   function renderDemoKunder() {
@@ -1030,7 +1030,7 @@ Beställ nu 👉 {order_link}
             <div class="cust-name">${c.name}</div>
             <div class="cust-phone">${c.phone}</div>
           </td>
-          <td style="color:var(--muted);font-size:13px;">${c.restaurantName || '—'}</td>
+          <td style="color:var(--muted);font-size:13px;">${c.restaurant_name || c.restaurantName || '—'}</td>
           <td><span class="mono">${lastOrderLabel}</span></td>
           <td><span class="days-chip ${daysClass}">${c.daysLapsed} dagar</span></td>
           <td><span class="mono">${c.orderCount || '—'} orders</span></td>
@@ -1199,7 +1199,7 @@ Beställ nu 👉 {order_link}
 
     btn.disabled = true;
     spinner.style.display = 'block';
-    btnText.textContent = 'GENERATING...';
+    btnText.textContent = 'GENERERAR...';
     variantsEl.innerHTML = '';
     document.getElementById('aiRedigeraArea').style.display = 'none';
     document.getElementById('aiSendBtn').style.display = 'none';
@@ -1208,7 +1208,7 @@ Beställ nu 👉 {order_link}
     const discount = document.getElementById('discountVal').value || '15';
     const days = document.getElementById('daysVal').textContent || '14';
 
-    const prompt = `You are writing re-engagement SMS messages for a pizza restaurant called "${c.restaurantName || 'the restaurant'}".
+    const prompt = `You are writing re-engagement SMS messages for a pizza restaurant called "${c.restaurant_name || c.restaurantName || 'restaurangen'}".
 
 Customer details:
 - Name: ${c.name}
@@ -1222,7 +1222,7 @@ Each should feel personal, warm, and different in tone:
 - Option 2: Creates urgency  
 - Option 3: Flattering / makes them feel special
 
-Include a ${discount}% discount avfer in each.
+Include a ${discount}% discount offer in each.
 Write in Swedish.
 The ordering link is: crustly.app/${(c.restaurantName||'restaurant').toLowerCase().replace(/\s+/g,'-')}
 
@@ -1249,6 +1249,9 @@ Respond ONLY with a JSON array av 3 strings, no other text. Example:
       });
 
       const data = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Claude API-fel (' + response.status + ')');
+      }
       const raw = data.content?.[0]?.text || '[]';
       let variants;
       try {
@@ -1265,7 +1268,7 @@ Respond ONLY with a JSON array av 3 strings, no other text. Example:
       // Fallback demo variants if API not connected
       const name = c.name.split(' ')[0];
       renderVariants([
-        `Hej ${name}! Vi saknar dig på ${c.restaurantName} 🍕 Det är ${c.daysLapsed} dagar sedan sist — kom tillbaka med ${discount}% rabatt! crustly.app`,
+        `Hej ${name}! Vi saknar dig på ${c.restaurant_name || c.restaurantName || 'restaurangen'} 🍕 Det är ${c.daysLapsed} dagar sedan sist — kom tillbaka med ${discount}% rabatt! crustly.app`,
         `${name}, ${discount}% rabatt väntar dig! Erbjudandet gäller bara 48h. Beställ nu 👉 crustly.app`,
         `Hej ${name}! Du är en av våra bästa kunder — därför får du ${discount}% på nästa order. Välkommen åter! 🍕`
       ]);
