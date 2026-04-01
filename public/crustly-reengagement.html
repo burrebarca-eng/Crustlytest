@@ -637,7 +637,7 @@
     </div>
     <div class="stat-card">
       <div class="stat-label">ÅTERVUNNEN INTÄKT</div>
-      <div class="stat-val accent" id="statIntäkt">kr—</div>
+      <div class="stat-val accent" id="statIntäkt">— kr</div>
       <div class="stat-change" id="statRevChange">THIS MONTH</div>
     </div>
   </div>
@@ -869,6 +869,7 @@ Beställ nu 👉 {order_link}
   let settings = { master: true, days: 14, max: 2 };
   let allRestaurants = [];
   let currentRestaurant = null;
+  let currentCustomers = [];
 
   // ============================================================
   // RESTAURANT SELECTOR
@@ -1017,6 +1018,7 @@ Beställ nu 👉 {order_link}
         .filter(c => c.daysLapsed >= days)
         .sort((a, b) => b.daysLapsed - a.daysLapsed);
 
+      currentCustomers = customers;
       if (customers.length === 0) {
         const tbody = document.getElementById('customerTableBody');
         tbody.innerHTML = `<tr><td colspan="7" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;padding:32px;">Inga inaktiva kunder hittades för ${currentRestaurant.name} (${days}+ dagar utan order)</td></tr>`;
@@ -1046,7 +1048,7 @@ Beställ nu 👉 {order_link}
     document.getElementById('statLapsed').textContent = DEMO_CUSTOMERS.length;
     document.getElementById('statSent').textContent = '24';
     document.getElementById('statWonTillbaka').textContent = '9';
-    document.getElementById('statIntäkt').textContent = 'kr1,840';
+    document.getElementById('statIntäkt').textContent = '1 840 kr';
     document.getElementById('statSentChange').textContent = '↑ vs förra månaden';
     document.getElementById('statWonChange').textContent = '37% återaktiverade';
     document.getElementById('statRevChange').textContent = 'FRÅN ÅTERAKTIVERADE';
@@ -1109,23 +1111,61 @@ Beställ nu 👉 {order_link}
     loadKunder();
   }
 
-  function sendToAll() {
-    const pending = DEMO_CUSTOMERS.filter(c => !c.reengageSent);
-    pending.forEach(c => addLog(`SMS köat för <strong>${c.name}</strong>`, 'accent'));
-    addLog(`Massskickning klar — <strong>${pending.length} SMS</strong> köade`, 'green');
-    alert(`✅ ${pending.length} SMS köade!\n\nAnslut din SMS-leverantör för att skicka på riktigt.`);
+  async function sendToAll() {
+    const elksUser = localStorage.getItem('crustly_elks_user');
+    const elksPass = localStorage.getItem('crustly_elks_pass');
+    if (!elksUser || !elksPass) {
+      alert('Inga 46elks-uppgifter. Gå till Inställningar och lägg till dina API-uppgifter.');
+      return;
+    }
+    const pending = currentCustomers.filter(c => !c.reengagement_sent && c.phone);
+    if (pending.length === 0) { addLog('Inga väntande kunder att skicka till', 'muted'); return; }
+    const discount = document.getElementById('discountVal').value || '15';
+    const template = document.getElementById('templateText').value;
+    let sent = 0;
+    for (const c of pending) {
+      const msg = template
+        .replace(/{name}/g, c.name?.split(' ')[0] || c.name)
+        .replace(/{restaurant}/g, c.restaurant_name || currentRestaurant?.name || '')
+        .replace(/{discount}/g, discount)
+        .replace(/{days}/g, c.daysLapsed)
+        .replace(/{order_link}/g, 'crustly.app');
+      try {
+        const res = await fetch('/sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_username: elksUser, api_password: elksPass, from: 'Crustly', to: c.phone, message: msg })
+        });
+        const data = await res.json();
+        if (data.success) {
+          sent++;
+          addLog(`SMS skickat till <strong>${c.name}</strong>`, 'accent');
+          if (!String(c.id).startsWith('d')) {
+            await _sb.from('customers').update({ reengagement_sent: true }).eq('id', c.id).catch(() => {});
+          }
+        } else {
+          addLog(`Fel för ${c.name}: ${data.error}`, 'red');
+        }
+      } catch(e) {
+        addLog(`Fel för ${c.name}: ${e.message}`, 'red');
+      }
+    }
+    addLog(`Massskickning klar — <strong>${sent}/${pending.length} SMS</strong> skickade`, 'green');
+    loadKunder();
   }
 
   async function addTestCustomer() {
     const lastOrder = new Date();
     lastOrder.setDate(lastOrder.getDate() - 17);
 
+    if (!currentRestaurant) { addLog('Välj en restaurang först', 'muted'); return; }
     const testCustomer = {
       name: 'Testkund',
       phone: '+46 70 000 00 00',
       last_order_at: new Date(Date.now() - 17*86400000).toISOString(),
       order_count: 3,
       reengagement_sent: false,
+      restaurant_id: currentRestaurant.id,
       created_at: new Date().toISOString()
     };
 
@@ -1144,11 +1184,9 @@ Beställ nu 👉 {order_link}
   async function runCheck() {
     const days = parseInt(document.getElementById('daysVal').textContent);
     addLog(`Kör återaktiveringskontroll — söker kunder inaktiva ${days}+ dagar...`, 'blue');
-
-    setTimeout(() => {
-      const count = DEMO_CUSTOMERS.filter(c => !c.reengageSent && c.daysLapsed >= days).length;
-      addLog(`Kontroll klar — <strong>${count} kunder</strong> kvalificerar för återaktiverings-SMS idag`, count > 0 ? 'accent' : 'muted');
-    }, 800);
+    await loadKunder();
+    const count = currentCustomers.filter(c => !c.reengagement_sent).length;
+    addLog(`Kontroll klar — <strong>${count} kunder</strong> kvalificerar för återaktiverings-SMS idag`, count > 0 ? 'accent' : 'muted');
   }
 
   // ============================================================
@@ -1164,7 +1202,7 @@ Beställ nu 👉 {order_link}
 
       document.getElementById('statSent').textContent = reengaged.length;
       document.getElementById('statWonTillbaka').textContent = wonBack.length;
-      document.getElementById('statIntäkt').textContent = 'kr' + Math.round(revenue).toLocaleString('sv-SE');
+      document.getElementById('statIntäkt').textContent = Math.round(revenue).toLocaleString('sv-SE') + ' kr';
       document.getElementById('statSentChange').textContent = reengaged.length + ' totalt skickade';
       document.getElementById('statWonChange').textContent = reengaged.length ? Math.round(wonBack.length/reengaged.length*100) + '% återaktiverade' : '—';
     } catch(e) {
