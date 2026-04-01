@@ -637,7 +637,7 @@
     </div>
     <div class="stat-card">
       <div class="stat-label">ÅTERVUNNEN INTÄKT</div>
-      <div class="stat-val accent" id="statIntäkt">€—</div>
+      <div class="stat-val accent" id="statIntäkt">kr—</div>
       <div class="stat-change" id="statRevChange">THIS MONTH</div>
     </div>
   </div>
@@ -1018,15 +1018,18 @@ Beställ nu 👉 {order_link}
         .sort((a, b) => b.daysLapsed - a.daysLapsed);
 
       if (customers.length === 0) {
-        renderDemoKunder();
+        const tbody = document.getElementById('customerTableBody');
+        tbody.innerHTML = `<tr><td colspan="7" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;padding:32px;">Inga inaktiva kunder hittades för ${currentRestaurant.name} (${days}+ dagar utan order)</td></tr>`;
+        document.getElementById('statLapsed').textContent = '0';
       } else {
         renderCustomerTable(customers);
         document.getElementById('statLapsed').textContent = customers.length;
       }
 
     } catch(e) {
-      console.error(e);
-      renderDemoKunder();
+      console.error('loadKunder fel:', e);
+      const tbody = document.getElementById('customerTableBody');
+      tbody.innerHTML = `<tr><td colspan="7" style="font-family:var(--font-mono);font-size:11px;color:#e84040;text-align:center;padding:32px;">Fel: ${e.message}</td></tr>`;
     }
   }
 
@@ -1043,7 +1046,7 @@ Beställ nu 👉 {order_link}
     document.getElementById('statLapsed').textContent = DEMO_CUSTOMERS.length;
     document.getElementById('statSent').textContent = '24';
     document.getElementById('statWonTillbaka').textContent = '9';
-    document.getElementById('statIntäkt').textContent = '€1,840';
+    document.getElementById('statIntäkt').textContent = 'kr1,840';
     document.getElementById('statSentChange').textContent = '↑ vs förra månaden';
     document.getElementById('statWonChange').textContent = '37% återaktiverade';
     document.getElementById('statRevChange').textContent = 'FRÅN ÅTERAKTIVERADE';
@@ -1053,13 +1056,13 @@ Beställ nu 👉 {order_link}
     const tbody = document.getElementById('customerTableBody');
     tbody.innerHTML = customers.map(c => {
       const daysClass = c.daysLapsed >= 30 ? 'days-30' : c.daysLapsed >= 21 ? 'days-21' : 'days-14';
-      const statusHtml = c.reengageSent
+      const sent = c.reengagement_sent || c.reengageSent;
+      const statusHtml = sent
         ? `<span class="sms-badge sms-sent">SKICKAT ✓</span>`
         : `<span class="sms-badge sms-pending">VÄNTAR</span>`;
-      const actionHtml = !c.reengageSent
+      const actionHtml = !sent
         ? `<div style="display:flex;gap:6px;">
-             <button class="btn-ai" onclick="openAiModal(${JSON.stringify(c)})">✨ AI</button>
-             <button class="btn-send" onclick="sendToCustomer('${c.id}','${c.name}')">SKICKA</button>
+             <button class="btn-ai" onclick="openAiModal(${JSON.stringify(c)})" title="Generera personligt SMS med AI">✨ PERSONLIGT SMS</button>
            </div>`
         : `<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">—</span>`;
 
@@ -1161,7 +1164,7 @@ Beställ nu 👉 {order_link}
 
       document.getElementById('statSent').textContent = reengaged.length;
       document.getElementById('statWonTillbaka').textContent = wonBack.length;
-      document.getElementById('statIntäkt').textContent = '€' + Math.round(revenue).toLocaleString('sv-SE');
+      document.getElementById('statIntäkt').textContent = 'kr' + Math.round(revenue).toLocaleString('sv-SE');
       document.getElementById('statSentChange').textContent = reengaged.length + ' totalt skickade';
       document.getElementById('statWonChange').textContent = reengaged.length ? Math.round(wonBack.length/reengaged.length*100) + '% återaktiverade' : '—';
     } catch(e) {
