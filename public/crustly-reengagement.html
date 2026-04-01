@@ -1265,13 +1265,8 @@ Respond ONLY with a JSON array av 3 strings, no other text. Example:
       renderVariants(variants);
 
     } catch(e) {
-      // Fallback demo variants if API not connected
-      const name = c.name.split(' ')[0];
-      renderVariants([
-        `Hej ${name}! Vi saknar dig på ${c.restaurant_name || c.restaurantName || 'restaurangen'} 🍕 Det är ${c.daysLapsed} dagar sedan sist — kom tillbaka med ${discount}% rabatt! crustly.app`,
-        `${name}, ${discount}% rabatt väntar dig! Erbjudandet gäller bara 48h. Beställ nu 👉 crustly.app`,
-        `Hej ${name}! Du är en av våra bästa kunder — därför får du ${discount}% på nästa order. Välkommen åter! 🍕`
-      ]);
+      console.error('AI fel:', e);
+      variantsEl.innerHTML = `<div style="font-family:var(--fm);font-size:11px;color:#e84040;padding:16px;">❌ ${e.message}</div>`;
     }
 
     btn.disabled = false;
@@ -1321,12 +1316,49 @@ Respond ONLY with a JSON array av 3 strings, no other text. Example:
     el.style.color = len > 160 ? '#ff4d4d' : '#6a6560';
   }
 
-  function sendAiSMS() {
-    const text = document.getElementById('aiRedigeraText').value;
+  async function sendAiSMS() {
+    const text = document.getElementById('aiRedigeraText').value.trim();
     const c = aiCurrentCustomer;
-    addLog(`AI SMS queued for <strong>${c.name}</strong> — "${text.slice(0,40)}..."`, 'accent');
-    closeAiModal();
-    alert(`✅ AI SMS queued for ${c.name}\n\nMessage:\n"${text}"\n\nConnect 46elks or Twilio to send for real.`);
+    if (!text) return;
+
+    const elksUser = localStorage.getItem('crustly_elks_user');
+    const elksPass = localStorage.getItem('crustly_elks_pass');
+    if (!elksUser || !elksPass) {
+      alert('Inga 46elks-uppgifter. Gå till Inställningar och lägg till dina API-uppgifter.');
+      return;
+    }
+
+    const btn = document.getElementById('aiSendBtn');
+    btn.disabled = true;
+    btn.textContent = 'SKICKAR...';
+
+    try {
+      const res = await fetch('/sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_username: elksUser,
+          api_password: elksPass,
+          from: 'Crustly',
+          to: c.phone,
+          message: text
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'SMS kunde inte skickas');
+
+      // Markera som skickad i DB om riktig kund
+      if (c.id && !String(c.id).startsWith('d')) {
+        try { await _sb.from('customers').update({ reengagement_sent: true }).eq('id', c.id); } catch(_) {}
+      }
+
+      addLog(`AI SMS skickat till <strong>${c.name}</strong> — "${text.slice(0,50)}..."`, 'accent');
+      closeAiModal();
+    } catch(e) {
+      alert('❌ ' + e.message);
+      btn.disabled = false;
+      btn.textContent = 'SKICKA SMS';
+    }
   }
 
   // Close modal on overlay click
