@@ -8,7 +8,7 @@
 
 <!-- Supabase via fetch -->
 <script src="crustly-config.js"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script>
   const { createClient } = supabase;
   const _sb = createClient(SUPA_URL, SUPA_KEY);
@@ -1165,7 +1165,7 @@ Beställ nu 👉 {order_link}
       templates,
       discount: parseInt(document.getElementById('discountVal').value),
       sendTime: document.getElementById('sendTime').value,
-      updatedAt: _sb)
+      updatedAt: new Date().toISOString()
     };
 
     try {
