@@ -818,7 +818,7 @@
         <button class="btn-accent" style="font-size:12px;padding:7px 16px;" onclick="sendToAll()">SKICKA TILL ALLA VÄNTANDE</button>
       </div>
     </div>
-    <div class="card-sub">KUNDER SOM INTE BESTÄLLT PÅ 14+ DAGAR · SORTERADE EFTER INAKTIVITETSDAGAR</div>
+    <div class="card-sub">ALLA KUNDER MED TELEFON · SORTERADE EFTER INAKTIVITETSDAGAR</div>
 
     <table class="customer-table">
       <thead>
@@ -1023,7 +1023,6 @@ Beställ nu 👉 {order_link}
           const daysLapsed = lastOrder ? Math.floor((now - lastOrder) / (1000 * 60 * 60 * 24)) : 999;
           return { ...c, daysLapsed, lastOrder };
         })
-        .filter(c => c.daysLapsed >= days)
         .sort((a, b) => b.daysLapsed - a.daysLapsed);
 
       currentCustomers = customers;
