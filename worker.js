@@ -55,6 +55,11 @@ export default {
       return handleStripeFees(request, env);
     }
 
+    // ── CLAUDE AI PROXY ────────────────────────────────────
+    if (path === '/claude/generate' && request.method === 'POST') {
+      return handleClaudeProxy(request, env);
+    }
+
     // ── STATIC FILES ───────────────────────────────────────
     try {
       return await getAssetFromKV(
@@ -197,6 +202,51 @@ async function handleStripeFees(request, env) {
         source: t.source
       }))
     }, { headers: corsHeaders });
+
+  } catch(e) {
+    return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ── CLAUDE AI PROXY ─────────────────────────────────────────
+async function handleClaudeProxy(request, env) {
+  try {
+    const { apiKey, model, max_tokens, messages } = await request.json();
+
+    // API-nyckel: använd medskickad nyckel från localStorage, eller env-var som fallback
+    const key = apiKey || env.CLAUDE_API_KEY;
+    if (!key) {
+      return Response.json({ error: 'Ingen Claude API-nyckel. Lägg till i Inställningar.' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (!messages || !messages.length) {
+      return Response.json({ error: 'Inga meddelanden skickade' }, { status: 400, headers: corsHeaders });
+    }
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: model || 'claude-haiku-4-5-20251001',
+        max_tokens: max_tokens || 1000,
+        messages
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return Response.json(
+        { error: data.error?.message || 'Claude API-fel' },
+        { status: res.status, headers: corsHeaders }
+      );
+    }
+
+    return Response.json(data, { headers: corsHeaders });
 
   } catch(e) {
     return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });

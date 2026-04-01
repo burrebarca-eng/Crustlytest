@@ -386,11 +386,13 @@ Svara ENDAST med giltig JSON, inga förklaringar utanför JSON:
   ]
 }`;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const apiKey = localStorage.getItem('crustly_claude_key');
+    const response = await fetch('/claude/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        apiKey: apiKey || '',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }]
       })
