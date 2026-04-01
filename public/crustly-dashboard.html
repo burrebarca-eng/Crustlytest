@@ -626,19 +626,21 @@ async function loadStripeData() {
       return;
     }
 
-    const fees   = d.total_fees   / 100;
-    const volume = d.total_volume / 100;
-    const net    = d.net_volume   / 100;
-    const feeAvg = volume > 0 ? ((fees / volume) * 100).toFixed(2) : '0';
+    const chargeFees    = d.charge_fees      / 100;
+    const refundFeeBack = d.refund_fee_back  / 100;
+    const netFees       = d.net_fees         / 100;
+    const volume        = d.total_volume     / 100;
+    const net           = d.net_volume       / 100;
+    const feeAvg        = volume > 0 ? ((netFees / volume) * 100).toFixed(2) : '0';
 
-    set('stripeTotalFee', sek(fees));
+    set('stripeTotalFee', sek(chargeFees));
     set('stripeVolume',   sek(volume));
     set('stripeNet',      sek(net));
-    set('stripeFeeAvg',   feeAvg + '% AV TOTAL VOLYM');
-    set('stripeTxCount',  d.transaction_count + (d.has_more ? '+ ' : ' ') + 'TRANSAKTIONER');
-    set('stripeNetSub',   'NETTO EFTER ' + sek(fees) + ' AVGIFTER');
-    set('kpiStripeFee',   sek(fees));
-    set('kpiStripeSub',   d.transaction_count + ' TX · ' + feeAvg + '% SNITT');
+    set('stripeFeeAvg',   feeAvg + '% AV TOTAL VOLYM' + (refundFeeBack > 0 ? ' · ÅTERBETALT VID REFUNDS: -' + sek(refundFeeBack) : ''));
+    set('stripeTxCount',  d.charge_count + ' BETALNINGAR' + (d.refund_count > 0 ? ' · ' + d.refund_count + ' REFUNDS' : ''));
+    set('stripeNetSub',   'NETTO EFTER ' + sek(netFees) + ' AVGIFTER');
+    set('kpiStripeFee',   sek(netFees));
+    set('kpiStripeSub',   d.charge_count + ' BETALNINGAR · ' + feeAvg + '% SNITT');
 
     if (!d.recent || !d.recent.length) {
       set('stripeTxBody', '<tr><td colspan="6"><div class="empty">INGA STRIPE-TRANSAKTIONER DENNA MÅNAD</div></td></tr>');

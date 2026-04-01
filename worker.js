@@ -141,28 +141,53 @@ async function handleStripeFees(request, env) {
       end   = Math.floor(new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() / 1000);
     }
 
-    const res = await fetch(
-      `https://api.stripe.com/v1/balance_transactions?type=charge&limit=100&created[gte]=${start}&created[lt]=${end}`,
-      { headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY } }
-    );
-    const data = await res.json();
+    // Paginera genom ALLA transaktioner för exakta siffror
+    let allTxns = [];
+    let startingAfter = null;
+    let hasMore = true;
 
-    if (!res.ok) {
-      return Response.json({ error: data.error?.message || 'Stripe-fel' }, { status: 400, headers: corsHeaders });
+    while (hasMore) {
+      let apiUrl = `https://api.stripe.com/v1/balance_transactions?limit=100&created[gte]=${start}&created[lt]=${end}`;
+      if (startingAfter) apiUrl += '&starting_after=' + startingAfter;
+
+      const res = await fetch(apiUrl, {
+        headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY }
+      });
+      const page = await res.json();
+
+      if (!res.ok) {
+        return Response.json({ error: page.error?.message || 'Stripe-fel' }, { status: 400, headers: corsHeaders });
+      }
+
+      const items = page.data || [];
+      allTxns = allTxns.concat(items);
+      hasMore = page.has_more || false;
+      if (hasMore && items.length > 0) {
+        startingAfter = items[items.length - 1].id;
+      }
     }
 
-    const txns = data.data || [];
-    const total_fees   = txns.reduce((s, t) => s + (t.fee || 0), 0);
-    const total_volume = txns.reduce((s, t) => s + (t.amount || 0), 0);
-    const net_volume   = txns.reduce((s, t) => s + (t.net || 0), 0);
+    // Filtrera och summera — separera charges och refunds för exakta avgifter
+    const charges = allTxns.filter(t => t.type === 'charge');
+    const refunds = allTxns.filter(t => t.type === 'refund');
+
+    const charge_fees     = charges.reduce((s, t) => s + (t.fee || 0), 0);
+    const refund_fee_back = refunds.reduce((s, t) => s + Math.abs(t.fee || 0), 0);
+    const net_fees        = charge_fees - refund_fee_back;
+
+    const total_volume = charges.reduce((s, t) => s + (t.amount || 0), 0);
+    const net_volume   = allTxns.reduce((s, t) => s + (t.net || 0), 0);
 
     return Response.json({
-      total_fees,        // i ören
-      total_volume,      // i ören
-      net_volume,        // i ören
-      transaction_count: txns.length,
-      has_more: data.has_more || false,
-      recent: txns.slice(0, 15).map(t => ({
+      charge_fees,       // brutto avgifter i ören
+      refund_fee_back,   // återbetalda avgifter vid refunds i ören
+      net_fees,          // netto avgifter (charge_fees - refund_fee_back) i ören
+      total_volume,      // total volym via charges i ören
+      net_volume,        // netto efter alla avgifter i ören
+      charge_count: charges.length,
+      refund_count: refunds.length,
+      transaction_count: allTxns.length,
+      recent: charges.slice(0, 15).map(t => ({
         id: t.id,
         amount: t.amount,
         fee: t.fee,
