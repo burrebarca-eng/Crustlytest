@@ -875,16 +875,16 @@ Beställ nu 👉 {order_link}
   // ============================================================
   async function initRestaurantSelector() {
     try {
-      const { data: { session } } = await _sb.auth.getSession();
-      if (!session) return;
+      const user = await window.__sb.requireAuth();
+      if (!user) return;
 
-      const { data: allRests } = await _sb.from('restaurants').select('*').order('name');
-      allRestaurants = allRests || [];
-
-      if (allRestaurants.length === 0) {
-        const { data: own } = await _sb.from('restaurants').select('*').eq('owner_uid', session.user.id).single();
-        if (own) allRestaurants = [own];
+      // Försök hämta alla restauranger, annars bara ägarens
+      let { data: allRests, error } = await _sb.from('restaurants').select('id, name').order('name');
+      if (error || !allRests || allRests.length === 0) {
+        const { data: own } = await _sb.from('restaurants').select('id, name').eq('owner_uid', user.id).order('name');
+        allRests = own || [];
       }
+      allRestaurants = allRests;
 
       const sel = document.getElementById('restSelector');
       sel.innerHTML = '<option value="">Välj restaurang...</option>' +
