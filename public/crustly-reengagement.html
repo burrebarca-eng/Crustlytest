@@ -600,6 +600,10 @@
     <div class="page-tag">📱 RE-ENGAGEMENT</div>
   </div>
   <div class="header-btns">
+    <select id="restSelector" onchange="switchRestaurant(this.value)"
+      style="background:#ffffff15;border:1px solid #ffffff30;border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:11px;color:#fff;outline:none;cursor:pointer;min-width:180px;">
+      <option value="">Välj restaurang...</option>
+    </select>
     <button class="btn-ghost" onclick="runCheck()">▶ KÖR KONTROLL</button>
     <button class="btn-accent" onclick="saveInställningar()">SPARA INSTÄLLNINGAR</button>
   </div>
@@ -863,14 +867,52 @@ Beställ nu 👉 {order_link}
 
   let activeTemplate = 0;
   let settings = { master: true, days: 14, max: 2 };
+  let allRestaurants = [];
+  let currentRestaurant = null;
+
+  // ============================================================
+  // RESTAURANT SELECTOR
+  // ============================================================
+  async function initRestaurantSelector() {
+    try {
+      const { data: { session } } = await _sb.auth.getSession();
+      if (!session) return;
+
+      const { data: allRests } = await _sb.from('restaurants').select('*').order('name');
+      allRestaurants = allRests || [];
+
+      if (allRestaurants.length === 0) {
+        const { data: own } = await _sb.from('restaurants').select('*').eq('owner_uid', session.user.id).single();
+        if (own) allRestaurants = [own];
+      }
+
+      const sel = document.getElementById('restSelector');
+      sel.innerHTML = '<option value="">Välj restaurang...</option>' +
+        allRestaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+
+      if (allRestaurants.length > 0) {
+        sel.value = allRestaurants[0].id;
+        currentRestaurant = allRestaurants[0];
+      }
+    } catch(e) {
+      console.error('Kunde inte ladda restauranger:', e);
+    }
+  }
+
+  async function switchRestaurant(id) {
+    currentRestaurant = allRestaurants.find(r => r.id === id) || null;
+    await loadKunder();
+    await loadStats();
+  }
 
   // ============================================================
   // INIT
   // ============================================================
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('templateText').value = templates[0];
     updatePreview();
     updateCharCount();
+    await initRestaurantSelector();
     loadKunder();
     loadStats();
   });
@@ -955,12 +997,8 @@ Beställ nu 👉 {order_link}
       const cutavf = new Date();
       cutavf.setDate(cutavf.getDate() - days);
 
-      // Get all customers with their last order date
-      const user = await window.__sb.requireAuth();
-      if (!user) return;
-      const rest = await window.__sb.getMyRestaurant(user.id);
-      if (!rest) return;
-      let customers = await window.__sb.getCustomers(rest.id);
+      if (!currentRestaurant) { renderDemoKunder(); return; }
+      let customers = await window.__sb.getCustomers(currentRestaurant.id);
 
       // Calculate days lapsed from last_order_at
       const now = new Date();
