@@ -927,12 +927,19 @@ Beställ nu 👉 {order_link}
   // TEMPLATE SWITCHING
   // ============================================================
   function switchTemplate(idx, btn) {
-    // Spara current
     templates[activeTemplate] = document.getElementById('templateText').value;
     activeTemplate = idx;
     document.getElementById('templateText').value = templates[idx];
     document.querySelectorAll('.tmpl-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
+    // Synka dagsgränsen med fliken (14/21/30)
+    const days = [14, 21, 30][idx];
+    if (days) {
+      document.getElementById('daysVal').textContent = days;
+      settings.days = days;
+      document.getElementById('flowDays').textContent = `${days} days`;
+      loadKunder();
+    }
     updatePreview();
     updateCharCount();
   }
@@ -982,6 +989,7 @@ Beställ nu 👉 {order_link}
     settings.days = val;
     document.getElementById('flowDays').textContent = `${val} days`;
     updatePreview();
+    loadKunder();
   }
 
   function adjustMax(delta) {
@@ -1163,7 +1171,7 @@ Beställ nu 👉 {order_link}
       name: 'Testkund',
       phone: '+46 70 000 00 00',
       last_order_at: new Date(Date.now() - 17*86400000).toISOString(),
-      order_count: 3,
+      total_orders: 3,
       reengagement_sent: false,
       restaurant_id: currentRestaurant.id,
       created_at: new Date().toISOString()
@@ -1174,7 +1182,7 @@ Beställ nu 👉 {order_link}
       addLog(`Testkund tillagd (ID: ${data?.id?.slice(0,8)||'—'}...)`, 'blue');
       loadKunder();
     } catch(e) {
-      addLog('Visar demo-data', 'muted');
+      addLog(`❌ Kunde inte lägga till testkund: ${e.message}`, 'red');
     }
   }
 
