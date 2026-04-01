@@ -248,7 +248,6 @@
   function saveKey() {
     const val = document.getElementById('apiKeyInput').value.trim();
     if (!val) { setStatus('err', 'INGEN NYCKEL ANGIVEN'); return; }
-    if (!val.startsWith('sk-ant-')) { setStatus('err', 'OGILTIGT FORMAT — MÅSTE BÖRJA MED sk-ant-'); return; }
     localStorage.setItem(STORAGE_KEY, val);
     setStatus('ok', 'KEY SPARAD · ' + maskKey(val));
     document.getElementById('testResult').textContent = '';
