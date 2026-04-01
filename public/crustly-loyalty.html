@@ -346,6 +346,13 @@ async function generateProposals() {
   txt.textContent = 'ANALYSERAR...';
 
   try {
+    const apiKey = localStorage.getItem('crustly_claude_key');
+    if (!apiKey) {
+      showToast('❌ Ingen Claude API-nyckel. Gå till Inställningar och lägg till din nyckel.');
+      btn.disabled = false; spin.classList.remove('on'); txt.textContent = 'GENERERA FÖRSLAG';
+      return;
+    }
+
     // Bygg dataunderlag
     const avgSpent   = members.length ? members.reduce((s,m)=>s+(m.total_spent||0),0)/members.length : 0;
     const avgOrders  = members.length ? members.reduce((s,m)=>s+(m.total_orders||0),0)/members.length : 0;
@@ -386,12 +393,11 @@ Svara ENDAST med giltig JSON, inga förklaringar utanför JSON:
   ]
 }`;
 
-    const apiKey = localStorage.getItem('crustly_claude_key');
     const response = await fetch('/claude/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        apiKey: apiKey || '',
+        apiKey: apiKey,
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }]
@@ -399,7 +405,11 @@ Svara ENDAST med giltig JSON, inga förklaringar utanför JSON:
     });
 
     const data = await response.json();
+    if (!response.ok || data.error) {
+      throw new Error(data.error || 'Claude API-fel (' + response.status + ')');
+    }
     const raw  = data.content?.[0]?.text || '';
+    if (!raw) throw new Error('Tomt svar från Claude');
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
