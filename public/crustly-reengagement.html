@@ -1152,11 +1152,20 @@ Beställ nu 👉 {order_link}
   // STATS
   // ============================================================
   async function loadStats() {
+    if (!currentRestaurant) return;
     try {
-      const user4 = await window.__sb.requireAuth(); const rest4 = await window.__sb.getMyRestaurant(user4.id); const allC4 = await window.__sb.getCustomers(rest4.id); const snap = { size: allC4.filter(c=>c.reengaged).length };
-      document.getElementById('statSent').textContent = snap.size;
+      const allC = await window.__sb.getCustomers(currentRestaurant.id);
+      const reengaged = allC.filter(c => c.reengagement_sent);
+      const wonBack = allC.filter(c => c.reengagement_sent && c.last_order_at && new Date(c.last_order_at) > new Date(Date.now() - 90*24*60*60*1000));
+      const revenue = wonBack.reduce((s, c) => s + (c.total_spent || 0), 0);
+
+      document.getElementById('statSent').textContent = reengaged.length;
+      document.getElementById('statWonTillbaka').textContent = wonBack.length;
+      document.getElementById('statIntäkt').textContent = '€' + Math.round(revenue).toLocaleString('sv-SE');
+      document.getElementById('statSentChange').textContent = reengaged.length + ' totalt skickade';
+      document.getElementById('statWonChange').textContent = reengaged.length ? Math.round(wonBack.length/reengaged.length*100) + '% återaktiverade' : '—';
     } catch(e) {
-      // Demo stats shown in renderDemoKunder
+      // Demo stats visas via renderDemoKunder
     }
   }
 
