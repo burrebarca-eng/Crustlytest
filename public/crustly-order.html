@@ -2271,14 +2271,13 @@
         });
         if (result && result.order) {
           savedOrderId = result.order.id;
-          // Lös in promo-token (markera som använd) — MÅSTE awaitas innan Stripe redirectar
+          // Lös in promo-token via RPC (kringgår RLS, SECURITY DEFINER)
           if (activePromo) {
             try {
-              await _sb.from('promo_codes').update({
-                used: true,
-                used_at: new Date().toISOString(),
-                order_id: savedOrderId,
-              }).eq('token', activePromo.token).eq('used', false);
+              await _sb.rpc('redeem_promo_token', {
+                p_token: activePromo.token,
+                p_order_id: savedOrderId,
+              });
               activePromo = null;
             } catch(e) { console.warn('promo redeem error:', e); }
           }
