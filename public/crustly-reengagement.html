@@ -864,6 +864,7 @@
   let currentRestaurant = null;
   let currentCustomers = [];
   let currentFilter = 'alla';
+  const customerMap = new Map();
 
   // ============================================================
   // RESTAURANT SELECTOR
@@ -1090,6 +1091,7 @@
   }
 
   function renderCustomerTable(customers) {
+    customers.forEach(c => customerMap.set(String(c.id), c));
     const tbody = document.getElementById('customerTableBody');
     tbody.innerHTML = customers.map(c => {
       const daysClass = c.daysLapsed >= 30 ? 'days-30' : c.daysLapsed >= 21 ? 'days-21' : 'days-14';
@@ -1099,7 +1101,7 @@
         : `<span class="sms-badge sms-pending">VÄNTAR</span>`;
       const actionHtml = !sent
         ? `<div style="display:flex;gap:6px;">
-             <button class="btn-ai" onclick="openAiModal(${JSON.stringify(c)})" title="Generera personligt SMS med AI">✨ PERSONLIGT SMS</button>
+             <button class="btn-ai" onclick="openAiModal('${c.id}')" title="Generera personligt SMS med AI">✨ PERSONLIGT SMS</button>
            </div>`
         : `<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">—</span>`;
 
@@ -1334,7 +1336,11 @@
   let aiCurrentCustomer = null;
   let aiSelectedText = '';
 
-  function openAiModal(customer) {
+  function openAiModal(idOrCustomer) {
+    const customer = typeof idOrCustomer === 'string'
+      ? customerMap.get(idOrCustomer)
+      : idOrCustomer;
+    if (!customer) return;
     aiCurrentCustomer = customer;
     aiSelectedText = '';
 
