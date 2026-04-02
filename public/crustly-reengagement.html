@@ -43,7 +43,25 @@
     await _sb.from('restaurants').update(updates).eq('id', restaurantId);
   }
 
-  window.__sb = { requireAuth, getMyRestaurant, getInactiveCustomers, getCustomers, getSettings, saveSettings };
+  async function generatePromoToken(restaurantId, customerId, discountPct) {
+    // Krypto-slumpad 24-teckens token
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(18)))
+      .map(b => b.toString(36).padStart(2, '0'))
+      .join('')
+      .slice(0, 24);
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await _sb.from('promo_codes').insert({
+      token,
+      restaurant_id: restaurantId,
+      customer_id: customerId && !String(customerId).startsWith('d') ? customerId : null,
+      discount_pct: parseInt(discountPct, 10) || 15,
+      expires_at: expires,
+    });
+    if (error) { console.error('promo insert error:', error); return null; }
+    return token;
+  }
+
+  window.__sb = { requireAuth, getMyRestaurant, getInactiveCustomers, getCustomers, getSettings, saveSettings, generatePromoToken };
   window.__supabaseReady = true;
   document.dispatchEvent(new Event('supabaseReady'));
 </script>
@@ -1131,20 +1149,29 @@
   // ============================================================
   async function sendToCustomer(customerId, customerName) {
     templates[activeTemplate] = document.getElementById('templateText').value;
-    const discount = document.getElementById('discountVal').value;
+    const discount = document.getElementById('discountVal').value || '15';
 
-    // Log it
-    addLog(`SMS köat för <strong>${customerName}</strong> — ${discount}% återaktiveringserbjudande`, 'accent');
+    // Generera engångstoken för rabatten
+    let promoParam = '';
+    if (currentRestaurant && !String(customerId).startsWith('d')) {
+      const token = await generatePromoToken(currentRestaurant.id, customerId, discount);
+      if (token) promoParam = `&promo=${token}`;
+    }
+    const orderLink = currentRestaurant?.slug
+      ? `${window.location.origin}/crustly-order.html?r=${currentRestaurant.slug}${promoParam}`
+      : `${window.location.origin}/crustly-order.html`;
+
+    addLog(`SMS köat för <strong>${customerName}</strong> — ${discount}% rabattkod genererad`, 'accent');
 
     // Spara till Supabase
-    if (!customerId.startsWith('d')) {
+    if (!String(customerId).startsWith('d')) {
       await _sb.from('customers').update({
         reengagement_sent: true,
         reengagement_sent_at: new Date().toISOString()
       }).eq('id', customerId);
     }
 
-    alert(`✅ SMS köat för ${customerName}\n\nNär du ansluter 46elks skickas detta automatiskt.`);
+    alert(`✅ SMS köat för ${customerName}\n\nOrderlänk: ${orderLink}\n\nRabatten (${discount}%) aktiveras automatiskt när kunden klickar länken.`);
     loadKunder();
   }
 
@@ -1162,12 +1189,22 @@
     const template = document.getElementById('templateText').value;
     let sent = 0;
     for (const c of pending) {
+      // Generera unik engångstoken per kund
+      let promoParam = '';
+      if (currentRestaurant && !String(c.id).startsWith('d')) {
+        const token = await generatePromoToken(currentRestaurant.id, c.id, discount);
+        if (token) promoParam = `&promo=${token}`;
+      }
+      const orderLink = currentRestaurant?.slug
+        ? `${window.location.origin}/crustly-order.html?r=${currentRestaurant.slug}${promoParam}`
+        : `${window.location.origin}/crustly-order.html`;
+
       const msg = template
         .replace(/{name}/g, c.name?.split(' ')[0] || c.name)
         .replace(/{restaurant}/g, c.restaurant_name || currentRestaurant?.name || '')
         .replace(/{discount}/g, discount)
         .replace(/{days}/g, c.daysLapsed)
-        .replace(/{order_link}/g, currentRestaurant?.slug ? `${window.location.origin}/crustly-order.html?r=${currentRestaurant.slug}` : `${window.location.origin}/crustly-order.html`);
+        .replace(/{order_link}/g, orderLink);
       try {
         const res = await fetch('/sms', {
           method: 'POST',
@@ -1334,6 +1371,7 @@
   // AI SMS WRITER
   // ============================================================
   let aiCurrentCustomer = null;
+  let aiCurrentPromoToken = null;
   let aiSelectedText = '';
 
   function openAiModal(idOrCustomer) {
@@ -1360,6 +1398,7 @@
   function closeAiModal() {
     document.getElementById('aiModal').classList.remove('show');
     aiCurrentCustomer = null;
+    aiCurrentPromoToken = null;
   }
 
   async function generateSMS() {
@@ -1381,7 +1420,14 @@
 
     const restName = c.restaurant_name || currentRestaurant?.name || 'restaurangen';
     const firstName = c.name?.split(' ')[0] || c.name;
-    const orderLink = currentRestaurant?.slug ? `${window.location.origin}/crustly-order.html?r=${currentRestaurant.slug}` : `${window.location.origin}/crustly-order.html`;
+
+    // Generera engångstoken för AI-SMS
+    aiCurrentPromoToken = null;
+    let orderLink = currentRestaurant?.slug ? `${window.location.origin}/crustly-order.html?r=${currentRestaurant.slug}` : `${window.location.origin}/crustly-order.html`;
+    if (currentRestaurant && c.id && !String(c.id).startsWith('d')) {
+      const token = await generatePromoToken(currentRestaurant.id, c.id, discount);
+      if (token) { aiCurrentPromoToken = token; orderLink += `&promo=${token}`; }
+    }
 
     const prompt = `Du skriver återaktiverings-SMS åt pizzarestaurangen "${restName}".
 
