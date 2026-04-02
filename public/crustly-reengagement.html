@@ -638,7 +638,7 @@
     <div class="stat-card">
       <div class="stat-label">ÅTERVUNNEN INTÄKT</div>
       <div class="stat-val accent" id="statIntäkt">— kr</div>
-      <div class="stat-change" id="statRevChange">THIS MONTH</div>
+      <div class="stat-change" id="statRevChange">DENNA MÅNADEN</div>
     </div>
   </div>
 
@@ -656,7 +656,7 @@
       <div class="flow-step">
         <div class="flow-icon">⏳</div>
         <div class="flow-label">DAGAR PASSERAR</div>
-        <div class="flow-val" id="flowDays">14 days</div>
+        <div class="flow-val" id="flowDays">14 dagar</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step active">
@@ -790,7 +790,7 @@
         <div class="card-sub">KUNDENS TELEFON</div>
         <div class="phone">
           <div class="phone-notch"></div>
-          <div class="sms-from">PIZZA ROMA</div>
+          <div class="sms-from" id="smsFrom">—</div>
           <div class="sms-bubble" id="smsPreview">Laddar...</div>
           <div class="sms-time">10:00 AM ✓✓</div>
         </div>
@@ -810,8 +810,14 @@
 
   <!-- Lapsed customers table -->
   <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-      <div class="card-title">INAKTIVA KUNDER</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button id="filterBtnAlla" class="tmpl-tab active" onclick="filterCustomers('alla')">ALLA (<span id="filterCountAlla">0</span>)</button>
+        <button id="filterBtnInaktiva" class="tmpl-tab" onclick="filterCustomers('inaktiva')">INAKTIVA (14+d) (<span id="filterCountInaktiva">0</span>)</button>
+        <button id="filterBtnSkickade" class="tmpl-tab" onclick="filterCustomers('skickade')">SKICKADE (<span id="filterCountSkickade">0</span>)</button>
+        <input id="customerSearch" type="text" placeholder="Sök namn eller telefon..." oninput="filterCustomers(currentFilter)"
+          style="font-family:var(--font-mono);font-size:11px;padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);outline:none;min-width:200px;">
+      </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-ghost" style="background:var(--surface2);color:var(--dark);border:1.5px solid var(--border);font-size:12px;padding:7px 14px;" onclick="loadKunder()">↻ UPPDATERA</button>
         <button class="btn-ghost" style="background:var(--surface2);color:var(--dark);border:1.5px solid var(--border);font-size:12px;padding:7px 14px;" onclick="addTestCustomer()">+ LÄGG TILL TEST</button>
@@ -827,7 +833,7 @@
           <th>Restaurang</th>
           <th>Senaste Order</th>
           <th>Dagar Inaktiv</th>
-          <th>Totaltt Orders</th>
+          <th>Totalt Orders</th>
           <th>SMS-Status</th>
           <th>Åtgärd</th>
         </tr>
@@ -870,6 +876,7 @@ Beställ nu 👉 {order_link}
   let allRestaurants = [];
   let currentRestaurant = null;
   let currentCustomers = [];
+  let currentFilter = 'alla';
 
   // ============================================================
   // RESTAURANT SELECTOR
@@ -894,6 +901,7 @@ Beställ nu 👉 {order_link}
       if (allRestaurants.length > 0) {
         sel.value = allRestaurants[0].id;
         currentRestaurant = allRestaurants[0];
+        updatePreview();
       }
     } catch(e) {
       console.error('Kunde inte ladda restauranger:', e);
@@ -902,6 +910,7 @@ Beställ nu 👉 {order_link}
 
   async function switchRestaurant(id) {
     currentRestaurant = allRestaurants.find(r => r.id === id) || null;
+    updatePreview();
     await loadKunder();
     await loadStats();
     await loadLogs();
@@ -939,7 +948,7 @@ Beställ nu 👉 {order_link}
     if (days) {
       document.getElementById('daysVal').textContent = days;
       settings.days = days;
-      document.getElementById('flowDays').textContent = `${days} days`;
+      document.getElementById('flowDays').textContent = `${days} dagar`;
       loadKunder();
     }
     updatePreview();
@@ -967,6 +976,7 @@ Beställ nu 👉 {order_link}
       .replace('{order_link}', 'crustly.app/pizza-roma')
       .replace('{days}', days);
     document.getElementById('smsPreview').textContent = preview;
+    const f = document.getElementById('smsFrom'); if(f) f.textContent = currentRestaurant?.name || '—';
   }
 
   function updateCharCount() {
@@ -989,7 +999,7 @@ Beställ nu 👉 {order_link}
     const val = Math.max(7, Math.min(60, parseInt(el.textContent) + delta));
     el.textContent = val;
     settings.days = val;
-    document.getElementById('flowDays').textContent = `${val} days`;
+    document.getElementById('flowDays').textContent = `${val} dagar`;
     updatePreview();
     loadKunder();
   }
@@ -1028,13 +1038,13 @@ Beställ nu 👉 {order_link}
         .sort((a, b) => b.daysLapsed - a.daysLapsed);
 
       currentCustomers = customers;
+      document.getElementById('statLapsed').textContent = customers.filter(c => c.daysLapsed >= 14).length;
+      updateFilterCounts();
       if (customers.length === 0) {
         const tbody = document.getElementById('customerTableBody');
         tbody.innerHTML = `<tr><td colspan="7" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;padding:32px;">Inga inaktiva kunder hittades för ${currentRestaurant.name} (${days}+ dagar utan order)</td></tr>`;
-        document.getElementById('statLapsed').textContent = '0';
       } else {
-        renderCustomerTable(customers);
-        document.getElementById('statLapsed').textContent = customers.length;
+        filterCustomers(currentFilter);
       }
 
     } catch(e) {
@@ -1053,14 +1063,43 @@ Beställ nu 👉 {order_link}
   ];
 
   function renderDemoKunder() {
-    renderCustomerTable(DEMO_CUSTOMERS);
-    document.getElementById('statLapsed').textContent = DEMO_CUSTOMERS.length;
+    currentCustomers = DEMO_CUSTOMERS;
+    updateFilterCounts();
+    filterCustomers(currentFilter);
+    document.getElementById('statLapsed').textContent = DEMO_CUSTOMERS.filter(c => c.daysLapsed >= 14).length;
     document.getElementById('statSent').textContent = '24';
     document.getElementById('statWonTillbaka').textContent = '9';
     document.getElementById('statIntäkt').textContent = '1 840 kr';
     document.getElementById('statSentChange').textContent = '↑ vs förra månaden';
     document.getElementById('statWonChange').textContent = '37% återaktiverade';
     document.getElementById('statRevChange').textContent = 'FRÅN ÅTERAKTIVERADE';
+  }
+
+  function updateFilterCounts() {
+    const q = (document.getElementById('customerSearch')?.value || '').toLowerCase();
+    const base = q
+      ? currentCustomers.filter(c => c.name?.toLowerCase().includes(q) || c.phone?.toLowerCase().includes(q))
+      : currentCustomers;
+    document.getElementById('filterCountAlla').textContent = base.length;
+    document.getElementById('filterCountInaktiva').textContent = base.filter(c => c.daysLapsed >= 14).length;
+    document.getElementById('filterCountSkickade').textContent = base.filter(c => c.reengagement_sent || c.reengageSent).length;
+  }
+
+  function filterCustomers(filter) {
+    currentFilter = filter;
+    ['Alla','Inaktiva','Skickade'].forEach(f => {
+      const btn = document.getElementById('filterBtn' + f);
+      if (btn) btn.classList.remove('active');
+    });
+    const activeBtn = document.getElementById('filterBtn' + filter.charAt(0).toUpperCase() + filter.slice(1));
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const q = (document.getElementById('customerSearch')?.value || '').toLowerCase();
+    let filtered = currentCustomers;
+    if (q) filtered = filtered.filter(c => c.name?.toLowerCase().includes(q) || c.phone?.toLowerCase().includes(q));
+    if (filter === 'inaktiva') filtered = filtered.filter(c => c.daysLapsed >= 14);
+    if (filter === 'skickade') filtered = filtered.filter(c => c.reengagement_sent || c.reengageSent);
+    renderCustomerTable(filtered);
   }
 
   function renderCustomerTable(customers) {
@@ -1127,6 +1166,7 @@ Beställ nu 👉 {order_link}
       alert('Inga 46elks-uppgifter. Gå till Inställningar och lägg till dina API-uppgifter.');
       return;
     }
+    const sendBtn = document.querySelector('[onclick="sendToAll()"]'); if(sendBtn) { sendBtn.disabled=true; sendBtn.textContent='SKICKAR...'; }
     const pending = currentCustomers.filter(c => !c.reengagement_sent && c.phone);
     if (pending.length === 0) { addLog('Inga väntande kunder att skicka till', 'muted'); return; }
     const discount = document.getElementById('discountVal').value || '15';
@@ -1160,6 +1200,7 @@ Beställ nu 👉 {order_link}
       }
     }
     addLog(`Massskickning klar — <strong>${sent}/${pending.length} SMS</strong> skickade`, 'green');
+    if(sendBtn) { sendBtn.disabled=false; sendBtn.textContent='SKICKA TILL ALLA VÄNTANDE'; }
     loadKunder();
   }
 
