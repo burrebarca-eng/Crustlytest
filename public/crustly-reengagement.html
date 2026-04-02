@@ -1143,7 +1143,7 @@ Beställ nu 👉 {order_link}
         const res = await fetch('/sms', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_username: elksUser, api_password: elksPass, from: 'Crustly', to: c.phone, message: msg })
+          body: JSON.stringify({ api_username: elksUser, api_password: elksPass, from: (currentRestaurant?.name || 'Crustly').slice(0, 11), to: c.phone, message: msg })
         });
         const data = await res.json();
         if (data.success) {
@@ -1476,7 +1476,7 @@ Respond ONLY with a JSON array av 3 strings, no other text. Example:
         body: JSON.stringify({
           api_username: elksUser,
           api_password: elksPass,
-          from: 'Crustly',
+          from: (currentRestaurant?.name || 'Crustly').slice(0, 11),
           to: c.phone,
           message: text
         })
