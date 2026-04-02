@@ -1148,7 +1148,7 @@ Beställ nu 👉 {order_link}
           sent++;
           addLog(`SMS skickat till <strong>${c.name}</strong>`, 'accent');
           if (!String(c.id).startsWith('d')) {
-            await _sb.from('customers').update({ reengagement_sent: true }).eq('id', c.id).catch(() => {});
+            try { await _sb.from('customers').update({ reengagement_sent: true }).eq('id', c.id); } catch(_) {}
           }
         } else {
           addLog(`Fel för ${c.name}: ${data.error}`, 'red');
