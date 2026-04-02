@@ -904,6 +904,7 @@ Beställ nu 👉 {order_link}
     currentRestaurant = allRestaurants.find(r => r.id === id) || null;
     await loadKunder();
     await loadStats();
+    await loadLogs();
   }
 
   // ============================================================
@@ -916,6 +917,7 @@ Beställ nu 👉 {order_link}
     await initRestaurantSelector();
     loadKunder();
     loadStats();
+    loadLogs();
 
     // Stäng AI-modal vid klick utanför
     document.getElementById('aiModal').addEventListener('click', function(e) {
@@ -1247,7 +1249,7 @@ Beställ nu 👉 {order_link}
   // LOG
   // ============================================================
   function addLog(msg, type = 'muted') {
-    const colors = { accent: 'var(--accent)', green: 'var(--green)', blue: 'var(--blue)', muted: 'var(--muted)' };
+    const colors = { accent: 'var(--accent)', green: 'var(--green)', blue: 'var(--blue)', red: '#e84040', muted: 'var(--muted)' };
     const feed = document.getElementById('logList');
     const empty = feed.querySelector('[style*="INGEN AKTIVITET"]');
     if (empty) empty.remove();
@@ -1261,6 +1263,41 @@ Beställ nu 👉 {order_link}
       <div class="log-time">${time}</div>
     `;
     feed.insertBefore(row, feed.firstChild);
+
+    // Spara till Supabase
+    if (currentRestaurant) {
+      const plainMsg = msg.replace(/<[^>]+>/g, '');
+      _sb.from('activity_logs').insert({
+        restaurant_id: currentRestaurant.id,
+        message: plainMsg,
+        type
+      }).then(() => {}).catch(() => {});
+    }
+  }
+
+  async function loadLogs() {
+    if (!currentRestaurant) return;
+    const { data } = await _sb.from('activity_logs')
+      .select('*')
+      .eq('restaurant_id', currentRestaurant.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (!data || data.length === 0) return;
+
+    const colors = { accent: 'var(--accent)', green: 'var(--green)', blue: 'var(--blue)', red: '#e84040', muted: 'var(--muted)' };
+    const feed = document.getElementById('logList');
+    feed.innerHTML = '';
+    data.forEach(log => {
+      const time = new Date(log.created_at).toLocaleString('sv-SE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const row = document.createElement('div');
+      row.className = 'log-row';
+      row.innerHTML = `
+        <div class="log-dot" style="background:${colors[log.type]||colors.muted}"></div>
+        <div class="log-text">${log.message}</div>
+        <div class="log-time">${time}</div>
+      `;
+      feed.appendChild(row);
+    });
   }
 
   // ============================================================
