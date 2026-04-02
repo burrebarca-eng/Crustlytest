@@ -851,24 +851,11 @@
   // TEMPLATES
   // ============================================================
   const templates = [
-    `Hej {name}! 🍕 Det är {days} dagar sedan du beställde från {restaurant}.
+    `Hej {name}! Vi saknar dig på {restaurant} 🍕 Det är {days} dagar sedan sist — kom tillbaka med {discount}% rabatt! {order_link}`,
 
-Vi saknar dig! Kom tillbaka med {discount}% rabatt på din nästa order 👉 {order_link}
+    `{name}, länge sedan! ⏰ {restaurant} har ett tidsbegränsat erbjudande: {discount}% rabatt de nästa 48h. Missa inte! {order_link}`,
 
-Erbjudandet gäller i 48h!`,
-
-    `{name}, länge sedan! 😊
-
-{restaurant} vill ha tillbaka dig med {discount}% rabatt.
-
-Beställ nu 👉 {order_link}
-(Gäller till imorgon)`,
-
-    `Hej {name}! Det har gått {days} dagar — vi hoppas allt är bra! 🍕
-
-{restaurant} har ett speciellt erbjudande för dig: {discount}% på allt.
-
-👉 {order_link}`
+    `Hej {name}! Du är en av våra bästa kunder 🌟 Därför får du {discount}% hos {restaurant}. Vi hoppas ses snart! {order_link}`
   ];
 
   let activeTemplate = 0;
