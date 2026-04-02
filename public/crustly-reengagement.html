@@ -1115,10 +1115,10 @@
             <div class="cust-name">${c.name}</div>
             <div class="cust-phone">${c.phone}</div>
           </td>
-          <td style="color:var(--muted);font-size:13px;">${c.restaurant_name || c.restaurantName || '—'}</td>
+          <td style="color:var(--muted);font-size:13px;">${c.restaurant_name || c.restaurantName || currentRestaurant?.name || '—'}</td>
           <td><span class="mono">${lastOrderLabel}</span></td>
           <td><span class="days-chip ${daysClass}">${c.daysLapsed} dagar</span></td>
-          <td><span class="mono">${c.orderCount || '—'} orders</span></td>
+          <td><span class="mono">${c.total_orders || c.orderCount || 0} orders</span></td>
           <td>${statusHtml}</td>
           <td>${actionHtml}</td>
         </tr>
