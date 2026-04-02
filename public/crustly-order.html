@@ -2271,15 +2271,16 @@
         });
         if (result && result.order) {
           savedOrderId = result.order.id;
-          // Lös in promo-token (markera som använd)
+          // Lös in promo-token (markera som använd) — MÅSTE awaitas innan Stripe redirectar
           if (activePromo) {
-            _sb.from('promo_codes').update({
-              used: true,
-              used_at: new Date().toISOString(),
-              order_id: savedOrderId,
-            }).eq('token', activePromo.token).eq('used', false)
-              .then(() => { activePromo = null; })
-              .catch(e => console.warn('promo redeem error:', e));
+            try {
+              await _sb.from('promo_codes').update({
+                used: true,
+                used_at: new Date().toISOString(),
+                order_id: savedOrderId,
+              }).eq('token', activePromo.token).eq('used', false);
+              activePromo = null;
+            } catch(e) { console.warn('promo redeem error:', e); }
           }
           // Spara kund
           const bdayMonth = parseInt(document.getElementById('custBdayMonth').value);
