@@ -1170,7 +1170,7 @@
         const res = await fetch('/sms', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_username: elksUser, api_password: elksPass, from: (currentRestaurant?.name || 'Crustly').slice(0, 11), to: c.phone, message: msg })
+          body: JSON.stringify({ api_username: elksUser, api_password: elksPass, from: (currentRestaurant?.name || 'Crustly').replace(/[^A-Za-z0-9]/g, '').slice(0, 11) || 'Crustly', to: c.phone, message: msg })
         });
         const data = await res.json();
         if (data.success) {
@@ -1508,7 +1508,7 @@ Svara ENDAST med en JSON-array med 3 strängar, ingen annan text:
         body: JSON.stringify({
           api_username: elksUser,
           api_password: elksPass,
-          from: (currentRestaurant?.name || 'Crustly').slice(0, 11),
+          from: (currentRestaurant?.name || 'Crustly').replace(/[^A-Za-z0-9]/g, '').slice(0, 11) || 'Crustly',
           to: c.phone,
           message: text
         })
