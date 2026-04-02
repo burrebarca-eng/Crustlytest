@@ -960,7 +960,7 @@
       .replace('{name}', 'Anna')
       .replace('{restaurant}', currentRestaurant?.name || 'restaurangen')
       .replace('{discount}', discount)
-      .replace('{order_link}', 'crustly.app/pizza-roma')
+      .replace('{order_link}', currentRestaurant?.slug ? `${window.location.origin}/crustly-order.html?r=${currentRestaurant.slug}` : `${window.location.origin}/crustly-order.html`)
       .replace('{days}', days);
     document.getElementById('smsPreview').textContent = preview;
     const f = document.getElementById('smsFrom'); if(f) f.textContent = currentRestaurant?.name || '—';
@@ -1165,7 +1165,7 @@
         .replace(/{restaurant}/g, c.restaurant_name || currentRestaurant?.name || '')
         .replace(/{discount}/g, discount)
         .replace(/{days}/g, c.daysLapsed)
-        .replace(/{order_link}/g, 'crustly.app');
+        .replace(/{order_link}/g, currentRestaurant?.slug ? `${window.location.origin}/crustly-order.html?r=${currentRestaurant.slug}` : `${window.location.origin}/crustly-order.html`);
       try {
         const res = await fetch('/sms', {
           method: 'POST',
@@ -1375,7 +1375,7 @@
 
     const restName = c.restaurant_name || currentRestaurant?.name || 'restaurangen';
     const firstName = c.name?.split(' ')[0] || c.name;
-    const orderLink = `crustly.app/${restName.toLowerCase().replace(/\s+/g,'-')}`;
+    const orderLink = currentRestaurant?.slug ? `${window.location.origin}/crustly-order.html?r=${currentRestaurant.slug}` : `${window.location.origin}/crustly-order.html`;
 
     const prompt = `Du skriver återaktiverings-SMS åt pizzarestaurangen "${restName}".
 
