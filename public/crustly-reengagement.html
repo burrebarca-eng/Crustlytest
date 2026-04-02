@@ -614,7 +614,7 @@
   <div class="hero">
     <div>
       <div class="page-title">VINN TILLBAKA<br><span>KUNDER</span></div>
-      <div class="page-sub">AUTOMATISKT SMS · KUNDER SOM INTE BESTÄLLT PÅ X DAGAR · ALLA RESTAURANGER</div>
+      <div class="page-sub">AUTOMATISKT SMS · KUNDER SOM INTE BESTÄLLT PÅ X DAGAR · VALD RESTAURANG</div>
     </div>
   </div>
 
@@ -673,8 +673,8 @@
       <div class="flow-arrow">→</div>
       <div class="flow-step active">
         <div class="flow-icon">💸</div>
-        <div class="flow-label">DU FÅR 10%</div>
-        <div class="flow-val">Automatisk</div>
+        <div class="flow-label">INTÄKT ÅTER</div>
+        <div class="flow-val">Automatiskt</div>
       </div>
     </div>
   </div>
@@ -690,9 +690,9 @@
         <div class="card-sub">OLIKA MEDDELANDEN FÖR OLIKA TIDSGAP</div>
 
         <div class="template-tabs">
-          <div class="tmpl-tab active" onclick="switchTemplate(0, this)">14 DAYS</div>
-          <div class="tmpl-tab" onclick="switchTemplate(1, this)">21 DAYS</div>
-          <div class="tmpl-tab" onclick="switchTemplate(2, this)">30 DAYS</div>
+          <div class="tmpl-tab active" onclick="switchTemplate(0, this)">14 DAGAR</div>
+          <div class="tmpl-tab" onclick="switchTemplate(1, this)">21 DAGAR</div>
+          <div class="tmpl-tab" onclick="switchTemplate(2, this)">30 DAGAR</div>
         </div>
 
         <div class="var-row">
@@ -971,7 +971,7 @@ Beställ nu 👉 {order_link}
     const days = document.getElementById('daysVal').textContent;
     const preview = tmpl
       .replace('{name}', 'Anna')
-      .replace('{restaurant}', 'Pizza Roma')
+      .replace('{restaurant}', currentRestaurant?.name || 'restaurangen')
       .replace('{discount}', discount)
       .replace('{order_link}', 'crustly.app/pizza-roma')
       .replace('{days}', days);
