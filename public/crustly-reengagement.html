@@ -1353,8 +1353,8 @@ Beställ nu 👉 {order_link}
 
     document.getElementById('aiCustName').textContent = customer.name;
     document.getElementById('aiCustDays').textContent = customer.daysLapsed + 'd';
-    document.getElementById('aiCustOrders').textContent = (customer.orderCount || '?') + ' orders';
-    document.getElementById('aiModalSub').textContent = 'PERSONALISED SMS FOR ' + customer.name.toUpperCase();
+    document.getElementById('aiCustOrders').textContent = (customer.total_orders || customer.orderCount || '?') + ' orders';
+    document.getElementById('aiModalSub').textContent = 'PERSONLIGT SMS TILL ' + customer.name.toUpperCase();
     document.getElementById('aiVariants').innerHTML = '';
     document.getElementById('aiRedigeraArea').style.display = 'none';
     document.getElementById('aiSendBtn').style.display = 'none';
@@ -1386,26 +1386,30 @@ Beställ nu 👉 {order_link}
     const discount = document.getElementById('discountVal').value || '15';
     const days = document.getElementById('daysVal').textContent || '14';
 
-    const prompt = `You are writing re-engagement SMS messages for a pizza restaurant called "${c.restaurant_name || c.restaurantName || 'restaurangen'}".
+    const restName = c.restaurant_name || currentRestaurant?.name || 'restaurangen';
+    const firstName = c.name?.split(' ')[0] || c.name;
+    const orderLink = `crustly.app/${restName.toLowerCase().replace(/\s+/g,'-')}`;
 
-Customer details:
-- Name: ${c.name}
-- Days since last order: ${c.daysLapsed}
-- Totalt orders placed: ${c.orderCount || 'unknown'}
-- Favourite rätter: ${c.favouriteItems || 'pizza and pasta'}
+    const prompt = `Du skriver återaktiverings-SMS åt pizzarestaurangen "${restName}".
 
-Write 3 different SHORT SMS messages (max 140 chars each) to win this customer back.
-Each should feel personal, warm, and different in tone:
-- Option 1: Friendly and casual
-- Option 2: Creates urgency  
-- Option 3: Flattering / makes them feel special
+KUNDDATA:
+- Förnamn: ${firstName}
+- Dagar sedan senaste order: ${c.daysLapsed}
+- Totalt antal orders: ${c.total_orders || c.orderCount || 'okänt'}
+- Totalt spenderat: ${c.total_spent ? Math.round(c.total_spent) + ' kr' : 'okänt'}
+- Lojalitetspoäng: ${c.loyalty_points || 0} poäng
 
-Include a ${discount}% discount offer in each.
-Write in Swedish.
-The ordering link is: crustly.app/${(c.restaurantName||'restaurant').toLowerCase().replace(/\s+/g,'-')}
+Skriv 3 KORTA SMS-meddelanden (max 140 tecken vardera) på svenska som vinner tillbaka kunden.
+Använd förnamnet "${firstName}" och gör varje meddelande genuint personligt baserat på datan ovan.
+Tre olika tonlägen:
+- Alternativ 1: Vänlig och personlig — referera till att det gått ${c.daysLapsed} dagar
+- Alternativ 2: Skapar urgency — tidsbegränsat erbjudande
+- Alternativ 3: Får kunden att känna sig speciell — lyfta deras lojalitet${c.total_orders > 5 ? ` (${c.total_orders} orders är imponerande)` : ''}
 
-Respond ONLY with a JSON array av 3 strings, no other text. Example:
-["message 1", "message 2", "message 3"]`;
+Inkludera ${discount}% rabatt och länken: ${orderLink}
+
+Svara ENDAST med en JSON-array med 3 strängar, ingen annan text:
+["meddelande 1", "meddelande 2", "meddelande 3"]`;
 
     try {
       const apiKey = localStorage.getItem('crustly_claude_key');
