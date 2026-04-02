@@ -875,9 +875,9 @@
       if (!user) return;
 
       // Försök hämta alla restauranger, annars bara ägarens
-      let { data: allRests, error } = await _sb.from('restaurants').select('id, name').order('name');
+      let { data: allRests, error } = await _sb.from('restaurants').select('id, name, slug').order('name');
       if (error || !allRests || allRests.length === 0) {
-        const { data: own } = await _sb.from('restaurants').select('id, name').eq('owner_uid', user.id).order('name');
+        const { data: own } = await _sb.from('restaurants').select('id, name, slug').eq('owner_uid', user.id).order('name');
         allRests = own || [];
       }
       allRestaurants = allRests;
@@ -1021,7 +1021,7 @@
         .map(c => {
           const lastOrder = c.last_order_at ? new Date(c.last_order_at) : null;
           const daysLapsed = lastOrder ? Math.floor((now - lastOrder) / (1000 * 60 * 60 * 24)) : 999;
-          return { ...c, daysLapsed, lastOrder };
+          return { ...c, daysLapsed, lastOrder, restaurant_name: currentRestaurant?.name || '' };
         })
         .sort((a, b) => b.daysLapsed - a.daysLapsed);
 
@@ -1118,7 +1118,7 @@
           <td style="color:var(--muted);font-size:13px;">${c.restaurant_name || c.restaurantName || currentRestaurant?.name || '—'}</td>
           <td><span class="mono">${lastOrderLabel}</span></td>
           <td><span class="days-chip ${daysClass}">${c.daysLapsed} dagar</span></td>
-          <td><span class="mono">${c.total_orders || c.orderCount || 0} orders</span></td>
+          <td><span class="mono">${c.total_orders ?? c.orderCount ?? 0} orders</span></td>
           <td>${statusHtml}</td>
           <td>${actionHtml}</td>
         </tr>
