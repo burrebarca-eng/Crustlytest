@@ -1335,7 +1335,9 @@
         </div>
 
         <hr class="cart-divider">
+        <div id="promoBanner" style="display:none;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;padding:8px 12px;border-radius:8px;margin-bottom:10px;"></div>
         <div class="cart-row"><span>Delsumma</span><span id="subtotalVal">0 kr</span></div>
+        <div class="cart-row" id="cartDiscountRow" style="display:none;color:#1a7a4a;"><span>Rabatt</span><span id="cartDiscountVal"></span></div>
         <div class="cart-row"><span>Leverans</span><span>0 kr</span></div>
         <div class="cart-row" style="color:var(--muted)"><span>Serviceavgift</span><span>7 kr</span></div>
         <div class="cart-total"><span>Totalt</span><span id="totalVal">0 kr</span></div>
@@ -1564,6 +1566,7 @@
   let restaurant = null;
   let cart = {};
   let deliveryType = 'delivery';
+  let activePromo = null; // { token, discount_pct } eller null
   let upsellItem = null;
 
   // Demo restaurant data (used when Firebase not configured)
@@ -1616,6 +1619,7 @@
     }
 
     await loadFromSupabase(slug);
+    await loadPromoToken();
 
     // Visa telefonsökning
     document.getElementById('phoneLookup').style.display = 'flex';
@@ -2017,8 +2021,10 @@
     const count = entries.reduce((s, [, v]) => s + v.qty, 0);
     const subtotal = entries.reduce((s, [, v]) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
     const serviceFee = 7;
-    const total = subtotal + serviceFee;
-    const vatAmount = (subtotal / 1.12 * 0.12).toFixed(2);
+    const discountAmount = activePromo ? Math.round(subtotal * activePromo.discount_pct / 100) : 0;
+    const discountedSubtotal = subtotal - discountAmount;
+    const total = discountedSubtotal + serviceFee;
+    const vatAmount = (discountedSubtotal / 1.12 * 0.12).toFixed(2);
 
     const _set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     _set('cartCount', count + (count === 1 ? ' ITEM' : ' ITEMS'));
@@ -2027,6 +2033,13 @@
     _set('subtotalVal', subtotal.toFixed(0) + ' kr');
     _set('vatVal', vatAmount + ' kr');
     _set('totalVal', total + ' kr');
+    const discountRow = document.getElementById('cartDiscountRow');
+    if (discountRow) {
+      if (discountAmount > 0) {
+        discountRow.style.display = '';
+        document.getElementById('cartDiscountVal').textContent = '−' + discountAmount + ' kr';
+      } else { discountRow.style.display = 'none'; }
+    }
 
     const checkoutBtn = document.getElementById('checkoutBtn');
     if (checkoutBtn) checkoutBtn.disabled = count === 0;
@@ -2131,15 +2144,18 @@
       return s + (v.rätt.price + v.extraCost) * v.qty;
     }, 0);
     const serviceFee = 7;
-    const total = subtotal + serviceFee;
+    const discountAmount = activePromo ? Math.round(subtotal * activePromo.discount_pct / 100) : 0;
+    const discountedSubtotal = subtotal - discountAmount;
+    const total = discountedSubtotal + serviceFee;
 
-    const vat = subtotal / 1.12 * 0.12;
+    const vat = discountedSubtotal / 1.12 * 0.12;
     document.getElementById('orderSummary').innerHTML = `
       <div class="order-summary-title">ORDERSAMMANFATTNING</div>
       ${Object.values(cart).map(v => {
         const extrasStr = v.extras.length > 0 ? ` <span style="font-size:11px;opacity:0.6">(${v.extras.join(', ')})</span>` : '';
         return `<div class="summary-rätt"><span>${v.rätt.name} ×${v.qty}${extrasStr}</span><span>${((v.rätt.price + v.extraCost) * v.qty).toFixed(0)} kr</span></div>`;
       }).join('')}
+      ${discountAmount > 0 ? `<div class="summary-rätt" style="color:#1a7a4a;"><span>Rabatt (${activePromo.discount_pct}%)</span><span>−${discountAmount} kr</span></div>` : ''}
       <div class="summary-rätt" style="color:var(--muted)"><span>Leverans</span><span>0 kr</span></div>
       <div class="summary-rätt" style="color:var(--muted)"><span>Serviceavgift</span><span>7 kr</span></div>
       <div class="summary-total"><span>Totalt</span><span>${total.toFixed(0)} kr</span></div>
@@ -2149,7 +2165,7 @@
     document.getElementById('checkoutForm').style.display = 'block';
     document.getElementById('orderSuccess').classList.remove('show');
     document.getElementById('modalOverlay').classList.add('show');
-    initStripePaymentElement(subtotal);
+    initStripePaymentElement(discountedSubtotal);
   }
 
   function closeModal() {
@@ -2228,7 +2244,8 @@
 
     // Spara order i Supabase INNAN betalning
     const subtotal = Object.values(cart).reduce((s, v) => s + (v.rätt.price + v.extraCost) * v.qty, 0);
-    const total = subtotal + 7;
+    const discountAmount = activePromo ? Math.round(subtotal * activePromo.discount_pct / 100) : 0;
+    const total = (subtotal - discountAmount) + 7;
     const items = Object.values(cart).map(v => ({
       name: v.rätt.name, quantity: v.qty,
       price: v.rätt.price + v.extraCost,
@@ -2254,6 +2271,16 @@
         });
         if (result && result.order) {
           savedOrderId = result.order.id;
+          // Lös in promo-token (markera som använd)
+          if (activePromo) {
+            _sb.from('promo_codes').update({
+              used: true,
+              used_at: new Date().toISOString(),
+              order_id: savedOrderId,
+            }).eq('token', activePromo.token).eq('used', false)
+              .then(() => { activePromo = null; })
+              .catch(e => console.warn('promo redeem error:', e));
+          }
           // Spara kund
           const bdayMonth = parseInt(document.getElementById('custBdayMonth').value);
           const bdayDay = parseInt(document.getElementById('custBdayDay').value);
@@ -2513,6 +2540,49 @@
     restaurant.menu.forEach(rätt => updateQtyCtrl(rätt.id));
     updateCartFromObjects();
     document.getElementById('upsellBox').classList.remove('show');
+  }
+
+  // ============================================================
+  // PROMO TOKEN
+  // ============================================================
+  async function loadPromoToken() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('promo');
+    if (!token) return;
+    try {
+      const { data, error } = await _sb
+        .from('promo_codes')
+        .select('token, discount_pct, used, expires_at')
+        .eq('token', token)
+        .single();
+      if (error || !data) { console.warn('Promo token hittades inte eller redan använd.'); return; }
+      if (data.used || new Date(data.expires_at) < new Date()) {
+        showPromoBanner(null, 'expired'); return;
+      }
+      activePromo = { token: data.token, discount_pct: data.discount_pct };
+      showPromoBanner(data.discount_pct, 'valid');
+      updateCartFromObjects();
+    } catch(e) { console.error('loadPromoToken error:', e); }
+  }
+
+  function showPromoBanner(discountPct, state) {
+    const banner = document.getElementById('promoBanner');
+    if (!banner) return;
+    if (state === 'valid') {
+      banner.textContent = `🎉 ${discountPct}% rabatt aktiverad!`;
+      banner.style.display = 'block';
+      banner.style.background = '#e8f5ee';
+      banner.style.color = '#1a7a4a';
+      banner.style.border = '1px solid #1a7a4a';
+    } else if (state === 'expired') {
+      banner.textContent = 'Kampanjkoden har redan använts eller gått ut.';
+      banner.style.display = 'block';
+      banner.style.background = '#fff0ea';
+      banner.style.color = '#c05000';
+      banner.style.border = '1px solid #c05000';
+    } else {
+      banner.style.display = 'none';
+    }
   }
 </script>
 </body>
