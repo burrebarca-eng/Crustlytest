@@ -2214,6 +2214,7 @@
       if (!data.clientSecret) throw new Error(data.error || 'Kunde inte starta betalning');
       _stripeElements = _stripe.elements({
         clientSecret: data.clientSecret,
+        locale: 'sv',
         appearance: { theme: 'stripe', variables: { colorPrimary: '#f05a1a', fontFamily: 'Plus Jakarta Sans, sans-serif', borderRadius: '8px' } }
       });
       const paymentEl = _stripeElements.create('payment', { layout: { type: 'accordion', defaultCollapsed: false } });
