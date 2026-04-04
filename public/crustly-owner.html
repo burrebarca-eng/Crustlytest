@@ -1400,7 +1400,6 @@ async function saveInställningar(btn) {
         ...(restaurant.settings || {}),
         extras: restaurant.settings?.extras || {}
       };
-      console.log('[saveInställningar] skickar settings:', JSON.stringify(settingsToSave));
       const result = await __updateRestaurant(restaurant.id, {
         name:            restaurant.name,
         address:         restaurant.address,
@@ -1414,7 +1413,6 @@ async function saveInställningar(btn) {
         sms_api_password: restaurant.sms_api_password || null,
         settings:        settingsToSave,
       });
-      console.log('[saveInställningar] resultat:', result);
       if (result?.success) {
         restaurant = { ...restaurant, ...result.restaurant };
         document.getElementById('tbRest').textContent = (restaurant.name||'').toUpperCase();
@@ -1423,7 +1421,6 @@ async function saveInställningar(btn) {
       } else {
         btn.textContent = '⚠ FEL VID SPARNING — se konsolen'; btn.style.background = '#e74c3c';
         btn.disabled = false; // låt användaren försöka igen
-        console.error('[saveInställningar] misslyckades. isDemoMode:', isDemoMode, 'restaurant.id:', restaurant.id, '_authToken börjar med:', _authToken?.slice(0,20));
       }
     } catch(e) {
       console.error('saveInställningar error:', e);
