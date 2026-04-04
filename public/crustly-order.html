@@ -2297,7 +2297,8 @@
       } catch(e) { console.warn('pre-payment order save:', e); }
     }
 
-    const receiptUrl = window.location.href.split('/').slice(0,-1).join('/') + '/crustly-receipt.html?r=' + (restaurant ? restaurant.slug : '') + (savedOrderId ? '&order=' + savedOrderId : '');
+    const baseUrl = window.location.href.split('/').slice(0,-1).join('/');
+    const receiptUrl = baseUrl + '/crustly-payment.html?r=' + (restaurant ? restaurant.slug : '') + (savedOrderId ? '&order=' + savedOrderId : '');
 
     const { error } = await _stripe.confirmPayment({
       elements: _stripeElements,

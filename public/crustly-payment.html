@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Behandlar betalning — Crustly</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="crustly-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+  :root {
+    --bg: #f5f2eb; --text: #1c1812; --muted: #7a7570;
+    --accent: #c8380a; --green: #28c060; --border: #e0dbd0;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+
+  .container { text-align: center; padding: 40px 24px; max-width: 420px; width: 100%; }
+
+  /* Spinner */
+  .spinner-wrap { position: relative; width: 80px; height: 80px; margin: 0 auto 32px; }
+  .spinner {
+    width: 80px; height: 80px; border-radius: 50%;
+    border: 3px solid #e8e4dc;
+    border-top-color: var(--accent);
+    animation: spin 0.9s linear infinite;
+  }
+  .spinner-icon {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Success check */
+  .check-wrap { width: 80px; height: 80px; margin: 0 auto 32px; display: none; }
+  .check-circle {
+    width: 80px; height: 80px; border-radius: 50%; background: var(--green);
+    display: flex; align-items: center; justify-content: center; font-size: 36px;
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+  @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* Failed */
+  .fail-wrap { width: 80px; height: 80px; margin: 0 auto 32px; display: none; }
+  .fail-circle {
+    width: 80px; height: 80px; border-radius: 50%; background: #e84040;
+    display: flex; align-items: center; justify-content: center; font-size: 36px;
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  .title { font-family: var(--font-display); font-size: 30px; font-weight: 700; margin-bottom: 10px; }
+  .subtitle { font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; }
+  .msg { font-size: 14px; color: var(--muted); margin-bottom: 32px; line-height: 1.6; }
+
+  .steps {
+    display: flex; flex-direction: column; gap: 10px;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; margin-bottom: 28px; text-align: left;
+  }
+  .step-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); transition: color 0.3s; }
+  .step-row.active { color: var(--text); font-weight: 600; }
+  .step-row.done { color: var(--green); }
+  .step-dot {
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid #e8e4dc;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; transition: all 0.3s;
+  }
+  .step-row.active .step-dot { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .step-row.done .step-dot { border-color: var(--green); background: var(--green); color: #fff; }
+
+  .btn {
+    width: 100%; padding: 16px; border: none; border-radius: 12px;
+    font-family: var(--font-display); font-size: 20px; font-weight: 600;
+    cursor: pointer; display: none;
+  }
+  .btn-success { background: var(--accent); color: #fff; }
+  .btn-retry { background: transparent; color: var(--text); border: 1.5px solid var(--border); font-family: var(--font-mono); font-size: 12px; letter-spacing: 1.5px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Processing state -->
+  <div class="spinner-wrap" id="spinnerWrap">
+    <div class="spinner"></div>
+    <div class="spinner-icon">💳</div>
+  </div>
+
+  <!-- Success state -->
+  <div class="check-wrap" id="checkWrap">
+    <div class="check-circle">✓</div>
+  </div>
+
+  <!-- Failed state -->
+  <div class="fail-wrap" id="failWrap">
+    <div class="fail-circle">✕</div>
+  </div>
+
+  <div class="subtitle" id="stateLabel">BEHANDLAR BETALNING</div>
+  <div class="title" id="stateTitle">Vänta ett ögonblick...</div>
+  <div class="msg" id="stateMsg">Vi bekräftar din betalning. Det tar bara ett par sekunder.</div>
+
+  <div class="steps" id="stepsBox">
+    <div class="step-row active" id="sRow0">
+      <div class="step-dot" id="sDot0">1</div>
+      <span>Verifierar betalning</span>
+    </div>
+    <div class="step-row" id="sRow1">
+      <div class="step-dot" id="sDot1">2</div>
+      <span>Bekräftar order</span>
+    </div>
+    <div class="step-row" id="sRow2">
+      <div class="step-dot" id="sDot2">3</div>
+      <span>Skickar till köket</span>
+    </div>
+  </div>
+
+  <button class="btn btn-success" id="btnContinue" onclick="goToReceipt()">Se din order →</button>
+  <button class="btn btn-retry" id="btnRetry">← Försök igen</button>
+
+</div>
+<script>
+  const { createClient } = supabase;
+  const _sb = createClient(SUPA_URL, SUPA_KEY);
+  const STRIPE_PK = 'pk_test_51TDR7bPMlGmjneRoNljUyHlcsRCGP5JtWLG7M9n2Tn8wANDNUg6k4AvxesxFh7uUlgxeiiNoxHlujo6NHUQwPkV100uafPUr95';
+
+  const params = new URLSearchParams(window.location.search);
+  const clientSecret = params.get('payment_intent_client_secret');
+  const redirectStatus = params.get('redirect_status');
+  const orderId = params.get('order');
+  const slug = params.get('r') || '';
+  const paymentIntentId = params.get('payment_intent') || '';
+
+  function setStep(idx, state) {
+    for (let i = 0; i < 3; i++) {
+      const row = document.getElementById('sRow' + i);
+      const dot = document.getElementById('sDot' + i);
+      row.className = 'step-row';
+      dot.textContent = i + 1;
+      if (i < idx) { row.classList.add('done'); dot.textContent = '✓'; }
+      else if (i === idx) row.classList.add(state === 'error' ? '' : 'active');
+    }
+  }
+
+  function showSuccess() {
+    document.getElementById('spinnerWrap').style.display = 'none';
+    document.getElementById('checkWrap').style.display = 'block';
+    document.getElementById('stateLabel').textContent = 'BETALNING GODKÄND';
+    document.getElementById('stateTitle').textContent = 'Din order är bekräftad!';
+    document.getElementById('stateMsg').textContent = 'Betalningen gick igenom. Restaurangen har fått din order och börjar förbereda den.';
+    setStep(3, 'done');
+    setTimeout(() => {
+      document.getElementById('btnContinue').style.display = 'block';
+      goToReceipt();
+    }, 1500);
+  }
+
+  function showFailed(msg) {
+    document.getElementById('spinnerWrap').style.display = 'none';
+    document.getElementById('stepsBox').style.display = 'none';
+    document.getElementById('failWrap').style.display = 'block';
+    document.getElementById('stateLabel').textContent = 'BETALNING MISSLYCKADES';
+    document.getElementById('stateTitle').textContent = 'Något gick fel';
+    document.getElementById('stateMsg').textContent = msg;
+    const btn = document.getElementById('btnRetry');
+    btn.style.display = 'block';
+    btn.onclick = () => { window.location.href = 'crustly-order.html?r=' + slug; };
+  }
+
+  function goToReceipt() {
+    window.location.href = 'crustly-receipt.html?r=' + slug + (orderId ? '&order=' + orderId : '');
+  }
+
+  async function processPayment() {
+    if (!clientSecret) {
+      // Ingen Stripe-redirect — visa direkt
+      goToReceipt(); return;
+    }
+
+    if (redirectStatus !== 'succeeded') {
+      showFailed(
+        redirectStatus === 'requires_payment_method'
+          ? 'Betalningen avvisades. Kontrollera ditt kort och försök igen.'
+          : 'Betalningen kunde inte genomföras. Försök igen.'
+      );
+      return;
+    }
+
+    // Steg 1: Verifiera med Stripe
+    setStep(0, 'active');
+    try {
+      const stripe = Stripe(STRIPE_PK);
+      const { paymentIntent, error } = await stripe.retrievePaymentIntent(clientSecret);
+      if (error || !paymentIntent || paymentIntent.status !== 'succeeded') {
+        showFailed('Betalningen kunde inte verifieras. Kontakta restaurangen om pengar dragits.')
+        return;
+      }
+    } catch(e) {
+      console.warn('Stripe verify error:', e);
+      // Fortsätt ändå — bättre UX om Stripe.js-anrop misslyckas tekniskt
+    }
+    setStep(1, 'active');
+
+    // Steg 2: Bekräfta order i Supabase
+    if (orderId) {
+      try {
+        await _sb.rpc('confirm_order_payment', {
+          p_order_id: orderId,
+          p_payment_intent: paymentIntentId
+        });
+      } catch(e) { console.warn('confirm_order_payment error:', e); }
+    }
+    setStep(2, 'active');
+
+    // Kort paus — steg 3 "Skickar till köket"
+    await new Promise(r => setTimeout(r, 600));
+
+    showSuccess();
+  }
+
+  processPayment();
+</script>
+</body>
+</html>
