@@ -1396,38 +1396,44 @@ async function saveInställningar(btn) {
   btn.textContent = 'SPARAR...'; btn.disabled = true;
   if (!isDemoMode) {
     try {
+      const settingsToSave = {
+        ...(restaurant.settings || {}),
+        extras: restaurant.settings?.extras || {}
+      };
+      console.log('[saveInställningar] skickar settings:', JSON.stringify(settingsToSave));
       const result = await __updateRestaurant(restaurant.id, {
-        name:          restaurant.name,
-        address:       restaurant.address,
-        phone:         restaurant.phone,
-        opening_hours: restaurant.opening_hours,
-        is_open:       restaurant.isÖppet ?? true,
-        settings:      restaurant.settings || {},
+        name:            restaurant.name,
+        address:         restaurant.address,
+        phone:           restaurant.phone,
+        opening_hours:   restaurant.opening_hours,
+        is_open:         restaurant.isÖppet ?? true,
         closed_message:  restaurant.closed_message || null,
         kitchen_pin:     restaurant.kitchen_pin || null,
         sms_sender_name:  restaurant.sms_sender_name || null,
         sms_api_username: restaurant.sms_api_username || null,
         sms_api_password: restaurant.sms_api_password || null,
-        settings: {
-          ...(restaurant.settings || {}),
-          extras: restaurant.settings?.extras || {}
-        },
+        settings:        settingsToSave,
       });
+      console.log('[saveInställningar] resultat:', result);
       if (result?.success) {
         restaurant = { ...restaurant, ...result.restaurant };
         document.getElementById('tbRest').textContent = (restaurant.name||'').toUpperCase();
         btn.textContent = '✓ SPARAT'; btn.style.background = 'var(--green)';
+        setTimeout(()=>{ btn.textContent='SPARA ÄNDRINGAR'; btn.style.background='var(--orange)'; btn.disabled=false; }, 2000);
       } else {
-        btn.textContent = '⚠ FEL VID SPARNING'; btn.style.background = '#e74c3c';
+        btn.textContent = '⚠ FEL VID SPARNING — se konsolen'; btn.style.background = '#e74c3c';
+        btn.disabled = false; // låt användaren försöka igen
+        console.error('[saveInställningar] misslyckades. isDemoMode:', isDemoMode, 'restaurant.id:', restaurant.id, '_authToken börjar med:', _authToken?.slice(0,20));
       }
     } catch(e) {
       console.error('saveInställningar error:', e);
       btn.textContent = '⚠ FEL'; btn.style.background = '#e74c3c';
+      btn.disabled = false;
     }
   } else {
     btn.textContent = '✓ DEMO (ej sparat)'; btn.style.background = 'var(--mt)';
+    setTimeout(()=>{ btn.textContent='SPARA ÄNDRINGAR'; btn.style.background='var(--orange)'; btn.disabled=false; }, 2000);
   }
-  setTimeout(()=>{ btn.textContent='SPARA ÄNDRINGAR'; btn.style.background='var(--orange)'; btn.disabled=false; }, 2000);
 }
 
 // ============================================================
