@@ -89,12 +89,14 @@ async function handleStripePaymentIntent(request, env) {
 
     // Stripe använder ören — multiplicera med 100
     const body = new URLSearchParams({
-      amount:                              String(Math.round(amount * 100)),
-      currency:                            currency || 'sek',
-      'metadata[restaurant]':              restaurantName || '',
-      'metadata[order_id]':               orderId || '',
-      // Aktivera alla tillgängliga betalningsmetoder automatiskt (kort, Klarna etc)
-      'automatic_payment_methods[enabled]': 'true',
+      amount:                    String(Math.round(amount * 100)),
+      currency:                  currency || 'sek',
+      'metadata[restaurant]':    restaurantName || '',
+      'metadata[order_id]':      orderId || '',
+      // Explicita betalmetoder: kort (inkl Apple/Google Pay), Klarna, Swish
+      'payment_method_types[0]': 'card',
+      'payment_method_types[1]': 'klarna',
+      'payment_method_types[2]': 'swish',
     });
 
     const res = await fetch('https://api.stripe.com/v1/payment_intents', {
