@@ -93,10 +93,10 @@ async function handleStripePaymentIntent(request, env) {
       currency:                  currency || 'sek',
       'metadata[restaurant]':    restaurantName || '',
       'metadata[order_id]':      orderId || '',
-      // Explicita betalmetoder: kort (inkl Apple/Google Pay), Klarna, Swish
+      // Explicita betalmetoder: kort (inkl Apple/Google Pay), Klarna
+      // Swish läggs till när Stripe-kontot är verifierat för Sverige
       'payment_method_types[0]': 'card',
       'payment_method_types[1]': 'klarna',
-      'payment_method_types[2]': 'swish',
     });
 
     const res = await fetch('https://api.stripe.com/v1/payment_intents', {
