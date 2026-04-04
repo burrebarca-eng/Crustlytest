@@ -60,6 +60,15 @@ export default {
       return handleClaudeProxy(request, env);
     }
 
+    // ── APPLE PAY DOMAIN VERIFICATION ─────────────────────
+    if (path === '/.well-known/apple-developer-merchantid-domain-association') {
+      const res = await fetch('https://stripe.com/files/apple-pay/apple-developer-merchantid-domain-association');
+      const content = await res.arrayBuffer();
+      return new Response(content, {
+        headers: { 'Content-Type': 'application/octet-stream' }
+      });
+    }
+
     // ── STATIC FILES ───────────────────────────────────────
     try {
       return await getAssetFromKV(
