@@ -1735,18 +1735,25 @@
       // Build menu
       buildMeny(data.menu || []);
 
-      // Leverans options
-      const hasLeverans = !!data.settings?.delivery;
-      const hasPickup = !!data.settings?.pickup;
-      const showLeverans = !data.settings || hasLeverans;
-      const showAvhämtning = !data.settings || hasPickup;
+      // Leverans options — visa om inte explicit avstängt (matchar ägarportalen)
+      const s = data.settings;
+      const showLeverans   = !s || s.delivery !== false;
+      const showAvhämtning = !s || s.pickup   !== false;
 
       const deliveryTab = document.getElementById('tab-delivery');
-      const pickupTab = document.getElementById('tab-pickup');
+      const pickupTab   = document.getElementById('tab-pickup');
 
-      if (!showLeverans) { deliveryTab.style.display = 'none'; setLeverans('pickup'); }
-      if (!showAvhämtning) { pickupTab.style.display = 'none'; }
-      if (!showLeverans && !showAvhämtning) { deliveryTab.style.display = ''; pickupTab.style.display = ''; }
+      if (!showLeverans && showAvhämtning) {
+        deliveryTab.style.display = 'none';
+        setLeverans('pickup');
+      } else if (showLeverans && !showAvhämtning) {
+        pickupTab.style.display = 'none';
+        setLeverans('delivery');
+      } else if (!showLeverans && !showAvhämtning) {
+        // Båda avstängda — visa båda som nödfallback
+        deliveryTab.style.display = '';
+        pickupTab.style.display = '';
+      }
 
     } catch(e) {
       console.error('loadRestaurant error:', e);
