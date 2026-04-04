@@ -1737,8 +1737,10 @@
 
       // Leverans options — visa om inte explicit avstängt (matchar ägarportalen)
       const s = data.settings;
+      console.log('[Crustly] restaurant.settings från Supabase:', JSON.stringify(s));
       const showLeverans   = !s || s.delivery !== false;
       const showAvhämtning = !s || s.pickup   !== false;
+      console.log('[Crustly] showLeverans:', showLeverans, '| showAvhämtning:', showAvhämtning);
 
       const deliveryTab = document.getElementById('tab-delivery');
       const pickupTab   = document.getElementById('tab-pickup');
