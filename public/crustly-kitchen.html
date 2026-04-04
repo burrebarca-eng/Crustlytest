@@ -31,7 +31,7 @@ async function listenToOrders(restaurantId, callback) {
   // Initial load
   const data = await sbFetch(
     'orders?restaurant_id=eq.' + restaurantId +
-    '&status=in.(new,preparing,awaiting,ready,done)' +
+    '&payment_status=eq.paid&status=in.(new,preparing,awaiting,ready,done)' +
     '&order=created_at.desc&limit=100'
   );
   if (data) callback(data);
