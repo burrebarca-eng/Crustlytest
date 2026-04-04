@@ -7,7 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="crustly-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://js.stripe.com/v3/"></script>
 <style>
   :root {
     --bg: #f5f2eb; --text: #1c1812; --muted: #7a7570; --border: #e0dbd0;
@@ -223,71 +222,13 @@
   const { createClient } = supabase;
   const _sb = createClient(SUPA_URL, SUPA_KEY);
 
-  const STRIPE_PK = 'pk_test_51TDR7bPMlGmjneRoNljUyHlcsRCGP5JtWLG7M9n2Tn8wANDNUg6k4AvxesxFh7uUlgxeiiNoxHlujo6NHUQwPkV100uafPUr95';
   const params = new URLSearchParams(window.location.search);
   const orderId = params.get('order');
   const slug = params.get('r') || '';
-  const clientSecret = params.get('payment_intent_client_secret');
-  const redirectStatus = params.get('redirect_status');
   let currentOrder = null;
   let pollingInterval = null;
 
-  async function verifyAndConfirmPayment() {
-    // Ingen Stripe-redirect — kontantkassa eller redan hanterad
-    if (!clientSecret) return true;
-
-    if (redirectStatus === 'succeeded') {
-      // Bekräfta via Stripe.js att payment intent faktiskt är betald
-      try {
-        const stripe = Stripe(STRIPE_PK);
-        const { paymentIntent, error } = await stripe.retrievePaymentIntent(clientSecret);
-        if (error || !paymentIntent || paymentIntent.status !== 'succeeded') {
-          showPaymentFailed('Betalningen kunde inte verifieras.');
-          return false;
-        }
-      } catch(e) {
-        console.warn('Stripe verify error:', e);
-        // Tillåt ändå om Stripe.js misslyckas — bättre UX
-      }
-      // Markera ordern som betald i Supabase via RPC
-      if (orderId) {
-        try {
-          await _sb.rpc('confirm_order_payment', {
-            p_order_id: orderId,
-            p_payment_intent: params.get('payment_intent') || ''
-          });
-        } catch(e) { console.warn('confirm_order_payment error:', e); }
-      }
-      return true;
-    } else {
-      // Stripe redirect men betalning misslyckades
-      showPaymentFailed(
-        redirectStatus === 'requires_payment_method'
-          ? 'Betalningen avvisades. Kontrollera ditt kort och försök igen.'
-          : 'Betalningen kunde inte genomföras.'
-      );
-      return false;
-    }
-  }
-
-  function showPaymentFailed(msg) {
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('successScreen').classList.add('show');
-    document.getElementById('successScreen').querySelector('.success-inner').innerHTML = `
-      <div style="font-size:56px;margin-bottom:16px;">❌</div>
-      <div style="font-family:var(--font-display);font-size:32px;font-weight:700;margin-bottom:12px;">Betalningen misslyckades</div>
-      <div style="font-size:14px;color:var(--muted);margin-bottom:28px;">${msg}</div>
-      <button onclick="window.location.href='crustly-order.html?r=${slug}'"
-        style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:16px;font-family:var(--font-display);font-size:20px;font-weight:600;cursor:pointer;">
-        Försök igen
-      </button>
-    `;
-  }
-
   async function init() {
-    // Verifiera betalning via Stripe innan vi visar något
-    const paymentOk = await verifyAndConfirmPayment();
-    if (!paymentOk) return;
 
     if (!orderId) {
       document.getElementById('loadingState').style.display = 'none';
