@@ -1383,7 +1383,9 @@
       <div class="delivery-tabs">
         <div class="delivery-tab active" onclick="setLeverans('delivery')" id="tab-delivery">🛵 Leverans</div>
         <div class="delivery-tab" onclick="setLeverans('pickup')" id="tab-pickup">🏠 Avhämtning</div>
+        <div class="delivery-tab" onclick="setLeverans('dine_in')" id="tab-dinein">🍽️ Servering</div>
       </div>
+      <div id="noOrderMethodMsg" style="display:none;text-align:center;padding:16px;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;color:var(--muted);">RESTAURANGEN TAR INTE EMOT ONLINEBESTÄLLNINGAR JUST NU</div>
 
       <div class="modal-field-row">
         <div class="modal-field">
@@ -1405,6 +1407,12 @@
         <div class="modal-field">
           <label>Leveransadress</label>
           <input type="text" id="custAddress" placeholder="Storgatan 12, Stockholm">
+        </div>
+      </div>
+      <div id="dineInFields" style="display:none;">
+        <div class="modal-field">
+          <label>Bordsnummer</label>
+          <input type="number" id="custTable" placeholder="T.ex. 5" min="1">
         </div>
       </div>
 
@@ -1735,26 +1743,32 @@
       // Build menu
       buildMeny(data.menu || []);
 
-      // Leverans options — visa om inte explicit avstängt (matchar ägarportalen)
+      // Leverans options — visa om inte explicit avstängt
       const s = data.settings;
-      console.log('[Crustly] restaurant.settings från Supabase:', JSON.stringify(s));
-      const showLeverans   = !s || s.delivery !== false;
-      const showAvhämtning = !s || s.pickup   !== false;
-      console.log('[Crustly] showLeverans:', showLeverans, '| showAvhämtning:', showAvhämtning);
+      const showLeverans   = !s || s.delivery  !== false;
+      const showAvhämtning = !s || s.pickup    !== false;
+      const showServering  = s  && s.dine_in   === true;   // dine_in kräver explicit true
 
       const deliveryTab = document.getElementById('tab-delivery');
       const pickupTab   = document.getElementById('tab-pickup');
+      const dineinTab   = document.getElementById('tab-dinein');
+      const noMethodMsg = document.getElementById('noOrderMethodMsg');
 
-      if (!showLeverans && showAvhämtning) {
-        deliveryTab.style.display = 'none';
+      deliveryTab.style.display = showLeverans   ? '' : 'none';
+      pickupTab.style.display   = showAvhämtning ? '' : 'none';
+      dineinTab.style.display   = showServering  ? '' : 'none';
+
+      // Välj första tillgängliga metod
+      const noneAvailable = !showLeverans && !showAvhämtning && !showServering;
+      if (noneAvailable) {
+        noMethodMsg.style.display = 'block';
+        document.getElementById('placeOrderBtn').style.display = 'none';
+      } else if (!showLeverans && showAvhämtning) {
         setLeverans('pickup');
-      } else if (showLeverans && !showAvhämtning) {
-        pickupTab.style.display = 'none';
+      } else if (!showLeverans && !showAvhämtning && showServering) {
+        setLeverans('dine_in');
+      } else {
         setLeverans('delivery');
-      } else if (!showLeverans && !showAvhämtning) {
-        // Båda avstängda — visa båda som nödfallback
-        deliveryTab.style.display = '';
-        pickupTab.style.display = '';
       }
 
     } catch(e) {
@@ -2189,7 +2203,9 @@
     deliveryType = type;
     document.getElementById('tab-delivery').classList.toggle('active', type === 'delivery');
     document.getElementById('tab-pickup').classList.toggle('active', type === 'pickup');
+    document.getElementById('tab-dinein').classList.toggle('active', type === 'dine_in');
     document.getElementById('deliveryFields').style.display = type === 'delivery' ? 'block' : 'none';
+    document.getElementById('dineInFields').style.display  = type === 'dine_in'  ? 'block' : 'none';
   }
 
   let paymentMethod = 'card';
@@ -2279,7 +2295,9 @@
           items:            items,
           total:            total,
           delivery_type:    deliveryType,
-          delivery_address: deliveryType === 'delivery' ? document.getElementById('custAddress').value.trim() : 'PICKUP',
+          delivery_address: deliveryType === 'delivery' ? document.getElementById('custAddress').value.trim()
+                          : deliveryType === 'dine_in'  ? 'BORD ' + (document.getElementById('custTable').value.trim() || '?')
+                          : 'PICKUP',
           payment_method:   'card',
           special_instructions: document.getElementById('custNotes').value.trim(),
         });
