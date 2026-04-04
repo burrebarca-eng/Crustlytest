@@ -2318,6 +2318,11 @@
       document.getElementById('stripe-errors').textContent = error.message;
       document.getElementById('stripe-errors').style.display = 'block';
       btn.textContent = '💳 Betala →'; btn.disabled = false;
+      // Radera den pending-ordern så den aldrig kan nå köket
+      if (savedOrderId && _sb) {
+        _sb.from('orders').delete().eq('id', savedOrderId)
+          .then(() => {}).catch(() => {});
+      }
       return;
     }
   }
