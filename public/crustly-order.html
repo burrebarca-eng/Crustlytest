@@ -2216,7 +2216,7 @@
         clientSecret: data.clientSecret,
         appearance: { theme: 'stripe', variables: { colorPrimary: '#f05a1a', fontFamily: 'Plus Jakarta Sans, sans-serif', borderRadius: '8px' } }
       });
-      const paymentEl = _stripeElements.create('payment', { layout: { type: 'tabs', defaultCollapsed: false } });
+      const paymentEl = _stripeElements.create('payment', { layout: { type: 'accordion', defaultCollapsed: false } });
       paymentEl.mount('#payment-element');
       if (loadEl) loadEl.style.display = 'none';
       _stripeReady = true;
