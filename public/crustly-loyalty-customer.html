@@ -510,8 +510,9 @@ body { background:var(--bg); color:var(--tx); font-family:var(--fb); min-height:
       <input class="auth-inp" type="password" id="regPass" placeholder="••••••••">
     </div>
     <div class="auth-field">
-      <label>TELEFONNUMMER <span style="color:var(--mt);font-size:8px;">(KOPPLAR DINA BEFINTLIGA POÄNG)</span></label>
-      <input class="auth-inp" type="tel" id="regPhone" placeholder="+46 70 123 45 67">
+      <label>TELEFONNUMMER <span style="color:var(--orange);font-size:8px;">* OBLIGATORISKT</span></label>
+      <input class="auth-inp" type="tel" id="regPhone" placeholder="+46701234567">
+      <div style="font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:4px;">Dina beställningspoäng kopplas automatiskt till detta nummer.</div>
     </div>
     <button class="auth-btn" id="regBtn" onclick="doRegister()">SKAPA KONTO</button>
     <div class="auth-switch">
@@ -577,18 +578,9 @@ body { background:var(--bg); color:var(--tx); font-family:var(--fb); min-height:
     </div>
   </div>
 
-  <!-- Phone link (om inte kopplat) -->
-  <div class="phone-link-card" id="phoneLinkCard" style="display:none;">
-    <div class="phone-link-title">🔗 KOPPLA DITT TELEFONNUMMER</div>
-    <div style="font-size:12px;color:var(--mt);margin-bottom:10px;line-height:1.5;">Ange ditt telefonnummer för att koppla ihop dina beställningar och poäng.</div>
-    <div class="phone-link-row">
-      <input class="phone-link-inp" type="tel" id="linkPhoneInp" placeholder="+46701234567">
-      <button class="phone-link-btn" onclick="linkPhone()">KOPPLA</button>
-    </div>
-    <div id="phoneLinkErr" style="display:none;color:#e74c3c;font-size:12px;margin-top:8px;"></div>
-    <div class="phone-linked" id="phoneLinkOk" style="display:none;">
-      <span>✓</span> <span id="linkedPhoneNum"></span>
-    </div>
+  <!-- Telefonnummer visas i hero om kopplat -->
+  <div class="phone-linked" id="phoneLinkOk" style="display:none;margin:0 16px 12px;padding:10px 16px;background:var(--gdim);border-radius:10px;font-family:var(--fm);font-size:10px;letter-spacing:1px;color:var(--green);align-items:center;gap:6px;">
+    <span>✓</span> <span id="linkedPhoneNum"></span>
   </div>
 
   <!-- Tabs -->
@@ -733,6 +725,7 @@ async function doRegister() {
   err.style.display = 'none';
 
   if (!name || !email || !pass) { err.textContent = 'Fyll i namn, email och lösenord.'; err.style.display = 'block'; return; }
+  if (!phone) { err.textContent = 'Telefonnummer är obligatoriskt.'; err.style.display = 'block'; return; }
   if (pass.length < 6) { err.textContent = 'Lösenordet måste vara minst 6 tecken.'; err.style.display = 'block'; return; }
   btn.textContent = 'SKAPAR KONTO...'; btn.disabled = true;
 
@@ -819,21 +812,20 @@ async function loadPortal() {
     .order('loyalty_points', { ascending: false })
     .limit(1);
 
-  // Om ingen kopplad kund — visa telefonnummer-länkrutan
   if (!rows || rows.length === 0) {
+    // Ingen kund kopplad — använd metadata från registreringen
+    const regPhone = normalizePhone(currentUser.user_metadata?.phone || '');
     customerData = {
       name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Kund',
-      phone: currentUser.user_metadata?.phone || '',
+      phone: regPhone,
       loyalty_points: 0,
       total_orders: 0,
       total_spent: 0,
       loyalty_tier: 'bronze'
     };
-    showEl('phoneLinkCard');
   } else {
     customerData = rows[0];
-    hide('phoneLinkCard');
-    // Visa länkat telefonnummer
+    // Visa kopplat telefonnummer
     if (customerData.phone) {
       document.getElementById('linkedPhoneNum').textContent = customerData.phone;
       showEl('phoneLinkOk', 'flex');
@@ -998,60 +990,6 @@ function normalizePhone(raw) {
   if (p.startsWith('00')) p = '+' + p.slice(2);
   if (p.startsWith('0') && !p.startsWith('00')) p = '+46' + p.slice(1);
   return p;
-}
-
-// ── KOPPLA TELEFON ──────────────────────────────────────────
-async function linkPhone() {
-  const phone = normalizePhone(document.getElementById('linkPhoneInp').value.trim());
-  const errEl = document.getElementById('phoneLinkErr');
-  if (errEl) errEl.style.display = 'none';
-  if (!phone) return;
-
-  // Kontrollera om numret redan är kopplat till ett ANNAT konto
-  const { data: taken } = await _sb.from('customers')
-    .select('user_id')
-    .eq('phone', phone)
-    .not('user_id', 'is', null)
-    .neq('user_id', currentUser.id)
-    .limit(1);
-
-  if (taken && taken.length > 0) {
-    if (errEl) {
-      errEl.textContent = 'Det här numret är redan kopplat till ett annat konto.';
-      errEl.style.display = 'block';
-    }
-    return;
-  }
-
-  // Koppla befintliga customer-rader med detta nummer till user_id
-  const { data: updated } = await _sb.from('customers')
-    .update({ user_id: currentUser.id })
-    .eq('phone', phone)
-    .is('user_id', null)  // koppla bara ej länkade rader
-    .select('*');
-
-  if (updated && updated.length > 0) {
-    customerData = updated[0];
-    hide('phoneLinkCard');
-    renderPortal();
-    showToast('✅ Telefonnummer kopplat! Dina poäng är nu synkroniserade.');
-  } else {
-    // Inget befintligt konto — skapa ett nytt customer-record
-    await _sb.from('customers').insert({
-      user_id:       currentUser.id,
-      name:          currentUser.user_metadata?.name || '',
-      email:         currentUser.email,
-      phone,
-      loyalty_points: 0,
-      total_orders:   0,
-      total_spent:    0,
-    });
-    customerData.phone = phone;
-    document.getElementById('linkedPhoneNum').textContent = phone;
-    showEl('phoneLinkOk', 'flex');
-    hide('phoneLinkCard');
-    showToast('✅ Telefonnummer kopplat! Framtida orders kopplas automatiskt.');
-  }
 }
 
 // ── TABS ──────────────────────────────────────────────────────
