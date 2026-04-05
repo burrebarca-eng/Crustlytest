@@ -178,7 +178,6 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);min-height:100vh
       <option value="">Välj restaurang...</option>
     </select>
     <div class="tb-tag" id="tbRestName">⭐ LOJALITETSPROGRAM</div>
-    <a class="tb-back" href="crustly-owner.html">← ÄGARPORTAL</a>
     <a class="tb-back" href="crustly-dashboard.html">← ADMIN</a>
   </div>
 </div>
@@ -512,7 +511,7 @@ function editProposal(i) {
 
 async function init() {
   const { data: { session } } = await _sb.auth.getSession();
-  if (!session) { window.location.href = 'crustly-owner.html'; return; }
+  if (!session) { window.location.href = 'crustly-dashboard.html'; return; }
 
   // Hämta alla restauranger (admin-vy)
   const { data: allRests } = await _sb.from('restaurants').select('*').order('name');
