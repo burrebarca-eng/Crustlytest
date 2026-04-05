@@ -710,8 +710,13 @@ async function doLogin() {
 
   const { error } = await _sb.auth.signInWithPassword({ email, password: pass });
   if (error) {
-    err.textContent = error.message === 'Invalid login credentials'
-      ? 'Fel email eller lösenord.' : error.message;
+    if (error.message === 'Invalid login credentials') {
+      err.textContent = 'Fel email eller lösenord.';
+    } else if (error.message.toLowerCase().includes('email not confirmed')) {
+      err.textContent = 'Du måste bekräfta din email först. Kolla din inkorg (och skräppost).';
+    } else {
+      err.textContent = error.message;
+    }
     err.style.display = 'block';
     btn.textContent = 'LOGGA IN'; btn.disabled = false;
   }
@@ -737,20 +742,30 @@ async function doRegister() {
   });
 
   if (error) {
-    err.textContent = error.message;
+    err.textContent = error.message === 'User already registered'
+      ? 'Det finns redan ett konto med den emailen.' : error.message;
     err.style.display = 'block';
     btn.textContent = 'SKAPA KONTO'; btn.disabled = false;
     return;
   }
 
-  // Om telefonnummer angavs — koppla befintliga customer-rader
-  if (phone && data.user) {
-    await _sb.from('customers').update({ user_id: data.user.id })
-      .eq('phone', phone.replace(/\s/g,''));
-  }
-
   btn.textContent = 'SKAPA KONTO'; btn.disabled = false;
-  showToast('✅ Konto skapat! Kontrollera din email för att verifiera.');
+
+  // Visa bekräftelse-skärm — användaren måste verifiera email innan inloggning
+  document.getElementById('authBox').innerHTML = `
+    <div style="text-align:center;padding:32px 16px;">
+      <div style="font-size:48px;margin-bottom:16px;">📬</div>
+      <div style="font-family:var(--fd,sans-serif);font-size:22px;font-weight:700;margin-bottom:8px;">Kolla din email!</div>
+      <div style="font-size:14px;color:var(--mt,#888);line-height:1.6;margin-bottom:24px;">
+        Vi har skickat en bekräftelselänk till<br>
+        <strong>${email}</strong><br><br>
+        Klicka på länken för att aktivera ditt konto, sedan kan du logga in.
+      </div>
+      <button onclick="location.reload()" style="background:var(--accent,#c8380a);color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:14px;cursor:pointer;">
+        GÅ TILL INLOGGNING
+      </button>
+    </div>
+  `;
 }
 
 async function doForgot() {
