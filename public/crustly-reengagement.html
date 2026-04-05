@@ -62,7 +62,7 @@
     const { error } = await _sbPub.from('promo_codes').insert({
       token,
       restaurant_id: restaurantId,
-      customer_id: customerId && !String(customerId).startsWith('d') ? customerId : null,
+      customer_id: customerId || null,
       discount_pct: parseInt(discountPct, 10) || 15,
       expires_at: expires,
     });
@@ -868,7 +868,6 @@
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-ghost" style="background:var(--surface2);color:var(--dark);border:1.5px solid var(--border);font-size:12px;padding:7px 14px;" onclick="loadKunder()">↻ UPPDATERA</button>
-        <button class="btn-ghost" style="background:var(--surface2);color:var(--dark);border:1.5px solid var(--border);font-size:12px;padding:7px 14px;" onclick="addTestCustomer()">+ LÄGG TILL TEST</button>
         <button class="btn-accent" style="font-size:12px;padding:7px 16px;" onclick="sendToAll()">SKICKA TILL ALLA VÄNTANDE</button>
       </div>
     </div>
@@ -1080,7 +1079,10 @@
       const cutavf = new Date();
       cutavf.setDate(cutavf.getDate() - days);
 
-      if (!currentRestaurant) { renderDemoKunder(); return; }
+      if (!currentRestaurant) {
+        tbody.innerHTML = `<tr><td colspan="7" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;padding:32px;">Välj en restaurang för att se kunder</td></tr>`;
+        return;
+      }
       let customers = await window.__sb.getCustomers(currentRestaurant.id);
 
       // Calculate days lapsed from last_order_at
@@ -1109,27 +1111,6 @@
       const tbody = document.getElementById('customerTableBody');
       tbody.innerHTML = `<tr><td colspan="7" style="font-family:var(--font-mono);font-size:11px;color:#e84040;text-align:center;padding:32px;">Fel: ${e.message}</td></tr>`;
     }
-  }
-
-  const DEMO_CUSTOMERS = [
-    { id: 'd1', name: 'Anna Svensson', phone: '+46 70 123 45 67', restaurant_name: 'Pizza Roma', daysLapsed: 31, orderCount: 8, reengagement_sent: false },
-    { id: 'd2', name: 'Erik Johansson', phone: '+46 73 234 56 78', restaurant_name: 'Bella Napoli', daysLapsed: 22, orderCount: 5, reengagement_sent: true },
-    { id: 'd3', name: 'Maria Lindqvist', phone: '+46 76 345 67 89', restaurant_name: 'Pizza Roma', daysLapsed: 18, orderCount: 3, reengagement_sent: false },
-    { id: 'd4', name: 'Johan Berg', phone: '+46 70 456 78 90', restaurant_name: 'Fuoco & Farina', daysLapsed: 16, orderCount: 12, reengagement_sent: false },
-    { id: 'd5', name: 'Sara Nilsson', phone: '+46 73 567 89 01', restaurant_name: 'Bella Napoli', daysLapsed: 14, orderCount: 2, reengagement_sent: false },
-  ];
-
-  function renderDemoKunder() {
-    currentCustomers = DEMO_CUSTOMERS;
-    updateFilterCounts();
-    filterCustomers(currentFilter);
-    document.getElementById('statLapsed').textContent = DEMO_CUSTOMERS.filter(c => c.daysLapsed >= 14).length;
-    document.getElementById('statSent').textContent = '24';
-    document.getElementById('statWonTillbaka').textContent = '9';
-    document.getElementById('statIntäkt').textContent = '1 840 kr';
-    document.getElementById('statSentChange').textContent = '↑ vs förra månaden';
-    document.getElementById('statWonChange').textContent = '37% återaktiverade';
-    document.getElementById('statRevChange').textContent = 'FRÅN ÅTERAKTIVERADE';
   }
 
   function updateFilterCounts() {
@@ -1204,7 +1185,7 @@
 
     // Generera engångstoken för rabatten
     let promoParam = '';
-    if (currentRestaurant && !String(customerId).startsWith('d')) {
+    if (currentRestaurant) {
       const token = await generatePromoToken(currentRestaurant.id, customerId, discount);
       if (token) promoParam = `&promo=${token}`;
     }
@@ -1215,12 +1196,10 @@
     addLog(`SMS köat för <strong>${customerName}</strong> — ${discount}% rabattkod genererad`, 'accent');
 
     // Spara till Supabase
-    if (!String(customerId).startsWith('d')) {
-      await _sb.from('customers').update({
-        reengagement_sent: true,
-        reengagement_sent_at: new Date().toISOString()
-      }).eq('id', customerId);
-    }
+    await _sb.from('customers').update({
+      reengagement_sent: true,
+      reengagement_sent_at: new Date().toISOString()
+    }).eq('id', customerId);
 
     alert(`✅ SMS köat för ${customerName}\n\nOrderlänk: ${orderLink}\n\nRabatten (${discount}%) aktiveras automatiskt när kunden klickar länken.`);
     loadKunder();
@@ -1243,7 +1222,7 @@
     for (const c of pending) {
       // Generera unik engångstoken per kund
       let promoParam = '';
-      if (currentRestaurant && !String(c.id).startsWith('d')) {
+      if (currentRestaurant) {
         const token = await generatePromoToken(currentRestaurant.id, c.id, discount);
         if (token) promoParam = `&promo=${token}`;
       }
@@ -1267,9 +1246,7 @@
         if (data.success) {
           sent++;
           addLog(`SMS skickat till <strong>${c.name}</strong>`, 'accent');
-          if (!String(c.id).startsWith('d')) {
-            try { await _sb.from('customers').update({ reengagement_sent: true }).eq('id', c.id); } catch(_) {}
-          }
+          try { await _sb.from('customers').update({ reengagement_sent: true }).eq('id', c.id); } catch(_) {}
         } else {
           addLog(`Fel för ${c.name}: ${data.error}`, 'red');
         }
@@ -1280,30 +1257,6 @@
     addLog(`Massskickning klar — <strong>${sent}/${pending.length} SMS</strong> skickade`, 'green');
     if(sendBtn) { sendBtn.disabled=false; sendBtn.textContent='SKICKA TILL ALLA VÄNTANDE'; }
     loadKunder();
-  }
-
-  async function addTestCustomer() {
-    const lastOrder = new Date();
-    lastOrder.setDate(lastOrder.getDate() - 17);
-
-    if (!currentRestaurant) { addLog('Välj en restaurang först', 'muted'); return; }
-    const testCustomer = {
-      name: 'Testkund',
-      phone: '+46 70 000 00 00',
-      last_order_at: new Date(Date.now() - 17*86400000).toISOString(),
-      total_orders: 3,
-      reengagement_sent: false,
-      restaurant_id: currentRestaurant.id,
-      created_at: new Date().toISOString()
-    };
-
-    try {
-      const { data } = await _sb.from('customers').insert(testCustomer).select().single();
-      addLog(`Testkund tillagd (ID: ${data?.id?.slice(0,8)||'—'}...)`, 'blue');
-      loadKunder();
-    } catch(e) {
-      addLog(`❌ Kunde inte lägga till testkund: ${e.message}`, 'red');
-    }
   }
 
   // ============================================================
@@ -1334,7 +1287,7 @@
       document.getElementById('statSentChange').textContent = reengaged.length + ' totalt skickade';
       document.getElementById('statWonChange').textContent = reengaged.length ? Math.round(wonBack.length/reengaged.length*100) + '% återaktiverade' : '—';
     } catch(e) {
-      // Demo stats visas via renderDemoKunder
+      console.error('loadStats fel:', e);
     }
   }
 
@@ -1476,7 +1429,7 @@
     // Generera engångstoken för AI-SMS
     aiCurrentPromoToken = null;
     let orderLink = currentRestaurant?.slug ? `${window.location.origin}/crustly-order.html?r=${currentRestaurant.slug}` : `${window.location.origin}/crustly-order.html`;
-    if (currentRestaurant && c.id && !String(c.id).startsWith('d')) {
+    if (currentRestaurant && c.id) {
       const token = await generatePromoToken(currentRestaurant.id, c.id, discount);
       if (token) { aiCurrentPromoToken = token; orderLink += `&promo=${token}`; }
     }
@@ -1622,8 +1575,8 @@ Svara ENDAST med en JSON-array med 3 strängar, ingen annan text:
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'SMS kunde inte skickas');
 
-      // Markera som skickad i DB om riktig kund
-      if (c.id && !String(c.id).startsWith('d')) {
+      // Markera som skickad i DB
+      if (c.id) {
         try { await _sb.from('customers').update({ reengagement_sent: true }).eq('id', c.id); } catch(_) {}
       }
 
