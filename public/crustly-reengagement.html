@@ -11,47 +11,55 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script>
   const { createClient } = supabase;
-  let _sb = createClient(SUPA_URL, SUPA_KEY);
+  // _sbPub: alltid anon-nyckel — används för alla läsningar (kunder, restauranger)
+  // RLS-policies tillåter anon att läsa allt som behövs
+  const _sbPub = createClient(SUPA_URL, SUPA_KEY);
+  // _sb: sätts till admin-klient vid inloggning — används bara för sparningar
+  let _sb = _sbPub;
 
   async function requireAuth() {
-    // Använd admin-token från sessionStorage om tillgänglig
     const tok = sessionStorage.getItem('crustly_admin_token');
     if (tok) return { id: 'admin' };
     return null;
   }
   async function getMyRestaurant(uid) {
-    const { data } = await _sb.from('restaurants').select('*').eq('owner_uid', uid).single();
+    const { data } = await _sbPub.from('restaurants').select('*').eq('owner_uid', uid).single();
     return data;
   }
   async function getInactiveCustomers(restaurantId, daysSince = 30) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - daysSince);
-    const { data } = await _sb.from('customers').select('*')
+    const { data } = await _sbPub.from('customers').select('*')
       .eq('restaurant_id', restaurantId)
       .lt('last_order_at', cutoff.toISOString())
       .order('last_order_at', { ascending: true });
     return data || [];
   }
   async function getCustomers(restaurantId) {
-    const { data } = await _sb.from('customers').select('*').eq('restaurant_id', restaurantId);
+    const { data } = await _sbPub.from('customers').select('*').eq('restaurant_id', restaurantId);
     return data || [];
   }
   async function getSettings(restaurantId) {
-    const { data } = await _sb.from('restaurants').select('*').eq('id', restaurantId).single();
+    const { data } = await _sbPub.from('restaurants').select('*').eq('id', restaurantId).single();
     return data;
   }
   async function saveSettings(restaurantId, updates) {
-    await _sb.from('restaurants').update(updates).eq('id', restaurantId);
+    const tok = sessionStorage.getItem('crustly_admin_token');
+    const headers = tok
+      ? { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }
+      : { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+    await fetch(SUPA_URL + `/rest/v1/restaurants?id=eq.${restaurantId}`, {
+      method: 'PATCH', headers, body: JSON.stringify(updates)
+    });
   }
 
   async function generatePromoToken(restaurantId, customerId, discountPct) {
-    // Krypto-slumpad 24-teckens token
     const token = Array.from(crypto.getRandomValues(new Uint8Array(18)))
       .map(b => b.toString(36).padStart(2, '0'))
       .join('')
       .slice(0, 24);
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { error } = await _sb.from('promo_codes').insert({
+    const { error } = await _sbPub.from('promo_codes').insert({
       token,
       restaurant_id: restaurantId,
       customer_id: customerId && !String(customerId).startsWith('d') ? customerId : null,
@@ -923,9 +931,6 @@
     const data = await res.json();
     if (!res.ok) { err.textContent = '✗ ' + (data.error_description || 'Fel inloggning'); return; }
     sessionStorage.setItem('crustly_admin_token', data.access_token);
-    _sb = createClient(SUPA_URL, SUPA_KEY, {
-      global: { headers: { Authorization: 'Bearer ' + data.access_token } }
-    });
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
     await initRestaurantSelector();
@@ -937,8 +942,8 @@
       const user = await window.__sb.requireAuth();
       if (!user) return;
 
-      // Hämta alla restauranger (admin-vy)
-      let { data: allRests } = await _sb.from('restaurants').select('id, name, slug, sms_provider, sms_api_username, sms_api_password, sms_sender_name').order('name');
+      // Hämta alla restauranger (anon-klient — fungerar med RLS)
+      let { data: allRests } = await _sbPub.from('restaurants').select('id, name, slug, sms_provider, sms_api_username, sms_api_password, sms_sender_name').order('name');
       allRestaurants = allRests || [];
 
       const sel = document.getElementById('restSelector');
@@ -973,9 +978,6 @@
 
     const tok = sessionStorage.getItem('crustly_admin_token');
     if (tok) {
-      _sb = createClient(SUPA_URL, SUPA_KEY, {
-        global: { headers: { Authorization: 'Bearer ' + tok } }
-      });
       document.getElementById('mainContent').style.display = 'block';
       await initRestaurantSelector();
       loadKunder(); loadStats(); loadLogs();
