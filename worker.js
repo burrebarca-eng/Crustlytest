@@ -278,39 +278,62 @@ async function handleSMS(request) {
 
   try {
     const body = await request.json();
-    const { api_username, api_password, from, to, message } = body;
+    const { provider = '46elks', api_username, api_password, from, to, message } = body;
 
-    if (!api_username || !api_password || !from || !to || !message) {
+    if (!api_username || !from || !to || !message) {
       return Response.json({ success: false, error: 'Saknade fält' }, { status: 400, headers: corsHeaders });
     }
-
-    // Validera telefonnummer (måste börja med +)
     if (!to.startsWith('+')) {
       return Response.json({ success: false, error: 'Telefonnummer måste börja med + (t.ex. +46701234567)' }, { status: 400, headers: corsHeaders });
     }
 
-    // Skicka via 46elks API
-    const credentials = btoa(`${api_username}:${api_password}`);
-    const formData = new URLSearchParams();
-    formData.append('from', from.slice(0, 11)); // max 11 tecken
-    formData.append('to', to);
-    formData.append('message', message);
+    if (provider === 'brevo') {
+      // ── BREVO ───────────────────────────────────────────────
+      const brevoRes = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
+        method: 'POST',
+        headers: {
+          'api-key': api_username,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender:    from.slice(0, 11),
+          recipient: to,
+          content:   message,
+          type:      'transactional',
+        })
+      });
+      const brevoData = await brevoRes.json();
+      if (brevoRes.ok) {
+        return Response.json({ success: true, id: brevoData.messageId }, { headers: corsHeaders });
+      } else {
+        return Response.json({ success: false, error: brevoData.message || 'SMS kunde inte skickas via Brevo' }, { status: 400, headers: corsHeaders });
+      }
 
-    const elksRes = await fetch('https://api.46elks.com/a1/sms', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData.toString()
-    });
-
-    const elksData = await elksRes.json();
-
-    if (elksRes.ok && elksData.status !== 'failed') {
-      return Response.json({ success: true, id: elksData.id }, { headers: corsHeaders });
     } else {
-      return Response.json({ success: false, error: elksData.message || 'SMS kunde inte skickas' }, { status: 400, headers: corsHeaders });
+      // ── 46ELKS ──────────────────────────────────────────────
+      if (!api_password) {
+        return Response.json({ success: false, error: 'API-lösenord saknas för 46elks' }, { status: 400, headers: corsHeaders });
+      }
+      const credentials = btoa(`${api_username}:${api_password}`);
+      const formData = new URLSearchParams();
+      formData.append('from', from.slice(0, 11));
+      formData.append('to', to);
+      formData.append('message', message);
+
+      const elksRes = await fetch('https://api.46elks.com/a1/sms', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString()
+      });
+      const elksData = await elksRes.json();
+      if (elksRes.ok && elksData.status !== 'failed') {
+        return Response.json({ success: true, id: elksData.id }, { headers: corsHeaders });
+      } else {
+        return Response.json({ success: false, error: elksData.message || 'SMS kunde inte skickas via 46elks' }, { status: 400, headers: corsHeaders });
+      }
     }
 
   } catch(e) {
