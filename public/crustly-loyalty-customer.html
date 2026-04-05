@@ -813,16 +813,43 @@ async function loadPortal() {
     .limit(1);
 
   if (!rows || rows.length === 0) {
-    // Ingen kund kopplad — använd metadata från registreringen
+    // Ingen rad med user_id — sök på telefonnummer och koppla automatiskt
     const regPhone = normalizePhone(currentUser.user_metadata?.phone || '');
-    customerData = {
-      name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Kund',
-      phone: regPhone,
-      loyalty_points: 0,
-      total_orders: 0,
-      total_spent: 0,
-      loyalty_tier: 'bronze'
-    };
+    if (regPhone) {
+      const { data: phoneRows } = await _sb.from('customers')
+        .select('*')
+        .eq('phone', regPhone)
+        .order('loyalty_points', { ascending: false })
+        .limit(1);
+
+      if (phoneRows && phoneRows.length > 0) {
+        // Koppla raden till detta user_id
+        await _sb.from('customers')
+          .update({ user_id: currentUser.id })
+          .eq('phone', regPhone)
+          .is('user_id', null);
+        customerData = { ...phoneRows[0], user_id: currentUser.id };
+      } else {
+        // Inget befintligt kundkonto alls — starta från 0
+        customerData = {
+          name:           currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Kund',
+          phone:          regPhone,
+          loyalty_points: 0,
+          total_orders:   0,
+          total_spent:    0,
+          loyalty_tier:   'bronze'
+        };
+      }
+    } else {
+      customerData = {
+        name:           currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Kund',
+        phone:          '',
+        loyalty_points: 0,
+        total_orders:   0,
+        total_spent:    0,
+        loyalty_tier:   'bronze'
+      };
+    }
   } else {
     customerData = rows[0];
     // Visa kopplat telefonnummer
