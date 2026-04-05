@@ -1176,10 +1176,11 @@
   }
 
   async function sendToAll() {
-    const elksUser = localStorage.getItem('crustly_elks_user');
-    const elksPass = localStorage.getItem('crustly_elks_pass');
-    if (!elksUser || !elksPass) {
-      alert('Inga 46elks-uppgifter. Gå till Inställningar och lägg till dina API-uppgifter.');
+    const smsProvider   = currentRestaurant?.sms_provider || '46elks';
+    const smsUser       = currentRestaurant?.sms_api_username;
+    const smsPass       = currentRestaurant?.sms_api_password;
+    if (!smsUser) {
+      alert('Inga SMS-uppgifter. Gå till Inställningar och lägg till dina API-uppgifter.');
       return;
     }
     const sendBtn = document.querySelector('[onclick="sendToAll()"]'); if(sendBtn) { sendBtn.disabled=true; sendBtn.textContent='SKICKAR...'; }
@@ -1209,7 +1210,7 @@
         const res = await fetch('/sms', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_username: elksUser, api_password: elksPass, from: (currentRestaurant?.name || 'Crustly').replace(/[^A-Za-z0-9]/g, '').slice(0, 11) || 'Crustly', to: c.phone, message: msg })
+          body: JSON.stringify({ provider: smsProvider, api_username: smsUser, api_password: smsPass, from: (currentRestaurant?.name || 'Crustly').replace(/[^A-Za-z0-9]/g, '').slice(0, 11) || 'Crustly', to: c.phone, message: msg })
         });
         const data = await res.json();
         if (data.success) {
@@ -1542,10 +1543,11 @@ Svara ENDAST med en JSON-array med 3 strängar, ingen annan text:
     const c = aiCurrentCustomer;
     if (!text) return;
 
-    const elksUser = localStorage.getItem('crustly_elks_user');
-    const elksPass = localStorage.getItem('crustly_elks_pass');
-    if (!elksUser || !elksPass) {
-      alert('Inga 46elks-uppgifter. Gå till Inställningar och lägg till dina API-uppgifter.');
+    const smsProvider = currentRestaurant?.sms_provider || '46elks';
+    const smsUser     = currentRestaurant?.sms_api_username;
+    const smsPass     = currentRestaurant?.sms_api_password;
+    if (!smsUser) {
+      alert('Inga SMS-uppgifter. Gå till Inställningar och lägg till dina API-uppgifter.');
       return;
     }
 
@@ -1558,8 +1560,9 @@ Svara ENDAST med en JSON-array med 3 strängar, ingen annan text:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          api_username: elksUser,
-          api_password: elksPass,
+          provider:     smsProvider,
+          api_username: smsUser,
+          api_password: smsPass,
           from: (currentRestaurant?.name || 'Crustly').replace(/[^A-Za-z0-9]/g, '').slice(0, 11) || 'Crustly',
           to: c.phone,
           message: text
