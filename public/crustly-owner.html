@@ -1299,58 +1299,6 @@ function renderInställningar() {
     </div>
 
     <div class="card" style="margin-bottom:16px;">
-      <div class="card-head"><div class="card-title">SMS-MARKNADSFÖRING</div></div>
-      <div class="card-body">
-        <div class="setting-row">
-          <div>
-            <div class="setting-lbl">Leverantör</div>
-            <div class="setting-sub">Välj vilken SMS-tjänst du använder</div>
-          </div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="setSmsProvider('46elks',this)" style="padding:8px 16px;border-radius:7px;border:1.5px solid var(--bdr2);font-family:var(--fd);font-size:13px;letter-spacing:1px;cursor:pointer;transition:all .15s;${(restaurant.sms_provider||'46elks')==='46elks'?'background:var(--orange);color:#fff;border-color:var(--orange);':'background:var(--surf2);color:var(--tx2);'}">46ELKS</button>
-            <button onclick="setSmsProvider('brevo',this)" style="padding:8px 16px;border-radius:7px;border:1.5px solid var(--bdr2);font-family:var(--fd);font-size:13px;letter-spacing:1px;cursor:pointer;transition:all .15s;${(restaurant.sms_provider||'46elks')==='brevo'?'background:var(--orange);color:#fff;border-color:var(--orange);':'background:var(--surf2);color:var(--tx2);'}">BREVO</button>
-          </div>
-        </div>
-        <div class="setting-row">
-          <div>
-            <div class="setting-lbl">Avsändarnamn</div>
-            <div class="setting-sub">Visas som avsändare på kundens telefon (max 11 tecken)</div>
-          </div>
-          <input class="setting-inp" style="width:160px;" maxlength="11" value="${restaurant.sms_sender_name||''}" placeholder="PizzaRoma" oninput="this.value=this.value.replace(/\s/g,'');restaurant.sms_sender_name=this.value">
-        </div>
-        <div id="smsFields46elks" style="display:${(restaurant.sms_provider||'46elks')==='46elks'?'contents':'none'}">
-          <div class="setting-row">
-            <div>
-              <div class="setting-lbl">46elks API-användare</div>
-              <div class="setting-sub">Hittas på dashboard.46elks.com</div>
-            </div>
-            <input class="setting-inp" style="width:220px;" value="${restaurant.sms_api_username||''}" placeholder="u1xxxxxxxxxxxxxxx" oninput="restaurant.sms_api_username=this.value">
-          </div>
-          <div class="setting-row">
-            <div>
-              <div class="setting-lbl">46elks API-lösenord</div>
-              <div class="setting-sub">Hittas på dashboard.46elks.com</div>
-            </div>
-            <input class="setting-inp" type="password" style="width:220px;" value="${restaurant.sms_api_password||''}" placeholder="••••••••••••" oninput="restaurant.sms_api_password=this.value">
-          </div>
-        </div>
-        <div id="smsFieldsBrevo" style="display:${(restaurant.sms_provider||'46elks')==='brevo'?'contents':'none'}">
-          <div class="setting-row">
-            <div>
-              <div class="setting-lbl">Brevo API-nyckel</div>
-              <div class="setting-sub">Hittas på app.brevo.com → SMTP & API → API Keys</div>
-            </div>
-            <input class="setting-inp" type="password" style="width:220px;" value="${restaurant.sms_api_username||''}" placeholder="xkeysib-••••••••" oninput="restaurant.sms_api_username=this.value">
-          </div>
-        </div>
-        <div class="setting-row" style="padding-top:4px;">
-          <div style="font-size:12px;color:var(--mt);">Credentials sparas krypterat och används bara för att skicka SMS till dina kunder.</div>
-          <button onclick="testSMS(this)" style="background:var(--surf2);border:1.5px solid var(--bdr2);color:var(--tx2);border-radius:7px;padding:8px 16px;font-family:var(--fd);font-size:14px;letter-spacing:1.5px;cursor:pointer;white-space:nowrap;">📱 TESTA SMS</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:16px;">
       <div class="card-head"><div class="card-title">CRUSTLY-AVTAL</div></div>
       <div class="card-body">
         <div class="setting-row">
@@ -1373,63 +1321,6 @@ function renderInställningar() {
   `;
 }
 
-function setSmsProvider(p, btn) {
-  restaurant.sms_provider = p;
-  document.getElementById('smsFields46elks').style.display = p === '46elks' ? 'contents' : 'none';
-  document.getElementById('smsFieldsBrevo').style.display  = p === 'brevo'  ? 'contents' : 'none';
-  btn.parentElement.querySelectorAll('button').forEach(b => {
-    b.style.background   = 'var(--surf2)';
-    b.style.color        = 'var(--tx2)';
-    b.style.borderColor  = 'var(--bdr2)';
-  });
-  btn.style.background  = 'var(--orange)';
-  btn.style.color       = '#fff';
-  btn.style.borderColor = 'var(--orange)';
-}
-
-async function testSMS(btn) {
-  const provider = restaurant.sms_provider || '46elks';
-  if (!restaurant.sms_api_username || (provider === '46elks' && !restaurant.sms_api_password)) {
-    alert(provider === 'brevo'
-      ? 'Fyll i Brevo API-nyckel först, sedan spara — och testa igen.'
-      : 'Fyll i API-användare och lösenord först, sedan spara — och testa igen.');
-    return;
-  }
-  if (!restaurant.sms_sender_name) {
-    alert('Fyll i ett avsändarnamn först.');
-    return;
-  }
-  const phone = prompt('Vilket telefonnummer ska testmeddelandet skickas till?\n(Format: +46701234567)');
-  if (!phone) return;
-  btn.textContent = 'SKICKAR...'; btn.disabled = true;
-  try {
-    const res = await fetch('/sms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider:     restaurant.sms_provider || '46elks',
-        api_username: restaurant.sms_api_username,
-        api_password: restaurant.sms_api_password,
-        from:         restaurant.sms_sender_name,
-        to:           phone,
-        message:      `Hej! Det här är ett testmeddelande från ${restaurant.name} via Crustly. SMS fungerar! 🍕`
-      })
-    });
-    const data = await res.json();
-    if (data.success) {
-      btn.textContent = '✓ SKICKAT'; btn.style.color = 'var(--green)';
-    } else {
-      alert('Fel: ' + (data.error || 'Okänt fel'));
-      btn.textContent = '📱 TESTA SMS';
-    }
-  } catch(e) {
-    alert('Kunde inte nå SMS-tjänsten. Är Cloudflare Worker uppdaterad?');
-    btn.textContent = '📱 TESTA SMS';
-  }
-  btn.disabled = false;
-  setTimeout(() => { btn.textContent = '📱 TESTA SMS'; btn.style.color = ''; }, 3000);
-}
-
 
 async function saveInställningar(btn) {
   btn.textContent = 'SPARAR...'; btn.disabled = true;
@@ -1447,10 +1338,6 @@ async function saveInställningar(btn) {
         is_open:         restaurant.isÖppet ?? true,
         closed_message:  restaurant.closed_message || null,
         kitchen_pin:     restaurant.kitchen_pin || null,
-        sms_provider:     restaurant.sms_provider || '46elks',
-        sms_sender_name:  restaurant.sms_sender_name || null,
-        sms_api_username: restaurant.sms_api_username || null,
-        sms_api_password: restaurant.sms_api_password || null,
         settings:        settingsToSave,
       });
       if (result?.success) {

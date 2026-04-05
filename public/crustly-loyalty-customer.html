@@ -738,7 +738,10 @@ async function doRegister() {
 
   const { data, error } = await _sb.auth.signUp({
     email, password: pass,
-    options: { data: { name, phone } }
+    options: {
+      data: { name, phone },
+      emailRedirectTo: window.location.origin + '/crustly-loyalty-customer.html'
+    }
   });
 
   if (error) {
