@@ -11,12 +11,13 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script>
   const { createClient } = supabase;
-  const _sb = createClient(SUPA_URL, SUPA_KEY);
+  let _sb = createClient(SUPA_URL, SUPA_KEY);
 
   async function requireAuth() {
-    const { data: { session } } = await _sb.auth.getSession();
-    if (!session) { window.location.href = 'crustly-login.html'; return null; }
-    return session.user;
+    // Använd admin-token från sessionStorage om tillgänglig
+    const tok = sessionStorage.getItem('crustly_admin_token');
+    if (tok) return { id: 'admin' };
+    return null;
   }
   async function getMyRestaurant(uid) {
     const { data } = await _sb.from('restaurants').select('*').eq('owner_uid', uid).single();
@@ -612,6 +613,27 @@
 </head>
 <body>
 
+<!-- Admin login overlay -->
+<div id="loginOverlay" style="display:none;position:fixed;inset:0;background:#0d0c09;z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1a1812;border:1.5px solid #2e2a22;border-radius:16px;padding:40px;width:380px;">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-style:italic;color:#c8380a;margin-bottom:4px;">Crustly</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2.5px;color:#6a6258;margin-bottom:28px;">ÅTERAKTIVERING · ADMIN</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;color:#6a6258;margin-bottom:6px;">E-POSTADRESS</div>
+    <input id="loginEmail" type="email" placeholder="admin@crustly.se"
+      style="width:100%;background:#111009;border:1.5px solid #2e2a22;border-radius:8px;padding:11px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;color:#f0ece0;outline:none;margin-bottom:12px;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;color:#6a6258;margin-bottom:6px;">LÖSENORD</div>
+    <input id="loginPass" type="password" placeholder="••••••••"
+      style="width:100%;background:#111009;border:1.5px solid #2e2a22;border-radius:8px;padding:11px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;color:#f0ece0;outline:none;margin-bottom:16px;"
+      onkeydown="if(event.key==='Enter')adminLogin()">
+    <button onclick="adminLogin()"
+      style="width:100%;background:#c8380a;color:#fff;border:none;border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;cursor:pointer;">
+      LOGGA IN
+    </button>
+    <div id="loginErr" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#e74c3c;margin-top:10px;text-align:center;"></div>
+  </div>
+</div>
+
+<div id="mainContent" style="display:none;">
 <header class="header">
   <div class="header-left">
     <div class="logo">CRUSTLY</div>
@@ -887,18 +909,37 @@
   // ============================================================
   // RESTAURANT SELECTOR
   // ============================================================
+  async function adminLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass  = document.getElementById('loginPass').value;
+    const err   = document.getElementById('loginErr');
+    if (!email || !pass) { err.textContent = 'Ange email och lösenord.'; return; }
+    err.textContent = 'Loggar in...';
+    const res = await fetch(SUPA_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = '✗ ' + (data.error_description || 'Fel inloggning'); return; }
+    sessionStorage.setItem('crustly_admin_token', data.access_token);
+    _sb = createClient(SUPA_URL, SUPA_KEY, {
+      global: { headers: { Authorization: 'Bearer ' + data.access_token } }
+    });
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+    await initRestaurantSelector();
+    loadKunder(); loadStats(); loadLogs();
+  }
+
   async function initRestaurantSelector() {
     try {
       const user = await window.__sb.requireAuth();
       if (!user) return;
 
-      // Försök hämta alla restauranger, annars bara ägarens
-      let { data: allRests, error } = await _sb.from('restaurants').select('id, name, slug').order('name');
-      if (error || !allRests || allRests.length === 0) {
-        const { data: own } = await _sb.from('restaurants').select('id, name, slug').eq('owner_uid', user.id).order('name');
-        allRests = own || [];
-      }
-      allRestaurants = allRests;
+      // Hämta alla restauranger (admin-vy)
+      let { data: allRests } = await _sb.from('restaurants').select('id, name, slug, sms_provider, sms_api_username, sms_api_password, sms_sender_name').order('name');
+      allRestaurants = allRests || [];
 
       const sel = document.getElementById('restSelector');
       sel.innerHTML = '<option value="">Välj restaurang...</option>' +
@@ -929,10 +970,18 @@
     document.getElementById('templateText').value = templates[0];
     updatePreview();
     updateCharCount();
-    await initRestaurantSelector();
-    loadKunder();
-    loadStats();
-    loadLogs();
+
+    const tok = sessionStorage.getItem('crustly_admin_token');
+    if (tok) {
+      _sb = createClient(SUPA_URL, SUPA_KEY, {
+        global: { headers: { Authorization: 'Bearer ' + tok } }
+      });
+      document.getElementById('mainContent').style.display = 'block';
+      await initRestaurantSelector();
+      loadKunder(); loadStats(); loadLogs();
+    } else {
+      document.getElementById('loginOverlay').style.display = 'flex';
+    }
 
     // Stäng AI-modal vid klick utanför
     document.getElementById('aiModal').addEventListener('click', function(e) {
@@ -1645,6 +1694,8 @@ Svara ENDAST med en JSON-array med 3 strängar, ingen annan text:
     </div>
   </div>
 </div>
+
+</div><!-- /mainContent -->
 
 </body>
 </html>
