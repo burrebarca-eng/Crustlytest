@@ -727,7 +727,7 @@ async function doRegister() {
   const name  = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim();
   const pass  = document.getElementById('regPass').value;
-  const phone = document.getElementById('regPhone').value.trim();
+  const phone = normalizePhone(document.getElementById('regPhone').value.trim());
   const err   = document.getElementById('regErr');
   const btn   = document.getElementById('regBtn');
   err.style.display = 'none';
@@ -991,9 +991,18 @@ async function redeem(id, pts, name, btn) {
   showToast('🎉 ' + name + ' inlöst! Visa detta för personalen vid nästa order.');
 }
 
+// ── NORMALISERA TELEFON ──────────────────────────────────────
+function normalizePhone(raw) {
+  if (!raw) return raw;
+  let p = raw.replace(/[\s\-().]/g, '');
+  if (p.startsWith('00')) p = '+' + p.slice(2);
+  if (p.startsWith('0') && !p.startsWith('00')) p = '+46' + p.slice(1);
+  return p;
+}
+
 // ── KOPPLA TELEFON ──────────────────────────────────────────
 async function linkPhone() {
-  const phone = document.getElementById('linkPhoneInp').value.trim().replace(/\s/g,'');
+  const phone = normalizePhone(document.getElementById('linkPhoneInp').value.trim());
   const errEl = document.getElementById('phoneLinkErr');
   if (errEl) errEl.style.display = 'none';
   if (!phone) return;

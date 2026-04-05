@@ -31,9 +31,21 @@
     return { success: true, order: data };
   }
 
+  // Normalisera telefonnummer till E.164 (+46...)
+  // 0701234567 → +46701234567, +46701234567 → +46701234567
+  function normalizePhone(raw) {
+    if (!raw) return raw;
+    let p = raw.replace(/[\s\-().]/g, '');
+    if (p.startsWith('00')) p = '+' + p.slice(2);
+    if (p.startsWith('0') && !p.startsWith('00')) p = '+46' + p.slice(1);
+    return p;
+  }
+
   async function upsertCustomer(customerData) {
     try {
       const earnedPoints = Math.floor((customerData.order_total || 0) / 10);
+      // Normalisera telefonnummer innan sökning/sparning
+      if (customerData.phone) customerData = { ...customerData, phone: normalizePhone(customerData.phone) };
 
       // Hämta befintlig kund — DB garanterar max 1 per (restaurant_id, phone)
       const { data: existingRows } = await _sb.from('customers')
