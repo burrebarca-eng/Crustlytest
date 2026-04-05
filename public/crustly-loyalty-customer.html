@@ -475,15 +475,17 @@ body { background:var(--bg); color:var(--tx); font-family:var(--fb); min-height:
     <div class="auth-desc">Logga in med din email för att se dina poäng och orderhistorik.</div>
     <div class="auth-err" id="loginErr"></div>
     <div class="auth-ok" id="loginOk"></div>
+    <form onsubmit="doLogin();return false;" autocomplete="on">
     <div class="auth-field">
       <label>E-POSTADRESS</label>
-      <input class="auth-inp" type="email" id="loginEmail" placeholder="anna@example.com">
+      <input class="auth-inp" type="email" id="loginEmail" placeholder="anna@example.com" autocomplete="email">
     </div>
     <div class="auth-field">
       <label>LÖSENORD</label>
-      <input class="auth-inp" type="password" id="loginPass" placeholder="••••••••">
+      <input class="auth-inp" type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <button class="auth-btn" id="loginBtn" onclick="doLogin()">LOGGA IN</button>
+    <button type="submit" class="auth-btn" id="loginBtn">LOGGA IN</button>
+    </form>
     <div class="auth-switch">
       Inget konto? <a onclick="showRegister()">Skapa konto →</a>
     </div>
@@ -497,24 +499,26 @@ body { background:var(--bg); color:var(--tx); font-family:var(--fb); min-height:
     <div class="auth-title">Skapa konto</div>
     <div class="auth-desc">Samla poäng vid varje beställning — du behöver bara ange ditt telefonnummer i kassan.</div>
     <div class="auth-err" id="regErr"></div>
+    <form onsubmit="doRegister();return false;" autocomplete="on">
     <div class="auth-field">
       <label>FÖRNAMN</label>
-      <input class="auth-inp" type="text" id="regName" placeholder="Anna">
+      <input class="auth-inp" type="text" id="regName" placeholder="Anna" autocomplete="given-name">
     </div>
     <div class="auth-field">
       <label>E-POSTADRESS</label>
-      <input class="auth-inp" type="email" id="regEmail" placeholder="anna@example.com">
+      <input class="auth-inp" type="email" id="regEmail" placeholder="anna@example.com" autocomplete="email">
     </div>
     <div class="auth-field">
       <label>LÖSENORD (MIN 6 TECKEN)</label>
-      <input class="auth-inp" type="password" id="regPass" placeholder="••••••••">
+      <input class="auth-inp" type="password" id="regPass" placeholder="••••••••" autocomplete="new-password">
     </div>
     <div class="auth-field">
       <label>TELEFONNUMMER <span style="color:var(--orange);font-size:8px;">* OBLIGATORISKT</span></label>
-      <input class="auth-inp" type="tel" id="regPhone" placeholder="+46701234567">
+      <input class="auth-inp" type="tel" id="regPhone" placeholder="+46701234567" autocomplete="tel">
       <div style="font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:4px;">Dina beställningspoäng kopplas automatiskt till detta nummer.</div>
     </div>
-    <button class="auth-btn" id="regBtn" onclick="doRegister()">SKAPA KONTO</button>
+    <button type="submit" class="auth-btn" id="regBtn">SKAPA KONTO</button>
+    </form>
     <div class="auth-switch">
       Har du konto? <a onclick="showLogin()">Logga in →</a>
     </div>
@@ -526,11 +530,13 @@ body { background:var(--bg); color:var(--tx); font-family:var(--fb); min-height:
     <div class="auth-desc">Ange din email så skickar vi en återställningslänk.</div>
     <div class="auth-err" id="forgotErr"></div>
     <div class="auth-ok" id="forgotOk"></div>
+    <form onsubmit="doForgot();return false;">
     <div class="auth-field">
       <label>E-POSTADRESS</label>
-      <input class="auth-inp" type="email" id="forgotEmail" placeholder="anna@example.com">
+      <input class="auth-inp" type="email" id="forgotEmail" placeholder="anna@example.com" autocomplete="email">
     </div>
-    <button class="auth-btn" id="forgotBtn" onclick="doForgot()">SKICKA ÅTERSTÄLLNINGSLÄNK</button>
+    <button type="submit" class="auth-btn" id="forgotBtn">SKICKA ÅTERSTÄLLNINGSLÄNK</button>
+    </form>
     <div class="auth-switch">
       <a onclick="showLogin()">← Tillbaka till inloggning</a>
     </div>
