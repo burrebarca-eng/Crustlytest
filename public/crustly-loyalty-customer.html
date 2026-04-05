@@ -585,6 +585,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--fb); min-height:
       <input class="phone-link-inp" type="tel" id="linkPhoneInp" placeholder="+46701234567">
       <button class="phone-link-btn" onclick="linkPhone()">KOPPLA</button>
     </div>
+    <div id="phoneLinkErr" style="display:none;color:#e74c3c;font-size:12px;margin-top:8px;"></div>
     <div class="phone-linked" id="phoneLinkOk" style="display:none;">
       <span>✓</span> <span id="linkedPhoneNum"></span>
     </div>
@@ -965,12 +966,31 @@ async function redeem(id, pts, name, btn) {
 // ── KOPPLA TELEFON ──────────────────────────────────────────
 async function linkPhone() {
   const phone = document.getElementById('linkPhoneInp').value.trim().replace(/\s/g,'');
+  const errEl = document.getElementById('phoneLinkErr');
+  if (errEl) errEl.style.display = 'none';
   if (!phone) return;
 
-  // Koppla alla customer-rader med detta nummer till user_id
+  // Kontrollera om numret redan är kopplat till ett ANNAT konto
+  const { data: taken } = await _sb.from('customers')
+    .select('user_id')
+    .eq('phone', phone)
+    .not('user_id', 'is', null)
+    .neq('user_id', currentUser.id)
+    .limit(1);
+
+  if (taken && taken.length > 0) {
+    if (errEl) {
+      errEl.textContent = 'Det här numret är redan kopplat till ett annat konto.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  // Koppla befintliga customer-rader med detta nummer till user_id
   const { data: updated } = await _sb.from('customers')
     .update({ user_id: currentUser.id })
     .eq('phone', phone)
+    .is('user_id', null)  // koppla bara ej länkade rader
     .select('*');
 
   if (updated && updated.length > 0) {
@@ -981,13 +1001,13 @@ async function linkPhone() {
   } else {
     // Inget befintligt konto — skapa ett nytt customer-record
     await _sb.from('customers').insert({
-      user_id: currentUser.id,
-      name: currentUser.user_metadata?.name || '',
-      email: currentUser.email,
+      user_id:       currentUser.id,
+      name:          currentUser.user_metadata?.name || '',
+      email:         currentUser.email,
       phone,
       loyalty_points: 0,
-      total_orders: 0,
-      total_spent: 0,
+      total_orders:   0,
+      total_spent:    0,
     });
     customerData.phone = phone;
     document.getElementById('linkedPhoneNum').textContent = phone;
