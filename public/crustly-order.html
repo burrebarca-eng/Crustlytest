@@ -33,34 +33,27 @@
 
   async function upsertCustomer(customerData) {
     try {
-      // Hämta befintlig kund (tar senaste om det finns dubletter)
-      const { data: existingRows } = await _sb.from('customers')
-        .select('id,name,total_orders,total_spent,loyalty_points')
-        .eq('restaurant_id', customerData.restaurant_id)
-        .eq('phone', customerData.phone)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const existing = existingRows && existingRows.length > 0 ? existingRows[0] : null;
-
-      // Poäng: 1 poäng per 10 kr
       const earnedPoints = Math.floor((customerData.order_total || 0) / 10);
 
-      if (existing) {
-        // Behåll första namnet — skriv INTE över om det redan finns
-        const keepName = existing.name || customerData.name;
+      // Hämta befintlig kund — DB garanterar max 1 per (restaurant_id, phone)
+      const { data: existingRows } = await _sb.from('customers')
+        .select('id, name, total_orders, total_spent, loyalty_points')
+        .eq('restaurant_id', customerData.restaurant_id)
+        .eq('phone', customerData.phone)
+        .limit(1);
+      const existing = existingRows?.[0] || null;
 
+      if (existing) {
         await _sb.from('customers').update({
-          name:           keepName,
+          name:           existing.name || customerData.name, // behåll befintligt namn
           birthday_day:   customerData.birthday_day   || null,
           birthday_month: customerData.birthday_month || null,
-          total_orders:   (existing.total_orders || 0) + 1,
+          total_orders:   (existing.total_orders  || 0) + 1,
           total_spent:    parseFloat(((existing.total_spent || 0) + (customerData.order_total || 0)).toFixed(2)),
           loyalty_points: (existing.loyalty_points || 0) + earnedPoints,
           last_order_at:  new Date().toISOString(),
         }).eq('id', existing.id);
-
       } else {
-        // Ny kund
         await _sb.from('customers').insert({
           restaurant_id:   customerData.restaurant_id,
           restaurant_slug: customerData.restaurant_slug,
