@@ -742,8 +742,18 @@ async function doRegister() {
   });
 
   if (error) {
-    err.textContent = error.message === 'User already registered'
-      ? 'Det finns redan ett konto med den emailen.' : error.message;
+    const msg = error.message || '';
+    if (msg === 'User already registered') {
+      err.textContent = 'Det finns redan ett konto med den emailen.';
+    } else if (msg.toLowerCase().includes('security purposes') || msg.toLowerCase().includes('after')) {
+      err.textContent = 'Vänta en stund innan du försöker igen.';
+    } else if (msg.toLowerCase().includes('invalid email')) {
+      err.textContent = 'Ogiltig emailadress.';
+    } else if (msg.toLowerCase().includes('password')) {
+      err.textContent = 'Lösenordet uppfyller inte kraven (minst 6 tecken).';
+    } else {
+      err.textContent = 'Något gick fel. Försök igen.';
+    }
     err.style.display = 'block';
     btn.textContent = 'SKAPA KONTO'; btn.disabled = false;
     return;
