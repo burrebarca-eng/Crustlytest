@@ -196,27 +196,69 @@
   <div class="section-label" style="margin-top:20px;">SMS PROVIDER</div>
 
   <div class="card" style="animation-delay:0.15s;">
-    <div class="card-title">46ELKS</div>
+    <div class="card-title">SMS-INSTÄLLNINGAR</div>
     <div class="card-desc">
-      Swedish SMS-leverantör — best for Nordic market. ~€0.06/SMS.<br>
-      Get credentials at <a href="https://46elks.com" target="_blank" style="color:var(--orange);">46elks.com</a> → Create account → API credentials.
+      Konfigurera SMS-leverantör per restaurang. Stöder 46elks (~€0.06/SMS) och Brevo.<br>
+      Kräver admin-inloggning för att spara till databasen.
     </div>
-    <label class="field-label">API USERNAME</label>
-    <input class="key-input" id="elksUser" placeholder="u_..." style="margin-bottom:10px;width:100%;" oninput="onElksInput()">
-    <label class="field-label">API PASSWORD</label>
-    <div class="key-input-wrap">
-      <input type="password" class="key-input" id="elksPass" placeholder="••••••••" oninput="onElksInput()">
-      <button class="btn-save" onclick="saveElks()">SPARA</button>
+
+    <!-- Admin-auth för SMS -->
+    <div id="smsAuthWrap" style="margin-bottom:18px;">
+      <label class="field-label">ADMIN EMAIL</label>
+      <input class="key-input" type="email" id="smsAdminEmail" placeholder="admin@crustly.se" style="margin-bottom:8px;width:100%;">
+      <label class="field-label">LÖSENORD</label>
+      <div class="key-input-wrap">
+        <input type="password" class="key-input" id="smsAdminPass" placeholder="••••••••">
+        <button class="btn-save" onclick="smsAdminLogin()">LOGGA IN</button>
+      </div>
+      <div id="smsAuthErr" style="font-family:var(--font-mono);font-size:10px;color:var(--red);margin-top:4px;"></div>
     </div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:4px;" id="elksStatus"></div>
+
+    <div id="smsSettingsWrap" style="display:none;">
+      <label class="field-label">VÄLJ RESTAURANG</label>
+      <select id="smsRestSel" class="key-input" style="margin-bottom:16px;width:100%;cursor:pointer;" onchange="loadSmsForRest()">
+        <option value="">Välj restaurang...</option>
+      </select>
+
+      <div id="smsRestForm" style="display:none;">
+        <label class="field-label">LEVERANTÖR</label>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <button id="smsBtn46" onclick="setSmsProvider('46elks')" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);font-family:var(--font-mono);font-size:11px;letter-spacing:1px;cursor:pointer;background:var(--orange);color:#fff;border-color:var(--orange);">46ELKS</button>
+          <button id="smsBtnBrevo" onclick="setSmsProvider('brevo')" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);font-family:var(--font-mono);font-size:11px;letter-spacing:1px;cursor:pointer;background:var(--surface2);color:var(--muted);">BREVO</button>
+        </div>
+
+        <label class="field-label">AVSÄNDARNAMN (MAX 11 TECKEN)</label>
+        <input class="key-input" id="smsSenderName" maxlength="11" placeholder="PizzaRoma" style="margin-bottom:14px;width:100%;" oninput="this.value=this.value.replace(/\s/g,'')">
+
+        <div id="smsFields46">
+          <label class="field-label">46ELKS API-ANVÄNDARE</label>
+          <input class="key-input" id="smsUser46" placeholder="u1xxxxxxxxxxxxxxx" style="margin-bottom:10px;width:100%;">
+          <label class="field-label">46ELKS API-LÖSENORD</label>
+          <input type="password" class="key-input" id="smsPass46" placeholder="••••••••••••" style="margin-bottom:16px;width:100%;">
+        </div>
+        <div id="smsFieldsBrevo" style="display:none;">
+          <label class="field-label">BREVO API-NYCKEL</label>
+          <input type="password" class="key-input" id="smsKeyBrevo" placeholder="xkeysib-••••••••" style="margin-bottom:16px;width:100%;">
+        </div>
+
+        <div class="key-input-wrap">
+          <button class="btn-save" onclick="saveSmsSettings(this)">SPARA SMS</button>
+          <button class="btn-test" onclick="testSms(this)">📱 TESTA SMS</button>
+        </div>
+        <div id="smsSaveMsg" style="font-family:var(--font-mono);font-size:10px;margin-top:8px;"></div>
+      </div>
+    </div>
   </div>
 
 </div>
 
+<script src="crustly-config.js"></script>
 <script>
   const STORAGE_KEY = 'crustly_claude_key';
-  const ELKS_USER_KEY = 'crustly_elks_user';
-  const ELKS_PASS_KEY = 'crustly_elks_pass';
+
+  let _smsToken = null;
+  let _smsRestaurants = [];
+  let _smsProvider = '46elks';
 
   // Load saved values on start
   document.addEventListener('DOMContentLoaded', () => {
@@ -225,12 +267,9 @@
       document.getElementById('apiKeyInput').value = saved;
       setStatus('ok', 'KEY SPARAD · ' + maskKey(saved));
     }
-
-    const eu = localStorage.getItem(ELKS_USER_KEY);
-    const ep = localStorage.getItem(ELKS_PASS_KEY);
-    if (eu) document.getElementById('elksUser').value = eu;
-    if (ep) document.getElementById('elksPass').value = ep;
-    if (eu && ep) document.getElementById('elksStatus').textContent = '✓ Credentials saved';
+    // Auto-restore admin session for SMS
+    const tok = sessionStorage.getItem('crustly_admin_token');
+    if (tok) { _smsToken = tok; showSmsSettings(); }
   });
 
   function maskKey(key) {
@@ -315,20 +354,137 @@
     document.getElementById('keyStatusText').textContent = msg;
   }
 
-  function onElksInput() {}
+  // ── SMS ADMIN AUTH ──────────────────────────────────────
+  async function smsAdminLogin() {
+    const email = document.getElementById('smsAdminEmail').value.trim();
+    const pass  = document.getElementById('smsAdminPass').value;
+    const err   = document.getElementById('smsAuthErr');
+    if (!email || !pass) { err.textContent = 'Ange email och lösenord.'; return; }
+    err.textContent = 'Loggar in...';
+    try {
+      const res = await fetch(SUPA_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass })
+      });
+      const data = await res.json();
+      if (!res.ok) { err.textContent = '✗ ' + (data.error_description || 'Fel inloggning'); return; }
+      _smsToken = data.access_token;
+      sessionStorage.setItem('crustly_admin_token', data.access_token);
+      err.textContent = '';
+      showSmsSettings();
+    } catch(e) { err.textContent = '✗ Nätverksfel'; }
+  }
 
-  function saveElks() {
-    const user = document.getElementById('elksUser').value.trim();
-    const pass = document.getElementById('elksPass').value.trim();
-    if (!user || !pass) { document.getElementById('elksStatus').textContent = '✗ Ange både användarnamn och lösenord'; return; }
-    localStorage.setItem(ELKS_USER_KEY, user);
-    localStorage.setItem(ELKS_PASS_KEY, pass);
-    document.getElementById('elksStatus').style.color = 'var(--green)';
-    document.getElementById('elksStatus').textContent = '✓ Inloggningsuppgifter sparade';
+  async function showSmsSettings() {
+    document.getElementById('smsAuthWrap').style.display = 'none';
+    document.getElementById('smsSettingsWrap').style.display = 'block';
+    // Hämta restauranger
+    const res = await fetch(SUPA_URL + '/rest/v1/restaurants?select=id,name,sms_provider,sms_sender_name,sms_api_username,sms_api_password&order=name.asc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _smsToken }
+    });
+    if (!res.ok) return;
+    _smsRestaurants = await res.json();
+    const sel = document.getElementById('smsRestSel');
+    sel.innerHTML = '<option value="">Välj restaurang...</option>';
+    _smsRestaurants.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.id; o.textContent = r.name;
+      sel.appendChild(o);
+    });
+  }
 
-    const btn = event.target;
-    btn.textContent = 'SPARAD ✓';
-    setTimeout(() => btn.textContent = 'SPARA', 2000);
+  function loadSmsForRest() {
+    const restId = document.getElementById('smsRestSel').value;
+    if (!restId) { document.getElementById('smsRestForm').style.display = 'none'; return; }
+    const r = _smsRestaurants.find(x => x.id === restId);
+    if (!r) return;
+    _smsProvider = r.sms_provider || '46elks';
+    setSmsProvider(_smsProvider);
+    document.getElementById('smsSenderName').value = r.sms_sender_name || '';
+    document.getElementById('smsUser46').value    = r.sms_api_username || '';
+    document.getElementById('smsPass46').value    = r.sms_api_password || '';
+    document.getElementById('smsKeyBrevo').value  = r.sms_api_username || '';
+    document.getElementById('smsRestForm').style.display = 'block';
+    document.getElementById('smsSaveMsg').textContent = '';
+  }
+
+  function setSmsProvider(p) {
+    _smsProvider = p;
+    const btn46  = document.getElementById('smsBtn46');
+    const btnB   = document.getElementById('smsBtnBrevo');
+    btn46.style.background = p === '46elks' ? 'var(--orange)' : 'var(--surface2)';
+    btn46.style.color      = p === '46elks' ? '#fff' : 'var(--muted)';
+    btn46.style.borderColor= p === '46elks' ? 'var(--orange)' : 'var(--border)';
+    btnB.style.background  = p === 'brevo'  ? 'var(--orange)' : 'var(--surface2)';
+    btnB.style.color       = p === 'brevo'  ? '#fff' : 'var(--muted)';
+    btnB.style.borderColor = p === 'brevo'  ? 'var(--orange)' : 'var(--border)';
+    document.getElementById('smsFields46').style.display    = p === '46elks' ? 'block' : 'none';
+    document.getElementById('smsFieldsBrevo').style.display = p === 'brevo'  ? 'block' : 'none';
+  }
+
+  async function saveSmsSettings(btn) {
+    const restId = document.getElementById('smsRestSel').value;
+    if (!restId) return;
+    const msg = document.getElementById('smsSaveMsg');
+    btn.textContent = 'SPARAR...'; btn.disabled = true;
+    const apiUser = _smsProvider === 'brevo'
+      ? document.getElementById('smsKeyBrevo').value.trim()
+      : document.getElementById('smsUser46').value.trim();
+    const apiPass = _smsProvider === '46elks'
+      ? document.getElementById('smsPass46').value.trim()
+      : null;
+    const payload = {
+      sms_provider:     _smsProvider,
+      sms_sender_name:  document.getElementById('smsSenderName').value.trim() || null,
+      sms_api_username: apiUser || null,
+      sms_api_password: apiPass || null,
+    };
+    const res = await fetch(SUPA_URL + `/rest/v1/restaurants?id=eq.${restId}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _smsToken,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(payload)
+    });
+    btn.textContent = 'SPARA SMS'; btn.disabled = false;
+    if (res.ok) {
+      const idx = _smsRestaurants.findIndex(r => r.id === restId);
+      if (idx >= 0) _smsRestaurants[idx] = { ..._smsRestaurants[idx], ...payload };
+      msg.style.color = 'var(--green)'; msg.textContent = '✓ Sparat!';
+      setTimeout(() => { msg.textContent = ''; }, 3000);
+    } else {
+      msg.style.color = 'var(--red)'; msg.textContent = '⚠ Fel vid sparning.';
+    }
+  }
+
+  async function testSms(btn) {
+    const restId = document.getElementById('smsRestSel').value;
+    if (!restId) return;
+    const r = _smsRestaurants.find(x => x.id === restId);
+    if (!r?.sms_api_username) { alert('Spara credentials först.'); return; }
+    const phone = prompt('Telefonnummer (t.ex. +46701234567):');
+    if (!phone) return;
+    btn.textContent = 'SKICKAR...'; btn.disabled = true;
+    try {
+      const res = await fetch('/sms', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider:     r.sms_provider || '46elks',
+          api_username: r.sms_api_username,
+          api_password: r.sms_api_password,
+          from:         r.sms_sender_name || r.name?.slice(0,11) || 'Crustly',
+          to:           phone,
+          message:      `Testmeddelande från ${r.name} via Crustly 🍕`
+        })
+      });
+      const d = await res.json();
+      btn.textContent = d.success ? '✓ SKICKAT' : '📱 TESTA SMS';
+      if (!d.success) alert('Fel: ' + (d.error || 'Okänt'));
+    } catch(e) { btn.textContent = '📱 TESTA SMS'; alert('Nätverksfel'); }
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = '📱 TESTA SMS'; }, 3000);
   }
 </script>
 </body>
