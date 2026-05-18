@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crustly — Dashboard</title>
+<title>Crustly — Kontrollcenter</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="crustly-config.js"></script>
 <script>
 let _authToken = SUPA_KEY;
+let _adminEmail = '';
 
 async function sbFetch(path, opts = {}) {
   const { prefer, body, method, headers: extraHeaders, ...restOpts } = opts;
@@ -38,8 +39,10 @@ async function adminLogin(email, password) {
   const data = await res.json();
   if (!res.ok) return { success: false, error: data.error_description || 'Fel inloggning' };
   _authToken = data.access_token;
+  _adminEmail = email;
   sessionStorage.setItem('crustly_admin_token', data.access_token);
   sessionStorage.setItem('crustly_admin_expires', data.expires_at);
+  sessionStorage.setItem('crustly_admin_email', email);
   return { success: true };
 }
 
@@ -56,209 +59,283 @@ window.__sb = { getAllRestaurants, getAllOrders };
 </script>
 <style>
 :root{
-  --bg:#0e0d0a;--surf:#161410;--surf2:#1e1c17;--surf3:#252219;
-  --bdr:#2a2720;--bdr2:#332f26;
-  --orange:#f05a1a;--odim:#f05a1a18;
-  --green:#3db870;--gdim:#3db87018;
-  --red:#e84040;--rdim:#e8404018;
-  --yellow:#f0b429;--ydim:#f0b42918;
-  --blue:#4e9eff;--bdim:#4e9eff18;
-  --purple:#8b5cf6;--pdim:#8b5cf618;
-  --tx:#f0ece0;--tx2:#c4bfb0;--mt:#6a6458;
+  --bg:#0b0a08;--surf:#131210;--surf2:#1a1815;--surf3:#222019;
+  --bdr:#252320;--bdr2:#2e2b24;
+  --orange:#f05a1a;--odim:#f05a1a14;--odim2:#f05a1a22;
+  --green:#3db870;--gdim:#3db87014;--gdim2:#3db87022;
+  --red:#e84040;--rdim:#e8404014;--rdim2:#e8404022;
+  --yellow:#f0b429;--ydim:#f0b42914;--ydim2:#f0b42922;
+  --blue:#4e9eff;--bdim:#4e9eff14;--bdim2:#4e9eff22;
+  --purple:#8b5cf6;--pdim:#8b5cf614;--pdim2:#8b5cf622;
+  --tx:#ede9e0;--tx2:#b8b3a4;--mt:#5a5650;
   --fd:'Bebas Neue',sans-serif;--fm:'DM Mono',monospace;--fb:'DM Sans',sans-serif;
+  --r:10px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
 body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;flex-direction:column;}
 
-/* TOPBAR */
-.topbar{height:54px;background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex-shrink:0;}
-.tb-left{display:flex;align-items:center;gap:16px;}
-.tb-logo{font-family:var(--fd);font-size:22px;color:var(--orange);letter-spacing:2px;}
-.tb-div{width:1px;height:18px;background:var(--bdr2);}
-.tb-title{font-family:var(--fm);font-size:10px;letter-spacing:2.5px;color:var(--mt);}
-.tb-right{display:flex;align-items:center;gap:12px;}
-.s-dot{width:7px;height:7px;border-radius:50%;background:var(--mt);}
-.s-dot.live{background:var(--green);box-shadow:0 0 6px var(--green);}
+/* ── TOPBAR ── */
+.topbar{height:52px;background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;gap:12px;}
+.tb-left{display:flex;align-items:center;gap:14px;}
+.tb-logo{font-family:var(--fd);font-size:20px;color:var(--orange);letter-spacing:2px;text-decoration:none;}
+.tb-sep{width:1px;height:16px;background:var(--bdr2);}
+.tb-title{font-family:var(--fm);font-size:9px;letter-spacing:2.5px;color:var(--mt);}
+.tb-right{display:flex;align-items:center;gap:10px;}
+.s-dot{width:6px;height:6px;border-radius:50%;background:var(--mt);flex-shrink:0;}
+.s-dot.live{background:var(--green);box-shadow:0 0 5px var(--green);}
 .s-dot.err{background:var(--red);}
-.s-txt{font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--mt);}
-.last-upd{font-family:var(--fm);font-size:9px;color:var(--mt);}
-.btn-ref{background:none;border:1px solid var(--bdr2);border-radius:6px;padding:5px 12px;font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--mt);cursor:pointer;transition:all .15s;}
-.btn-ref:hover{border-color:var(--orange);color:var(--orange);}
-.btn-new{background:var(--orange);border:none;border-radius:6px;padding:6px 14px;font-family:var(--fd);font-size:15px;letter-spacing:1px;color:#fff;cursor:pointer;text-decoration:none;transition:opacity .15s;}
-.btn-new:hover{opacity:.85;}
+.s-txt{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--mt);}
+.tb-time{font-family:var(--fm);font-size:9px;color:var(--mt);}
+.tb-user{font-family:var(--fm);font-size:9px;color:var(--tx2);background:var(--surf2);border:1px solid var(--bdr2);border-radius:5px;padding:4px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn-tb{background:none;border:1px solid var(--bdr2);border-radius:6px;padding:5px 12px;font-family:var(--fm);font-size:9px;letter-spacing:1.2px;color:var(--mt);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-tb:hover{border-color:var(--orange);color:var(--orange);}
+.btn-tb.logout:hover{border-color:var(--red);color:var(--red);}
+.btn-primary-sm{background:var(--orange);border:none;border-radius:6px;padding:6px 14px;font-family:var(--fd);font-size:14px;letter-spacing:1px;color:#fff;cursor:pointer;text-decoration:none;transition:opacity .15s;white-space:nowrap;display:inline-block;}
+.btn-primary-sm:hover{opacity:.85;}
 
-/* BODY */
+/* ── BODY ── */
 .body-wrap{display:flex;flex:1;overflow:hidden;}
 
-/* SIDENAV */
-.sidenav{width:190px;background:var(--surf);border-right:1px solid var(--bdr);padding:16px 0;flex-shrink:0;display:flex;flex-direction:column;}
-.nav-sec{font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);padding:10px 18px 4px;}
-.nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--mt);text-decoration:none;transition:all .15s;border-left:2px solid transparent;}
+/* ── SIDENAV ── */
+.sidenav{width:200px;background:var(--surf);border-right:1px solid var(--bdr);padding:14px 0 0;flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto;}
+.nav-sec{font-family:var(--fm);font-size:7.5px;letter-spacing:2.5px;color:var(--mt);padding:12px 16px 4px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;font-family:var(--fm);font-size:9px;letter-spacing:1.2px;color:var(--mt);text-decoration:none;transition:all .15s;border-left:2px solid transparent;position:relative;}
 .nav-item:hover{background:var(--surf2);color:var(--tx2);}
 .nav-item.on{background:var(--odim);color:var(--orange);border-left-color:var(--orange);}
+.nav-item .nav-icon{font-size:13px;width:16px;text-align:center;}
 .nav-spacer{flex:1;}
+.nav-build{padding:12px 16px;font-family:var(--fm);font-size:8px;color:var(--mt);border-top:1px solid var(--bdr);}
+.nav-build span{color:var(--bdr2);}
 
-/* CONTENT */
-.content{flex:1;overflow-y:auto;padding:20px;}
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:18px 20px;}
 
-/* KPI */
-.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
-.kpi{background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden;}
-.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
-.kpi.o::before{background:var(--orange);}
-.kpi.g::before{background:var(--green);}
-.kpi.y::before{background:var(--yellow);}
-.kpi.b::before{background:var(--blue);}
-.kpi.p::before{background:var(--purple);}
-.kpi-lbl{font-family:var(--fm);font-size:8px;letter-spacing:2.5px;color:var(--mt);margin-bottom:8px;}
-.kpi-val{font-family:var(--fd);font-size:36px;line-height:1;}
+/* ── PAGE HEADER ── */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;}
+.page-title{font-family:var(--fd);font-size:28px;letter-spacing:2px;color:var(--tx);line-height:1;}
+.page-sub{font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-top:4px;}
+.page-actions{display:flex;gap:8px;align-items:center;}
+
+/* ── ALERT BANNER ── */
+.alert-banner{background:var(--rdim);border:1px solid var(--red);border-radius:var(--r);padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;}
+.alert-banner.warn{background:var(--ydim);border-color:var(--yellow);}
+.alert-item{font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--yellow);}
+.alert-item a{color:var(--orange);text-decoration:none;}
+
+/* ── KPIs ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;}
+.kpi{background:var(--surf);border:1.5px solid var(--bdr);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s;}
+.kpi:hover{border-color:var(--bdr2);}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.o::before{background:linear-gradient(90deg,var(--orange),#ff8c42);}
+.kpi.g::before{background:linear-gradient(90deg,var(--green),#5de898);}
+.kpi.b::before{background:linear-gradient(90deg,var(--blue),#7db8ff);}
+.kpi.p::before{background:linear-gradient(90deg,var(--purple),#a78bfa);}
+.kpi.y::before{background:linear-gradient(90deg,var(--yellow),#fcd34d);}
+.kpi-lbl{font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);margin-bottom:8px;text-transform:uppercase;}
+.kpi-val{font-family:var(--fd);font-size:32px;line-height:1;letter-spacing:.5px;}
 .kpi-val.o{color:var(--orange);}
 .kpi-val.g{color:var(--green);}
-.kpi-val.y{color:var(--yellow);}
 .kpi-val.b{color:var(--blue);}
 .kpi-val.p{color:var(--purple);}
-.kpi-sub{font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:5px;}
+.kpi-val.y{color:var(--yellow);}
+.kpi-sub{font-family:var(--fm);font-size:8px;color:var(--mt);margin-top:5px;letter-spacing:.5px;}
 .up{color:var(--green);}
 
-/* GRID */
-.grid2{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;}
-.grid2b{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.vcol{display:flex;flex-direction:column;gap:14px;}
+/* ── QUICK ACTIONS ── */
+.qa-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.qa-btn{background:var(--surf);border:1.5px solid var(--bdr);border-radius:8px;padding:9px 16px;font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--tx2);cursor:pointer;text-decoration:none;transition:all .15s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
+.qa-btn:hover{border-color:var(--bdr2);color:var(--tx);background:var(--surf2);}
+.qa-btn.primary{background:var(--odim);border-color:var(--orange);color:var(--orange);}
+.qa-btn.primary:hover{background:var(--odim2);}
 
-/* CARD */
-.card{background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;overflow:hidden;}
-.card-head{padding:13px 18px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;}
-.card-title{font-family:var(--fd);font-size:18px;letter-spacing:1.5px;}
-.card-tag{font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);}
-.card-body{padding:14px 18px;}
+/* ── MAIN GRID ── */
+.main-grid{display:grid;grid-template-columns:1fr 280px;gap:12px;margin-bottom:12px;}
+.vcol{display:flex;flex-direction:column;gap:12px;}
 
-/* TABLE */
+/* ── CARD ── */
+.card{background:var(--surf);border:1.5px solid var(--bdr);border-radius:var(--r);overflow:hidden;}
+.card-head{padding:12px 16px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.card-title{font-family:var(--fd);font-size:16px;letter-spacing:1.5px;flex-shrink:0;}
+.card-tag{font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);}
+.card-body{padding:14px 16px;}
+
+/* ── RESTAURANT TABLE ── */
 .rtable{width:100%;border-collapse:collapse;}
-.rtable th{font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);padding:8px 14px;text-align:left;border-bottom:1px solid var(--bdr);}
-.rtable td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--bdr);}
+.rtable th{font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);padding:8px 14px;text-align:left;border-bottom:1px solid var(--bdr);white-space:nowrap;}
+.rtable td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--bdr);vertical-align:middle;}
 .rtable tr:last-child td{border-bottom:none;}
 .rtable tbody tr:hover{background:var(--surf2);}
-.imp-drop{border:2px dashed var(--bdr2);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surf2);}
-.imp-drop:hover,.imp-drop.drag{border-color:var(--orange);background:var(--odim);}
-.imp-drop-icon{font-size:28px;margin-bottom:8px;}
-.imp-drop-lbl{font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--mt);}
-.imp-drop-sub{font-family:var(--fm);font-size:8px;color:var(--mt);margin-top:4px;}
-.imp-rest-sel{width:100%;background:var(--surf2);border:1.5px solid var(--bdr);border-radius:7px;padding:9px 12px;font-family:var(--fb);font-size:13px;color:var(--tx);outline:none;cursor:pointer;margin-bottom:12px;}
-.imp-rest-sel:focus{border-color:var(--orange);}
-.imp-preview{background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:14px;max-height:220px;overflow-y:auto;margin-top:12px;scrollbar-width:thin;scrollbar-color:var(--bdr2) transparent;}
-.imp-cat{font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--orange);margin-bottom:4px;margin-top:8px;}
-.imp-cat:first-child{margin-top:0;}
-.imp-item{font-size:12px;color:var(--tx2);padding:2px 0;border-bottom:1px solid var(--bdr);}
-.imp-item:last-child{border-bottom:none;}
-.imp-count{font-family:var(--fm);font-size:8px;color:var(--mt);}
-.imp-btn{width:100%;background:var(--orange);color:#fff;border:none;border-radius:8px;padding:11px;font-family:var(--fd);font-size:18px;letter-spacing:2px;cursor:pointer;transition:opacity .15s;margin-top:12px;}
-.imp-btn:hover{opacity:.88;}
-.imp-btn:disabled{opacity:.5;cursor:not-allowed;}
-.imp-msg{font-family:var(--fm);font-size:10px;text-align:center;margin-top:8px;min-height:16px;}
-.rname{display:flex;align-items:center;gap:8px;font-weight:600;}
-.rdot{width:7px;height:7px;border-radius:50%;}
-.rdot.live{background:var(--green);}
+.rest-name{font-weight:600;font-size:13px;color:var(--tx);}
+.rest-slug{font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:2px;}
+.rdot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.rdot.live{background:var(--green);box-shadow:0 0 4px var(--green);}
 .rdot.demo{background:var(--yellow);}
-.badge{font-family:var(--fm);font-size:8px;letter-spacing:1.5px;padding:3px 8px;border-radius:4px;}
-.badge-live{background:var(--gdim);color:var(--green);}
-.badge-demo{background:var(--ydim);color:var(--yellow);}
-.bar-w{height:4px;background:var(--bdr);border-radius:2px;width:70px;display:inline-block;vertical-align:middle;margin-right:6px;overflow:hidden;}
+.rdot.off{background:var(--mt);}
+.badge{font-family:var(--fm);font-size:7.5px;letter-spacing:1.5px;padding:3px 8px;border-radius:4px;white-space:nowrap;}
+.badge-live{background:var(--gdim2);color:var(--green);border:1px solid #3db87030;}
+.badge-demo{background:var(--ydim2);color:var(--yellow);border:1px solid #f0b42930;}
+.bar-w{height:3px;background:var(--bdr);border-radius:2px;width:60px;display:inline-block;vertical-align:middle;margin-right:6px;overflow:hidden;}
 .bar-f{height:100%;background:var(--orange);border-radius:2px;}
 .mono{font-family:var(--fm);}
+.action-link{font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--mt);text-decoration:none;padding:4px 8px;border:1px solid var(--bdr);border-radius:4px;transition:all .15s;white-space:nowrap;}
+.action-link:hover{border-color:var(--orange);color:var(--orange);}
+.tbl-search{background:var(--surf2);border:1px solid var(--bdr);border-radius:5px;padding:5px 10px;font-family:var(--fm);font-size:9px;color:var(--tx);outline:none;width:140px;}
+.tbl-search:focus{border-color:var(--bdr2);}
+.tbl-search::placeholder{color:var(--mt);}
 
-/* ACTIVITY */
-.act-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);}
+/* ── SYSTEM STATUS ── */
+.sys-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr);}
+.sys-row:last-child{border-bottom:none;}
+.sys-label{font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--tx2);flex:1;}
+.sys-val{font-family:var(--fm);font-size:9px;letter-spacing:1px;}
+.sys-val.ok{color:var(--green);}
+.sys-val.err{color:var(--red);}
+.sys-val.warn{color:var(--yellow);}
+.sys-val.mt{color:var(--mt);}
+
+/* ── MONTH SUMMARY ── */
+.pay-big{font-family:var(--fd);font-size:42px;color:var(--orange);letter-spacing:1px;line-height:1;}
+.pay-sub{font-family:var(--fm);font-size:8px;color:var(--mt);margin-top:5px;letter-spacing:.5px;}
+.brow{margin-bottom:11px;}
+.brow-head{display:flex;justify-content:space-between;font-family:var(--fm);font-size:8px;color:var(--mt);margin-bottom:4px;}
+.brow-bar{height:4px;background:var(--bdr);border-radius:2px;overflow:hidden;}
+.brow-fill{height:100%;border-radius:2px;}
+
+/* ── STRIPE ── */
+.stripe-metrics{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--bdr);}
+.stripe-metric{padding:14px 18px;}
+.stripe-metric+.stripe-metric{border-left:1px solid var(--bdr);}
+.stripe-metric-lbl{font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);margin-bottom:5px;}
+.stripe-metric-val{font-family:var(--fd);font-size:28px;line-height:1;}
+.stripe-metric-sub{font-family:var(--fm);font-size:8px;color:var(--mt);margin-top:3px;}
+
+/* ── ACTIVITY ── */
+.act-item{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid var(--bdr);}
 .act-item:last-child{border-bottom:none;}
-.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.act-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;}
 .act-body{flex:1;font-size:12px;color:var(--tx2);line-height:1.4;}
 .act-body strong{color:var(--tx);}
-.act-time{font-family:var(--fm);font-size:10px;color:var(--mt);}
-
-/* TODAY */
+.act-time{font-family:var(--fm);font-size:9px;color:var(--mt);white-space:nowrap;}
 .od-item{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bdr);}
 .od-item:last-child{border-bottom:none;}
 .od-name{font-size:13px;font-weight:600;}
-.od-detail{font-family:var(--fm);font-size:10px;color:var(--mt);margin-top:2px;}
-.od-amt{font-family:var(--fd);font-size:22px;color:var(--green);}
+.od-detail{font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:2px;}
+.od-amt{font-family:var(--fd);font-size:20px;color:var(--green);}
 
-/* PAYOUT */
-.pay-big{font-family:var(--fd);font-size:48px;color:var(--orange);letter-spacing:1px;line-height:1;}
-.pay-sub{font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:6px;letter-spacing:1.5px;}
+/* ── IMPORT ── */
+.imp-drop{border:2px dashed var(--bdr2);border-radius:8px;padding:22px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surf2);}
+.imp-drop:hover,.imp-drop.drag{border-color:var(--orange);background:var(--odim);}
+.imp-drop-icon{font-size:24px;margin-bottom:6px;}
+.imp-drop-lbl{font-family:var(--fm);font-size:8.5px;letter-spacing:1.5px;color:var(--mt);}
+.imp-drop-sub{font-family:var(--fm);font-size:8px;color:var(--mt);margin-top:3px;}
+.imp-rest-sel{width:100%;background:var(--surf2);border:1.5px solid var(--bdr);border-radius:6px;padding:8px 11px;font-family:var(--fb);font-size:13px;color:var(--tx);outline:none;cursor:pointer;margin-bottom:10px;}
+.imp-rest-sel:focus{border-color:var(--orange);}
+.imp-preview{background:var(--surf2);border:1px solid var(--bdr);border-radius:7px;padding:12px;max-height:200px;overflow-y:auto;margin-top:10px;scrollbar-width:thin;scrollbar-color:var(--bdr2) transparent;}
+.imp-cat{font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--orange);margin-bottom:3px;margin-top:7px;}
+.imp-cat:first-child{margin-top:0;}
+.imp-item{font-size:11px;color:var(--tx2);padding:2px 0;border-bottom:1px solid var(--bdr);}
+.imp-item:last-child{border-bottom:none;}
+.imp-count{font-family:var(--fm);font-size:8px;color:var(--mt);}
+.imp-btn{width:100%;background:var(--orange);color:#fff;border:none;border-radius:7px;padding:10px;font-family:var(--fd);font-size:16px;letter-spacing:2px;cursor:pointer;transition:opacity .15s;margin-top:10px;}
+.imp-btn:hover{opacity:.88;}
+.imp-btn:disabled{opacity:.4;cursor:not-allowed;}
+.imp-msg{font-family:var(--fm);font-size:9px;text-align:center;margin-top:6px;min-height:14px;}
 
-/* BREAKDOWN */
-.brow{margin-bottom:13px;}
-.brow-head{display:flex;justify-content:space-between;font-family:var(--fm);font-size:9px;color:var(--mt);margin-bottom:5px;}
-.brow-bar{height:5px;background:var(--bdr);border-radius:3px;overflow:hidden;}
-.brow-fill{height:100%;border-radius:3px;}
-
-/* EMPTY */
-.empty{font-family:var(--fm);font-size:10px;letter-spacing:1.5px;color:var(--mt);text-align:center;padding:22px;border:1px dashed var(--bdr);border-radius:8px;}
+/* ── EMPTY / MISC ── */
+.empty{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--mt);text-align:center;padding:20px;border:1px dashed var(--bdr);border-radius:7px;}
+.grid2b{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;}
+.section-gap{margin-top:12px;}
 </style>
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
-<div id="adminLoginScreen" style="display:none;position:fixed;inset:0;background:#0e0d0a;z-index:9999;display:flex;align-items:center;justify-content:center;">
-  <div style="background:#161410;border:1.5px solid #2a2720;border-radius:16px;padding:40px;width:340px;display:flex;flex-direction:column;gap:16px;">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:#f05a1a;text-align:center;">CRUSTLY</div>
-    <div style="font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:3px;color:#888;text-align:center;">ADMIN DASHBOARD</div>
-    <input id="adminEmail" type="email" placeholder="admin@crustly.se" style="background:#1e1c17;border:1.5px solid #2a2720;border-radius:8px;padding:12px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;" onkeydown="if(event.key==='Enter')doAdminLogin()">
-    <input id="adminPass" type="password" placeholder="••••••••" style="background:#1e1c17;border:1.5px solid #2a2720;border-radius:8px;padding:12px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;" onkeydown="if(event.key==='Enter')doAdminLogin()">
-    <button onclick="doAdminLogin()" id="adminLoginBtn" style="background:#f05a1a;color:#fff;border:none;border-radius:8px;padding:14px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;">LOGGA IN</button>
-    <div id="adminLoginErr" style="color:#e74c3c;font-size:12px;text-align:center;min-height:16px;font-family:'DM Sans',sans-serif;"></div>
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="adminLoginScreen" style="display:none;position:fixed;inset:0;background:#0b0a08;z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#131210;border:1.5px solid #252320;border-radius:16px;padding:40px 36px;width:340px;display:flex;flex-direction:column;gap:14px;">
+    <div style="text-align:center;margin-bottom:4px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:3px;color:#f05a1a;">CRUSTLY</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:#5a5650;margin-top:2px;">KONTROLLCENTER · ADMIN</div>
+    </div>
+    <form onsubmit="doAdminLogin();return false;" style="display:flex;flex-direction:column;gap:10px;">
+      <input id="adminEmail" type="email" placeholder="admin@crustly.se" autocomplete="username"
+        style="background:#1a1815;border:1.5px solid #252320;border-radius:7px;padding:11px 13px;color:#ede9e0;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .15s;"
+        onfocus="this.style.borderColor='#f05a1a'" onblur="this.style.borderColor='#252320'">
+      <input id="adminPass" type="password" placeholder="Lösenord" autocomplete="current-password"
+        style="background:#1a1815;border:1.5px solid #252320;border-radius:7px;padding:11px 13px;color:#ede9e0;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .15s;"
+        onfocus="this.style.borderColor='#f05a1a'" onblur="this.style.borderColor='#252320'">
+      <button type="submit" id="adminLoginBtn"
+        style="background:#f05a1a;color:#fff;border:none;border-radius:7px;padding:13px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;transition:opacity .15s;margin-top:2px;"
+        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">LOGGA IN</button>
+    </form>
+    <div id="adminLoginErr" style="color:#e84040;font-size:12px;text-align:center;min-height:14px;font-family:'DM Sans',sans-serif;"></div>
   </div>
 </div>
 
+<!-- ══ TOPBAR ══ -->
 <div class="topbar">
   <div class="tb-left">
-    <div class="tb-logo">CRUSTLY</div>
-    <div class="tb-div"></div>
-    <div class="tb-title">ADMIN DASHBOARD</div>
+    <a class="tb-logo" href="crustly-dashboard.html">CRUSTLY</a>
+    <div class="tb-sep"></div>
+    <div class="tb-title">KONTROLLCENTER</div>
   </div>
   <div class="tb-right">
     <div class="s-dot" id="dbDot"></div>
     <div class="s-txt" id="dbStatus">ANSLUTER</div>
-    <div class="last-upd" id="lastUpd">—</div>
-    <button class="btn-ref" onclick="refresh()">↻ UPPDATERA</button>
-    <a class="btn-new" href="crustly-onboarding.html">+ NY RESTAURANG</a>
+    <div class="tb-time" id="lastUpd">—</div>
+    <div class="tb-user" id="tbUser" style="display:none;"></div>
+    <button class="btn-tb" onclick="refresh()">↻ UPPDATERA</button>
+    <button class="btn-tb logout" onclick="logout()">LOGGA UT</button>
   </div>
 </div>
 
 <div class="body-wrap">
 
+  <!-- ══ SIDENAV ══ -->
   <nav class="sidenav">
-    <div class="nav-sec">NAVIGATION</div>
-    <a class="nav-item on" href="crustly-dashboard.html">📊 DASHBOARD</a>
-    <a class="nav-item" href="crustly-onboarding.html">➕ ONBOARDING</a>
-    <a class="nav-item" href="crustly-invoice.html">🧾 FAKTURERING</a>
+    <div class="nav-sec">NAVIGERING</div>
+    <a class="nav-item on" href="crustly-dashboard.html"><span class="nav-icon">◈</span>KONTROLLCENTER</a>
+    <a class="nav-item" href="crustly-onboarding.html"><span class="nav-icon">＋</span>ONBOARDING</a>
+    <a class="nav-item" href="crustly-invoice.html"><span class="nav-icon">◻</span>FAKTURERING</a>
     <div class="nav-sec">FUNKTIONER</div>
-    <a class="nav-item" href="crustly-birthday.html">🎂 FÖDELSEDAG</a>
-    <a class="nav-item" href="crustly-reengagement.html">📣 ÅTERAKTIVERING</a>
-    <a class="nav-item" href="crustly-loyalty.html">⭐ LOJALITET</a>
-    <div class="nav-spacer"></div>
+    <a class="nav-item" href="crustly-birthday.html"><span class="nav-icon">◇</span>FÖDELSEDAG-SMS</a>
+    <a class="nav-item" href="crustly-reengagement.html"><span class="nav-icon">◈</span>ÅTERAKTIVERING</a>
+    <a class="nav-item" href="crustly-loyalty.html"><span class="nav-icon">◇</span>LOJALITET</a>
     <div class="nav-sec">SYSTEM</div>
-    <a class="nav-item" href="crustly-settings.html">⚙️ INSTÄLLNINGAR</a>
-    <a class="nav-item" href="index.html">← STARTSIDA</a>
+    <a class="nav-item" href="crustly-settings.html"><span class="nav-icon">◻</span>INSTÄLLNINGAR</a>
+    <a class="nav-item" href="index.html"><span class="nav-icon">←</span>STARTSIDA</a>
+    <div class="nav-spacer"></div>
+    <div class="nav-build">CRUSTLY ADMIN<br><span>v1.0 · 2025</span></div>
   </nav>
 
+  <!-- ══ CONTENT ══ -->
   <div class="content">
 
-    <!-- KPIs -->
-    <div class="kpi-strip" style="grid-template-columns:repeat(5,1fr);">
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div>
+        <div class="page-title">KONTROLLCENTER</div>
+        <div class="page-sub">SYSTEMÖVERSIKT · ALLA RESTAURANGER</div>
+      </div>
+      <div class="page-actions">
+        <a class="btn-primary-sm" href="crustly-onboarding.html">+ NY RESTAURANG</a>
+      </div>
+    </div>
+
+    <!-- ALERT BANNER -->
+    <div id="alertBanner" class="alert-banner warn" style="display:none;"></div>
+
+    <!-- KPI STRIP -->
+    <div class="kpi-strip">
       <div class="kpi o">
-        <div class="kpi-lbl">DIN INTÄKT — MÅNADEN</div>
+        <div class="kpi-lbl">MÅNADSINTÄKT (MRR)</div>
         <div class="kpi-val o" id="kpiCut">0 kr</div>
-        <div class="kpi-sub" id="kpiCutSub">10% AV ORDERVOLYM</div>
+        <div class="kpi-sub" id="kpiCutSub">BERÄKNAR...</div>
       </div>
       <div class="kpi g">
-        <div class="kpi-lbl">TOTAL ORDERVOLYM</div>
-        <div class="kpi-val g" id="kpiRev">0 kr</div>
-        <div class="kpi-sub" id="kpiRevSub">DENNA MÅNAD</div>
-      </div>
-      <div class="kpi y">
         <div class="kpi-lbl">AKTIVA RESTAURANGER</div>
-        <div class="kpi-val y" id="kpiRest">0</div>
+        <div class="kpi-val g" id="kpiRest">0</div>
         <div class="kpi-sub" id="kpiRestSub">LÄGG TILL DIN FÖRSTA</div>
       </div>
       <div class="kpi b">
@@ -267,141 +344,152 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;fle
         <div class="kpi-sub" id="kpiTodaySub">IDAG</div>
       </div>
       <div class="kpi p">
-        <div class="kpi-lbl">STRIPE AVGIFTER — MÅNADEN</div>
+        <div class="kpi-lbl">STRIPE AVGIFTER · MÅNADEN</div>
         <div class="kpi-val p" id="kpiStripeFee">—</div>
         <div class="kpi-sub" id="kpiStripeSub">LADDAR...</div>
       </div>
     </div>
 
-    <!-- ROW 1 -->
-    <div class="grid2" style="margin-bottom:14px;">
+    <!-- QUICK ACTIONS -->
+    <div class="qa-row">
+      <a class="qa-btn primary" href="crustly-onboarding.html">＋ NY RESTAURANG</a>
+      <a class="qa-btn" href="crustly-birthday.html">◇ FÖDELSEDAG-SMS</a>
+      <a class="qa-btn" href="crustly-reengagement.html">◈ ÅTERAKTIVERING</a>
+      <a class="qa-btn" href="crustly-loyalty.html">◈ LOJALITET</a>
+      <a class="qa-btn" href="crustly-invoice.html">◻ FAKTURERING</a>
+      <button class="qa-btn" onclick="toggleImport()">◻ IMPORTERA MENY</button>
+      <a class="qa-btn" href="crustly-settings.html">◻ INSTÄLLNINGAR</a>
+    </div>
+
+    <!-- MAIN GRID: Restaurant table + Right column -->
+    <div class="main-grid">
+
+      <!-- RESTAURANT TABLE -->
       <div class="card">
         <div class="card-head">
           <div class="card-title">RESTAURANGER</div>
-          <div class="card-tag" id="restCount">0 TOTALT</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input class="tbl-search" id="restSearch" type="text" placeholder="Sök namn..." oninput="filterRestaurants()">
+            <div class="card-tag" id="restCount">0 TOTALT</div>
+          </div>
         </div>
         <table class="rtable">
           <thead><tr>
-            <th>NAMN</th><th>OMSÄTTNING</th><th>SERVICEAVGIFTER</th><th>VOLYM</th><th>STATUS</th>
+            <th>RESTAURANG</th>
+            <th>OMSÄTTNING</th>
+            <th>MIN AVGIFT</th>
+            <th>ORDERS</th>
+            <th>SENASTE ORDER</th>
+            <th>STATUS</th>
+            <th></th>
           </tr></thead>
           <tbody id="restBody">
-            <tr><td colspan="5"><div class="empty">INGA RESTAURANGER ÄNNU · <a href="crustly-onboarding.html" style="color:var(--orange)">LÄGG TILL EN →</a></div></td></tr>
+            <tr><td colspan="7"><div class="empty">INGA RESTAURANGER ÄNNU · <a href="crustly-onboarding.html" style="color:var(--orange)">LÄGG TILL EN →</a></div></td></tr>
           </tbody>
         </table>
       </div>
+
+      <!-- RIGHT COLUMN -->
       <div class="vcol">
+
+        <!-- SYSTEM STATUS -->
         <div class="card">
-          <div class="card-head"><div class="card-title">UTBETALNING</div><div class="card-tag">DENNA MÅNAD</div></div>
+          <div class="card-head">
+            <div class="card-title">SYSTEMSTATUS</div>
+            <div class="card-tag" id="sysTime">—</div>
+          </div>
+          <div class="card-body">
+            <div class="sys-row">
+              <div class="s-dot" id="sysDotSupa"></div>
+              <div class="sys-label">SUPABASE DATABASE</div>
+              <div class="sys-val mt" id="sysValSupa">—</div>
+            </div>
+            <div class="sys-row">
+              <div class="s-dot" id="sysDotStripe"></div>
+              <div class="sys-label">STRIPE BETALNINGAR</div>
+              <div class="sys-val mt" id="sysValStripe">—</div>
+            </div>
+            <div class="sys-row">
+              <div class="s-dot" id="sysDotWorker"></div>
+              <div class="sys-label">CLOUDFLARE WORKER</div>
+              <div class="sys-val mt" id="sysValWorker">—</div>
+            </div>
+            <div class="sys-row">
+              <div class="s-dot live"></div>
+              <div class="sys-label">AUTO-UPPDATERING</div>
+              <div class="sys-val ok">VAR 30S</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MONTH SUMMARY -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">DENNA MÅNAD</div>
+            <div class="card-tag">ORDERVOLYM</div>
+          </div>
           <div class="card-body">
             <div class="pay-big" id="payAmt">0 kr</div>
             <div class="pay-sub" id="paySub">INGEN OMSÄTTNING ÄN</div>
+            <div style="margin-top:14px;" id="breakdown"><div class="empty" style="padding:12px;">INGEN DATA ÄN</div></div>
           </div>
         </div>
+
+        <!-- PAYOUT -->
         <div class="card">
-          <div class="card-head"><div class="card-title">ORDERTYPER</div></div>
-          <div class="card-body" id="breakdown"><div class="empty">INGEN DATA ÄN</div></div>
+          <div class="card-head">
+            <div class="card-title">UTBETALNING</div>
+            <div class="card-tag">DENNA MÅNAD</div>
+          </div>
+          <div class="card-body">
+            <div style="font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">DIN INTÄKT MÅNADEN</div>
+            <div class="pay-big" id="kpiRev" style="font-size:34px;color:var(--green);">0 kr</div>
+            <div class="pay-sub" id="kpiRevSub">—</div>
+          </div>
         </div>
+
       </div>
     </div>
 
     <!-- STRIPE AVGIFTER -->
-    <div style="margin-bottom:14px;">
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">💳 STRIPE AVGIFTER</div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <select id="stripeMonthSel" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--mt);outline:none;cursor:pointer;" onchange="loadStripeData()"></select>
-            <div class="card-tag" id="stripeTag">DENNA MÅNAD</div>
+    <div class="card section-gap">
+      <div class="card-head">
+        <div class="card-title">💳 STRIPE AVGIFTER</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <select id="stripeMonthSel" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:5px;padding:4px 8px;font-family:var(--fm);font-size:8.5px;letter-spacing:1px;color:var(--mt);outline:none;cursor:pointer;" onchange="loadStripeData()"></select>
+          <div class="card-tag" id="stripeTag">DENNA MÅNAD</div>
+        </div>
+      </div>
+      <div id="stripeContent">
+        <div class="stripe-metrics">
+          <div class="stripe-metric">
+            <div class="stripe-metric-lbl">TOTALA AVGIFTER</div>
+            <div class="stripe-metric-val" style="color:var(--purple);" id="stripeTotalFee">—</div>
+            <div class="stripe-metric-sub" id="stripeFeeAvg">AV TOTAL VOLYM</div>
+          </div>
+          <div class="stripe-metric">
+            <div class="stripe-metric-lbl">VOLYM VIA STRIPE</div>
+            <div class="stripe-metric-val" id="stripeVolume">—</div>
+            <div class="stripe-metric-sub" id="stripeTxCount">— TRANSAKTIONER</div>
+          </div>
+          <div class="stripe-metric">
+            <div class="stripe-metric-lbl">NETTO EFTER AVGIFTER</div>
+            <div class="stripe-metric-val" style="color:var(--green);" id="stripeNet">—</div>
+            <div class="stripe-metric-sub" id="stripeNetSub">UTBETALAT TILL KONTO</div>
           </div>
         </div>
-        <div id="stripeContent">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--bdr);">
-            <div style="padding:16px 20px;border-right:1px solid var(--bdr);">
-              <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">TOTALA AVGIFTER</div>
-              <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:#8b5cf6;" id="stripeTotalFee">—</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:4px;" id="stripeFeeAvg">AV TOTAL VOLYM</div>
-            </div>
-            <div style="padding:16px 20px;border-right:1px solid var(--bdr);">
-              <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">VOLYM VIA STRIPE</div>
-              <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--tx);" id="stripeVolume">—</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:4px;" id="stripeTxCount">— TRANSAKTIONER</div>
-            </div>
-            <div style="padding:16px 20px;">
-              <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">NETTO EFTER AVGIFTER</div>
-              <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--green);" id="stripeNet">—</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--mt);margin-top:4px;" id="stripeNetSub">UTBETALAT TILL KONTO</div>
-            </div>
-          </div>
-          <table class="rtable">
-            <thead><tr>
-              <th>TIDPUNKT</th><th>BESKRIVNING</th><th>BELOPP</th><th>AVGIFT</th><th>NETTO</th><th>AVGIFT %</th>
-            </tr></thead>
-            <tbody id="stripeTxBody">
-              <tr><td colspan="6"><div class="empty">LADDAR STRIPE-DATA...</div></td></tr>
-            </tbody>
-          </table>
-        </div>
+        <table class="rtable">
+          <thead><tr>
+            <th>TIDPUNKT</th><th>BESKRIVNING</th><th>BELOPP</th><th>AVGIFT</th><th>NETTO</th><th>AVGIFT %</th>
+          </tr></thead>
+          <tbody id="stripeTxBody">
+            <tr><td colspan="6"><div class="empty">LADDAR STRIPE-DATA...</div></td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <!-- ROW 3 — MENYIMPORT -->
-    <div style="margin-top:16px;">
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">📋 IMPORTERA MENY & TILLVAL FRÅN JSON</div>
-          <div class="card-tag">LÄGG TILL PÅ BEFINTLIG MENY</div>
-        </div>
-        <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-          <!-- VÄNSTER: Välj restaurang + upload -->
-          <div>
-            <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">1. VÄLJ RESTAURANG</div>
-            <select class="imp-rest-sel" id="impRestSel">
-              <option value="">Välj restaurang...</option>
-            </select>
-            <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">2. LADDA UPP JSON-FIL</div>
-            <div class="imp-drop" id="impDrop" onclick="document.getElementById('impFile').click()">
-              <div class="imp-drop-icon">📄</div>
-              <div class="imp-drop-lbl">KLICKA ELLER DRAGGA HIT JSON-FIL</div>
-              <div class="imp-drop-sub" id="impFileName">Ingen fil vald</div>
-            </div>
-            <input type="file" id="impFile" accept=".json" style="display:none" onchange="handleJsonFile(this.files[0])">
-            <div id="impMsg" class="imp-msg"></div>
-            <button class="imp-btn" id="impBtn" disabled onclick="importMenu()">⬆ IMPORTERA MENY</button>
-
-            <div style="margin-top:12px;border-top:1px solid var(--bdr2);padding-top:12px;">
-              <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">3. LADDA UPP TILLVAL JSON (VALFRITT)</div>
-              <div class="imp-drop" id="impDropTv" onclick="document.getElementById('impFileTv').click()" style="padding:16px;">
-                <div class="imp-drop-icon" style="font-size:20px;">🧩</div>
-                <div class="imp-drop-lbl" style="font-size:8px;">TILLVAL JSON</div>
-                <div class="imp-drop-sub" id="impFileNameTv">Ingen fil vald</div>
-              </div>
-              <input type="file" id="impFileTv" accept=".json" style="display:none" onchange="handleTvFile(this.files[0])">
-              <div id="impMsgTv" class="imp-msg"></div>
-              <button class="imp-btn" id="impBtnTv" disabled onclick="importTillval()" style="margin-top:8px;">⬆ IMPORTERA TILLVAL</button>
-            </div>
-          </div>
-          <!-- HÖGER: Förhandsgranskning -->
-          <div>
-            <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">FÖRHANDSGRANSKNING</div>
-            <div class="imp-preview" id="impPreview">
-              <div class="empty" style="font-size:11px;">Ingen JSON laddad än</div>
-            </div>
-            <div style="margin-top:8px;display:flex;gap:8px;">
-              <div style="flex:1;background:var(--surf2);border-radius:6px;padding:8px;text-align:center;">
-                <div class="imp-count" id="impCatCount">0</div>
-                <div class="imp-count">KATEGORIER</div>
-              </div>
-              <div style="flex:1;background:var(--surf2);border-radius:6px;padding:8px;text-align:center;">
-                <div class="imp-count" id="impItemCount">0</div>
-                <div class="imp-count">RÄTTER</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ROW 2 -->
+    <!-- LIVE + TODAY -->
     <div class="grid2b">
       <div class="card">
         <div class="card-head">
@@ -411,17 +499,75 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;fle
         <div class="card-body" id="actFeed"><div class="empty">ORDERS VISAS HÄR I REALTID</div></div>
       </div>
       <div class="card">
-        <div class="card-head"><div class="card-title">DAGENS ORDERS</div></div>
+        <div class="card-head">
+          <div class="card-title">DAGENS ORDERS</div>
+          <div class="card-tag" id="todayRevTag">—</div>
+        </div>
         <div class="card-body" id="todayOrders"><div class="empty">INGA ORDERS IDAG ÄN</div></div>
       </div>
     </div>
 
-  </div>
-</div>
+    <!-- MENU IMPORT (collapsible) -->
+    <div id="importSection" style="display:none;" class="section-gap">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">📋 IMPORTERA MENY &amp; TILLVAL FRÅN JSON</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="card-tag">LÄGG TILL PÅ BEFINTLIG MENY</div>
+            <button onclick="toggleImport()" style="background:none;border:1px solid var(--bdr);border-radius:5px;padding:4px 10px;font-family:var(--fm);font-size:8.5px;color:var(--mt);cursor:pointer;">✕ STÄNG</button>
+          </div>
+        </div>
+        <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <div style="font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">1. VÄLJ RESTAURANG</div>
+            <select class="imp-rest-sel" id="impRestSel"><option value="">Välj restaurang...</option></select>
+            <div style="font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">2. LADDA UPP JSON-FIL</div>
+            <div class="imp-drop" id="impDrop" onclick="document.getElementById('impFile').click()">
+              <div class="imp-drop-icon">📄</div>
+              <div class="imp-drop-lbl">KLICKA ELLER DRAGGA HIT JSON-FIL</div>
+              <div class="imp-drop-sub" id="impFileName">Ingen fil vald</div>
+            </div>
+            <input type="file" id="impFile" accept=".json" style="display:none" onchange="handleJsonFile(this.files[0])">
+            <div id="impMsg" class="imp-msg"></div>
+            <button class="imp-btn" id="impBtn" disabled onclick="importMenu()">⬆ IMPORTERA MENY</button>
+            <div style="margin-top:12px;border-top:1px solid var(--bdr2);padding-top:12px;">
+              <div style="font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">3. TILLVAL JSON (VALFRITT)</div>
+              <div class="imp-drop" id="impDropTv" onclick="document.getElementById('impFileTv').click()" style="padding:14px;">
+                <div class="imp-drop-icon" style="font-size:18px;">🧩</div>
+                <div class="imp-drop-lbl">TILLVAL JSON</div>
+                <div class="imp-drop-sub" id="impFileNameTv">Ingen fil vald</div>
+              </div>
+              <input type="file" id="impFileTv" accept=".json" style="display:none" onchange="handleTvFile(this.files[0])">
+              <div id="impMsgTv" class="imp-msg"></div>
+              <button class="imp-btn" id="impBtnTv" disabled onclick="importTillval()">⬆ IMPORTERA TILLVAL</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);margin-bottom:6px;">FÖRHANDSGRANSKNING</div>
+            <div class="imp-preview" id="impPreview"><div class="empty" style="font-size:10px;">Ingen JSON laddad än</div></div>
+            <div style="margin-top:8px;display:flex;gap:8px;">
+              <div style="flex:1;background:var(--surf2);border-radius:6px;padding:8px;text-align:center;">
+                <div class="imp-count" id="impCatCount" style="font-size:18px;font-family:var(--fd);color:var(--orange);">0</div>
+                <div class="imp-count">KATEGORIER</div>
+              </div>
+              <div style="flex:1;background:var(--surf2);border-radius:6px;padding:8px;text-align:center;">
+                <div class="imp-count" id="impItemCount" style="font-size:18px;font-family:var(--fd);color:var(--orange);">0</div>
+                <div class="imp-count">RÄTTER</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /body-wrap -->
 
 <script>
 let restaurants = [], orders = [];
+let _restRowsAll = [];
 const sek = n => Math.round(n).toLocaleString('sv-SE') + ' kr';
+
 function timeAgo(d) {
   const s = Math.floor((Date.now()-d)/1000);
   if(s<60) return s+'s sedan';
@@ -430,66 +576,83 @@ function timeAgo(d) {
   return Math.floor(s/86400)+'d sedan';
 }
 
+function set(id,v) { const el=document.getElementById(id); if(el) el.innerHTML=v; }
+
+function status(s) {
+  const dot=document.getElementById('dbDot'), txt=document.getElementById('dbStatus');
+  if(s==='live'){dot.className='s-dot live';txt.textContent='LIVE';}
+  else if(s==='err'){dot.className='s-dot err';txt.textContent='FEL';}
+  else{dot.className='s-dot';txt.textContent='ANSLUTER';}
+}
+
+function setSystemStatus(service, state) {
+  // state: 'ok' | 'err' | 'warn' | 'loading'
+  const dot = document.getElementById('sysDot'+service);
+  const val = document.getElementById('sysVal'+service);
+  if (!dot || !val) return;
+  if (state === 'ok')      { dot.className='s-dot live'; val.className='sys-val ok'; val.textContent='OK'; }
+  else if (state === 'err'){ dot.className='s-dot err';  val.className='sys-val err'; val.textContent='FEL'; }
+  else if (state === 'warn'){dot.className='s-dot';      val.className='sys-val warn'; val.textContent='VARNING'; }
+  else                     { dot.className='s-dot';      val.className='sys-val mt'; val.textContent='...'; }
+}
+
+function checkAlerts() {
+  const alerts = [];
+  const noSms = restaurants.filter(r => !r.sms_api_username);
+  if (noSms.length > 0)
+    alerts.push(`⚠️ <strong>${noSms.length}</strong> restaurang${noSms.length>1?'er':''} saknar SMS-konfiguration — <a href="crustly-settings.html">Gå till inställningar →</a>`);
+
+  const now = new Date();
+  const cutoff = new Date(now - 30*24*60*60*1000);
+  const stale = restaurants.filter(r => {
+    const lastOrd = orders.filter(o=>o.restaurant_id===r.id).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0];
+    return !lastOrd || new Date(lastOrd.created_at) < cutoff;
+  });
+  if (stale.length > 0 && restaurants.length > 0)
+    alerts.push(`⚠️ <strong>${stale.length}</strong> restaurang${stale.length>1?'er':''} utan order de senaste 30 dagarna`);
+
+  const banner = document.getElementById('alertBanner');
+  if (alerts.length > 0) {
+    banner.innerHTML = alerts.map(a=>`<div class="alert-item">${a}</div>`).join('');
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 function render() {
   const now = new Date();
   const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const mOrd = orders.filter(o => { const t=ts(o); return t>=startMonth; });
-  const tOrd = orders.filter(o => { const t=ts(o); return t>=startDay; });
-  const totalRev = mOrd.reduce((s,o)=>s+(o.total||0),0);
-  // Affärsmodell: 2000 kr/mån per restaurang + 7 kr per order
+  const mOrd = orders.filter(o => new Date(o.created_at||0) >= startMonth);
+  const tOrd = orders.filter(o => new Date(o.created_at||0) >= startDay);
+  const totalRevMonth = mOrd.reduce((s,o)=>s+(o.total||0),0);
+  const todayRev = tOrd.reduce((s,o)=>s+(o.total||0),0);
+
   const MONTHLY_FEE = 2000;
   const ORDER_FEE   = 7;
   const activRest   = restaurants.filter(r => r.status !== 'demo').length;
   const yourCut     = activRest * MONTHLY_FEE + mOrd.length * ORDER_FEE;
-  const todayRev = tOrd.reduce((s,o)=>s+(o.total||0),0);
 
   // KPIs
   set('kpiCut', sek(yourCut));
   set('kpiCutSub', `${activRest} × 2 000 KR + ${mOrd.length} × 7 KR`);
-  set('kpiRev', sek(totalRev));
-  set('kpiRevSub', `ÖVER ${restaurants.length} RESTAURANGER`);
-  populateImportRestaurantSelector();
   set('kpiRest', restaurants.length);
-  set('kpiRestSub', restaurants.length===0 ? 'LÄGG TILL DIN FÖRSTA' : `${restaurants.filter(r=>r.status==='live').length} LIVE`);
+  set('kpiRestSub', restaurants.length===0 ? 'LÄGG TILL DIN FÖRSTA' : `${activRest} LIVE · ${restaurants.length-activRest} DEMO`);
   set('kpiToday', tOrd.length);
   document.getElementById('kpiTodaySub').innerHTML = todayRev>0 ? `<span class="up">${sek(todayRev)} IDAG</span>` : 'IDAG';
-  set('payAmt', sek(yourCut));
-  set('paySub', restaurants.length>0 ? `FRÅN ${restaurants.length} RESTAURANGER · DENNA MÅNAD` : 'INGEN OMSÄTTNING ÄN');
+
+  // Payout card
+  set('kpiRev', sek(yourCut));
+  set('kpiRevSub', restaurants.length>0 ? `FRÅN ${restaurants.length} RESTAURANGER · DENNA MÅNAD` : 'INGEN OMSÄTTNING ÄN');
+
+  // Month summary
+  set('payAmt', sek(totalRevMonth));
+  set('paySub', mOrd.length>0 ? `${mOrd.length} ORDERS · SNITT ${sek(totalRevMonth/(mOrd.length||1))}` : 'INGEN OMSÄTTNING ÄN');
   set('restCount', restaurants.length+' TOTALT');
 
-  // Restaurant table
-  if (!restaurants.length) {
-    set('restBody', `<tr><td colspan="5"><div class="empty">INGA RESTAURANGER ÄNNU · <a href="crustly-onboarding.html" style="color:var(--orange)">LÄGG TILL EN →</a></div></td></tr>`);
-  } else {
-    const maxR = Math.max(...restaurants.map(r=>mOrd.filter(o=>o.restaurant_id===r.id).reduce((s,o)=>s+(o.total||0),0)),1);
-    set('restBody', restaurants.map(r=>{
-      const ro  = mOrd.filter(o=>o.restaurant_id===r.id||o.restaurant_slug===r.slug);
-      const rev = ro.reduce((s,o)=>s+(o.total||0),0);
-      const cut = ro.length * ORDER_FEE; // 7 kr per order
-      const pct = Math.round(rev/maxR*100);
-      const live = r.status!=='demo';
-      return `<tr>
-        <td><div class="rname"><span class="rdot ${live?'live':'demo'}"></span>${r.name||'—'}</div></td>
-        <td><span class="mono" style="font-size:12px">${sek(rev)}</span></td>
-        <td><span class="mono" style="color:var(--orange);font-size:12px">${sek(cut)}</span></td>
-        <td><div style="display:flex;align-items:center;gap:6px"><div class="bar-w"><div class="bar-f" style="width:${pct}%"></div></div><span class="mono" style="font-size:10px;color:var(--mt)">${ro.length}</span></div></td>
-        <td><span class="badge ${live?'badge-live':'badge-demo'}">${live?'LIVE':'DEMO'}</span></td>
-      </tr>`;
-    }).join(''));
-  }
-
-  // Activity
-  set('actFeed', orders.length ? orders.slice(0,10).map(o=>{
-    const t=ts(o); const items=o.items?o.items.map(i=>i.name).slice(0,2).join(', '):'—';
-    return `<div class="act-item"><div class="act-dot" style="background:var(--green)"></div><div class="act-body"><strong>${o.restaurant_name||'—'}</strong> — ${items} <span style="color:var(--orange)">+7 kr</span></div><div class="act-time">${timeAgo(t)}</div></div>`;
-  }).join('') : `<div class="empty">ORDERS VISAS HÄR I REALTID</div>`);
-
-  // Today
-  set('todayOrders', tOrd.length ? tOrd.slice(0,8).map(o=>{
-    const t=ts(o); const items=o.items?o.items.map(i=>i.name).slice(0,2).join(', '):'—';
-    return `<div class="od-item"><div><div class="od-name">${o.restaurant_name||'—'}</div><div class="od-detail">${items} · ${new Date(t).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'})}</div></div><div class="od-amt">${sek(o.total||0)}</div></div>`;
-  }).join('') : `<div class="empty">INGA ORDERS IDAG ÄN</div>`);
+  // Today's revenue tag
+  set('todayRevTag', todayRev>0 ? `${sek(todayRev)} IDAG` : 'IDAG');
 
   // Breakdown
   const del  = mOrd.filter(o=>o.delivery_type==='delivery').length;
@@ -500,50 +663,111 @@ function render() {
   set('breakdown', mOrd.length ? `
     <div class="brow"><div class="brow-head"><span>🛵 LEVERANS</span><span>${del} (${Math.round(del/tot*100)}%)</span></div><div class="brow-bar"><div class="brow-fill" style="width:${Math.round(del/tot*100)}%;background:var(--orange)"></div></div></div>
     <div class="brow"><div class="brow-head"><span>🏠 AVHÄMTNING</span><span>${pick} (${Math.round(pick/tot*100)}%)</span></div><div class="brow-bar"><div class="brow-fill" style="width:${Math.round(pick/tot*100)}%;background:var(--blue)"></div></div></div>
-    <div style="border-top:1px solid var(--bdr);padding-top:12px;margin-top:4px;">
-      <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--mt);margin-bottom:10px;">BETALNING</div>
+    <div style="border-top:1px solid var(--bdr);padding-top:10px;margin-top:2px;">
+      <div style="font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);margin-bottom:8px;">BETALMETOD</div>
       <div style="display:flex;gap:8px;">
-        <div style="flex:1;background:var(--surf2);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:16px;margin-bottom:3px;">📱</div><div style="font-family:var(--fd);font-size:26px;color:var(--orange)">${swish}</div><div style="font-family:var(--fm);font-size:8px;color:var(--mt)">SWISH</div></div>
-        <div style="flex:1;background:var(--surf2);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:16px;margin-bottom:3px;">💵</div><div style="font-family:var(--fd);font-size:26px;color:var(--yellow)">${cash}</div><div style="font-family:var(--fm);font-size:8px;color:var(--mt)">KONTANT</div></div>
+        <div style="flex:1;background:var(--surf2);border-radius:7px;padding:10px;text-align:center;"><div style="font-size:14px;margin-bottom:2px;">📱</div><div style="font-family:var(--fd);font-size:24px;color:var(--orange)">${swish}</div><div style="font-family:var(--fm);font-size:7.5px;color:var(--mt)">SWISH</div></div>
+        <div style="flex:1;background:var(--surf2);border-radius:7px;padding:10px;text-align:center;"><div style="font-size:14px;margin-bottom:2px;">💳</div><div style="font-family:var(--fd);font-size:24px;color:var(--blue)">${mOrd.length-swish-cash}</div><div style="font-family:var(--fm);font-size:7.5px;color:var(--mt)">KORT</div></div>
+        <div style="flex:1;background:var(--surf2);border-radius:7px;padding:10px;text-align:center;"><div style="font-size:14px;margin-bottom:2px;">💵</div><div style="font-family:var(--fd);font-size:24px;color:var(--yellow)">${cash}</div><div style="font-family:var(--fm);font-size:7.5px;color:var(--mt)">KONTANT</div></div>
       </div>
-    </div>` : `<div class="empty">INGEN DATA ÄN</div>`);
+    </div>` : `<div class="empty" style="padding:12px;">INGEN DATA ÄN</div>`);
+
+  // Restaurant table
+  populateImportRestaurantSelector();
+  const maxR = Math.max(...restaurants.map(r=>mOrd.filter(o=>o.restaurant_id===r.id).reduce((s,o)=>s+(o.total||0),0)),1);
+  _restRowsAll = restaurants.map(r=>{
+    const ro  = mOrd.filter(o=>o.restaurant_id===r.id||o.restaurant_slug===r.slug);
+    const rev = ro.reduce((s,o)=>s+(o.total||0),0);
+    const cut = ro.length * ORDER_FEE;
+    const pct = Math.round(rev/maxR*100);
+    const live = r.status!=='demo';
+    const allOrd = orders.filter(o=>o.restaurant_id===r.id||o.restaurant_slug===r.slug);
+    const lastOrd = allOrd.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0];
+    const lastDate = lastOrd ? new Date(lastOrd.created_at).toLocaleDateString('sv-SE') : '—';
+    const portalLink = r.slug ? `crustly-owner.html?r=${r.slug}` : 'crustly-owner.html';
+    return {
+      name: r.name||'—', slug: r.slug||'', rev, cut, pct, ordCount: ro.length, live, lastDate, portalLink,
+      html: `<tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span class="rdot ${live?'live':'demo'}"></span>
+            <div>
+              <div class="rest-name">${r.name||'—'}</div>
+              <div class="rest-slug">${r.slug||'—'}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="mono" style="font-size:12px;">${sek(rev)}</span></td>
+        <td><span class="mono" style="color:var(--orange);font-size:12px;">${sek(cut)}</span></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div class="bar-w"><div class="bar-f" style="width:${pct}%"></div></div>
+            <span class="mono" style="font-size:10px;color:var(--mt);">${ro.length}</span>
+          </div>
+        </td>
+        <td><span class="mono" style="font-size:10px;color:var(--mt);">${lastDate}</span></td>
+        <td><span class="badge ${live?'badge-live':'badge-demo'}">${live?'LIVE':'DEMO'}</span></td>
+        <td><a href="${portalLink}" class="action-link">→ PORTAL</a></td>
+      </tr>`
+    };
+  });
+  set('restBody', _restRowsAll.length ? _restRowsAll.map(r=>r.html).join('') : `<tr><td colspan="7"><div class="empty">INGA RESTAURANGER ÄNNU · <a href="crustly-onboarding.html" style="color:var(--orange)">LÄGG TILL EN →</a></div></td></tr>`);
+
+  // Activity feed
+  set('actFeed', orders.length ? orders.slice(0,10).map(o=>{
+    const t=new Date(o.created_at||0);
+    const items=o.items?o.items.map(i=>i.name).slice(0,2).join(', '):'—';
+    return `<div class="act-item"><div class="act-dot" style="background:var(--green)"></div><div class="act-body"><strong>${o.restaurant_name||'—'}</strong> — ${items} <span style="color:var(--orange)">+7 kr</span></div><div class="act-time">${timeAgo(t)}</div></div>`;
+  }).join('') : `<div class="empty">ORDERS VISAS HÄR I REALTID</div>`);
+
+  // Today's orders
+  set('todayOrders', tOrd.length ? tOrd.slice(0,8).map(o=>{
+    const t=new Date(o.created_at||0);
+    const items=o.items?o.items.map(i=>i.name).slice(0,2).join(', '):'—';
+    return `<div class="od-item"><div><div class="od-name">${o.restaurant_name||'—'}</div><div class="od-detail">${items} · ${t.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'})}</div></div><div class="od-amt">${sek(o.total||0)}</div></div>`;
+  }).join('') : `<div class="empty">INGA ORDERS IDAG ÄN</div>`);
+
+  // Alerts
+  checkAlerts();
+
+  // System time
+  const t = new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+  set('sysTime', 'SENAST '+t);
+}
+
+function filterRestaurants() {
+  const q = (document.getElementById('restSearch')?.value||'').toLowerCase();
+  if (!q) { set('restBody', _restRowsAll.map(r=>r.html).join('') || `<tr><td colspan="7"><div class="empty">INGA RESTAURANGER</div></td></tr>`); return; }
+  const filtered = _restRowsAll.filter(r => r.name.toLowerCase().includes(q) || r.slug.toLowerCase().includes(q));
+  set('restBody', filtered.length ? filtered.map(r=>r.html).join('') : `<tr><td colspan="7"><div class="empty">INGA TRÄFFAR FÖR "${q.toUpperCase()}"</div></td></tr>`);
 }
 
 function ts(o) { return new Date(o.created_at||0); }
-function set(id,v) { const el=document.getElementById(id); if(el) el.innerHTML=v; }
-function status(s) {
-  const dot=document.getElementById('dbDot'), txt=document.getElementById('dbStatus');
-  if(s==='live'){dot.className='s-dot live';txt.textContent='LIVE';}
-  else if(s==='err'){dot.className='s-dot err';txt.textContent='FEL';}
-  else{dot.className='s-dot';txt.textContent='ANSLUTER';}
-}
 
 async function refresh() {
-  document.querySelector('.btn-ref').textContent='↻ ...';
+  const btn = document.querySelector('.btn-tb[onclick="refresh()"]');
+  if(btn) btn.textContent='↻ ...';
+  setSystemStatus('Supa','loading');
   try {
     restaurants = await window.__sb.getAllRestaurants();
     orders = await window.__sb.getAllOrders();
     render(); status('live');
-    document.getElementById('lastUpd').textContent='UPPDATERAD · '+new Date().toLocaleTimeString('sv-SE');
-  } catch(e){ status('err'); }
-  document.querySelector('.btn-ref').textContent='↻ UPPDATERA';
+    setSystemStatus('Supa','ok');
+    document.getElementById('lastUpd').textContent = 'UPPDATERAD ' + new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+  } catch(e) { status('err'); setSystemStatus('Supa','err'); }
+  if(btn) btn.textContent='↻ UPPDATERA';
 }
 
 function startListener() {
-  // Poll every 30s instead of realtime for dashboard
   refresh();
   setInterval(refresh, 30000);
 }
 
 async function checkAdminRole() {
   try {
-    // Verifiera att inloggad användare har JWT (dvs lyckad auth)
-    // och att anropet mot restaurants fungerar (bevisar giltig session)
     const rows = await sbFetch('restaurants?select=id&limit=1');
-    return rows !== null; // null = anropet misslyckades, [] = ok (0 restauranger)
-  } catch(e) {
-    return false;
-  }
+    return rows !== null;
+  } catch(e) { return false; }
 }
 
 async function doAdminLogin() {
@@ -555,10 +779,9 @@ async function doAdminLogin() {
   btn.textContent = 'LOGGAR IN...'; btn.disabled = true;
   const result = await adminLogin(email, pass);
   if (result.success) {
-    // Kontrollera admin-roll
     const isAdmin = await checkAdminRole();
     if (!isAdmin) {
-      err.textContent = 'Du har inte behörighet till admin-dashboarden.';
+      err.textContent = 'Du har inte behörighet till kontrollcentret.';
       btn.textContent = 'LOGGA IN'; btn.disabled = false;
       sessionStorage.removeItem('crustly_admin_token');
       sessionStorage.removeItem('crustly_admin_expires');
@@ -573,19 +796,39 @@ async function doAdminLogin() {
   }
 }
 
+function logout() {
+  sessionStorage.removeItem('crustly_admin_token');
+  sessionStorage.removeItem('crustly_admin_expires');
+  sessionStorage.removeItem('crustly_admin_email');
+  location.reload();
+}
+
+function toggleImport() {
+  const sec = document.getElementById('importSection');
+  const visible = sec.style.display !== 'none';
+  sec.style.display = visible ? 'none' : 'block';
+  if (!visible) setTimeout(()=>sec.scrollIntoView({behavior:'smooth',block:'start'}), 50);
+}
+
 async function loadDashboard() {
+  setSystemStatus('Supa','loading');
+  setSystemStatus('Stripe','loading');
+  setSystemStatus('Worker','loading');
   try {
     restaurants = await window.__sb.getAllRestaurants();
     orders = await window.__sb.getAllOrders();
     startListener();
     render(); status('live');
-    document.getElementById('lastUpd').textContent='LIVE · '+new Date().toLocaleTimeString('sv-SE');
-  } catch(e) { status('err'); render(); }
+    setSystemStatus('Supa','ok');
+    document.getElementById('lastUpd').textContent = 'LIVE · ' + new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+    const email = _adminEmail || sessionStorage.getItem('crustly_admin_email') || '';
+    if (email) { const el=document.getElementById('tbUser'); if(el){el.textContent=email;el.style.display='block';} }
+  } catch(e) { status('err'); setSystemStatus('Supa','err'); render(); }
   initStripeMonthSelector();
-  loadStripeData();
+  await loadStripeData();
 }
 
-// ── STRIPE ───────────────────────────────────────────────
+// ── STRIPE ──────────────────────────────────────────────────
 function initStripeMonthSelector() {
   const sel = document.getElementById('stripeMonthSel');
   if (!sel) return;
@@ -596,8 +839,7 @@ function initStripeMonthSelector() {
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const lbl = d.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' });
     const opt = document.createElement('option');
-    opt.value = val;
-    opt.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+    opt.value = val; opt.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1);
     sel.appendChild(opt);
   }
 }
@@ -606,325 +848,172 @@ async function loadStripeData() {
   const sel = document.getElementById('stripeMonthSel');
   const month = sel ? sel.value : null;
   const query = month ? '?month=' + month : '';
-
-  set('stripeTotalFee', '...');
-  set('stripeVolume', '...');
-  set('stripeNet', '...');
-  set('stripeTxBody', '<tr><td colspan="6"><div class="empty">HÄMTAR STRIPE-DATA...</div></td></tr>');
-
+  set('stripeTotalFee','...'); set('stripeVolume','...'); set('stripeNet','...');
+  set('stripeTxBody','<tr><td colspan="6"><div class="empty">HÄMTAR STRIPE-DATA...</div></td></tr>');
+  setSystemStatus('Worker','loading');
   try {
     const res = await fetch('/stripe/fees' + query);
     const d = await res.json();
-
+    setSystemStatus('Worker','ok');
     if (d.error) {
-      const msg = d.error === 'Stripe ej konfigurerat'
-        ? 'Stripe API-nyckel ej konfigurerad i Cloudflare Worker-miljön.'
-        : d.error;
-      set('stripeTxBody', `<tr><td colspan="6"><div class="empty">⚠️ ${msg}</div></td></tr>`);
-      set('kpiStripeFee', '—');
-      set('kpiStripeSub', 'STRIPE EJ KONFIGURERAT');
+      const msg = d.error === 'Stripe ej konfigurerat' ? 'Stripe API-nyckel ej konfigurerad.' : d.error;
+      set('stripeTxBody',`<tr><td colspan="6"><div class="empty">⚠️ ${msg}</div></td></tr>`);
+      set('kpiStripeFee','—'); set('kpiStripeSub','STRIPE EJ KONFIGURERAT');
+      setSystemStatus('Stripe','warn');
       return;
     }
-
-    const chargeFees    = d.charge_fees      / 100;
-    const refundFeeBack = d.refund_fee_back  / 100;
-    const netFees       = d.net_fees         / 100;
-    const volume        = d.total_volume     / 100;
-    const net           = d.net_volume       / 100;
-    const feeAvg        = volume > 0 ? ((netFees / volume) * 100).toFixed(2) : '0';
-
+    setSystemStatus('Stripe','ok');
+    const chargeFees = d.charge_fees/100, refundFeeBack = d.refund_fee_back/100;
+    const netFees = d.net_fees/100, volume = d.total_volume/100, net = d.net_volume/100;
+    const feeAvg = volume>0 ? ((netFees/volume)*100).toFixed(2) : '0';
     set('stripeTotalFee', sek(chargeFees));
     set('stripeVolume',   sek(volume));
     set('stripeNet',      sek(net));
-    set('stripeFeeAvg',   feeAvg + '% AV TOTAL VOLYM' + (refundFeeBack > 0 ? ' · ÅTERBETALT VID REFUNDS: -' + sek(refundFeeBack) : ''));
-    set('stripeTxCount',  d.charge_count + ' BETALNINGAR' + (d.refund_count > 0 ? ' · ' + d.refund_count + ' REFUNDS' : ''));
-    set('stripeNetSub',   'NETTO EFTER ' + sek(netFees) + ' AVGIFTER');
+    set('stripeFeeAvg',   feeAvg+'% AV TOTAL VOLYM'+(refundFeeBack>0?' · -'+sek(refundFeeBack)+' REFUNDS':''));
+    set('stripeTxCount',  d.charge_count+' BETALNINGAR'+(d.refund_count>0?' · '+d.refund_count+' REFUNDS':''));
+    set('stripeNetSub',   'NETTO EFTER '+sek(netFees)+' AVGIFTER');
     set('kpiStripeFee',   sek(netFees));
-    set('kpiStripeSub',   d.charge_count + ' BETALNINGAR · ' + feeAvg + '% SNITT');
-
-    if (!d.recent || !d.recent.length) {
-      set('stripeTxBody', '<tr><td colspan="6"><div class="empty">INGA STRIPE-TRANSAKTIONER DENNA MÅNAD</div></td></tr>');
-      return;
-    }
-
-    set('stripeTxBody', d.recent.map(t => {
-      const amt  = t.amount / 100;
-      const fee  = t.fee    / 100;
-      const net  = t.net    / 100;
-      const pct  = amt > 0 ? ((fee / amt) * 100).toFixed(2) : '0';
-      const time = new Date(t.created * 1000).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const desc = t.description || t.source || '—';
+    set('kpiStripeSub',   d.charge_count+' BETALNINGAR · '+feeAvg+'% SNITT');
+    if (!d.recent||!d.recent.length) { set('stripeTxBody','<tr><td colspan="6"><div class="empty">INGA STRIPE-TRANSAKTIONER DENNA MÅNAD</div></td></tr>'); return; }
+    set('stripeTxBody', d.recent.map(t=>{
+      const amt=t.amount/100,fee=t.fee/100,net=t.net/100,pct=amt>0?((fee/amt)*100).toFixed(2):'0';
+      const time=new Date(t.created*1000).toLocaleDateString('sv-SE',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
       return `<tr>
-        <td><span class="mono" style="font-size:11px;color:var(--mt);">${time}</span></td>
-        <td style="font-size:12px;color:var(--tx2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${desc}</td>
-        <td><span class="mono">${sek(amt)}</span></td>
-        <td><span class="mono" style="color:#8b5cf6;">${sek(fee)}</span></td>
-        <td><span class="mono" style="color:var(--green);">${sek(net)}</span></td>
-        <td><span class="mono" style="font-size:11px;color:var(--mt);">${pct}%</span></td>
+        <td><span class="mono" style="font-size:10px;color:var(--mt);">${time}</span></td>
+        <td style="font-size:11px;color:var(--tx2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.description||t.source||'—'}</td>
+        <td><span class="mono" style="font-size:12px;">${sek(amt)}</span></td>
+        <td><span class="mono" style="color:var(--purple);font-size:12px;">${sek(fee)}</span></td>
+        <td><span class="mono" style="color:var(--green);font-size:12px;">${sek(net)}</span></td>
+        <td><span class="mono" style="font-size:10px;color:var(--mt);">${pct}%</span></td>
       </tr>`;
     }).join(''));
-
   } catch(e) {
-    set('stripeTxBody', '<tr><td colspan="6"><div class="empty">KAN INTE NÅ STRIPE — KONTROLLERA NÄTVERKET</div></td></tr>');
-    set('kpiStripeFee', '—');
-    set('kpiStripeSub', 'FEL VID HÄMTNING');
+    set('stripeTxBody','<tr><td colspan="6"><div class="empty">KAN INTE NÅ STRIPE — KONTROLLERA NÄTVERKET</div></td></tr>');
+    set('kpiStripeFee','—'); set('kpiStripeSub','FEL VID HÄMTNING');
+    setSystemStatus('Stripe','err'); setSystemStatus('Worker','err');
   }
 }
 
-// ── MENU IMPORT ──────────────────────────────────────────
+// ── MENU IMPORT ──────────────────────────────────────────────
 let importedMenuData = null;
 
 function populateImportRestaurantSelector() {
   const sel = document.getElementById('impRestSel');
   if (!sel) return;
   sel.innerHTML = '<option value="">Välj restaurang...</option>';
-  (restaurants || []).forEach(r => {
-    const o = document.createElement('option');
-    o.value = r.id;
-    o.textContent = r.name;
-    sel.appendChild(o);
-  });
+  (restaurants||[]).forEach(r=>{ const o=document.createElement('option'); o.value=r.id; o.textContent=r.name; sel.appendChild(o); });
 }
 
-// Drag and drop
 const drop = document.getElementById('impDrop');
 if (drop) {
-  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
-  drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
-  drop.addEventListener('drop', e => {
-    e.preventDefault(); drop.classList.remove('drag');
-    const file = e.dataTransfer.files[0];
-    if (file) handleJsonFile(file);
-  });
+  drop.addEventListener('dragover', e=>{e.preventDefault();drop.classList.add('drag');});
+  drop.addEventListener('dragleave', ()=>drop.classList.remove('drag'));
+  drop.addEventListener('drop', e=>{e.preventDefault();drop.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handleJsonFile(f);});
 }
 
 function handleJsonFile(file) {
-  if (!file || !file.name.endsWith('.json')) {
-    showImpMsg('⚠️ Välj en giltig .json-fil', 'var(--red)');
-    return;
-  }
+  if (!file||!file.name.endsWith('.json')) { showImpMsg('⚠️ Välj en giltig .json-fil','var(--red)'); return; }
   document.getElementById('impFileName').textContent = file.name;
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const json = JSON.parse(e.target.result);
-      importedMenuData = json;
-      renderImportPreview(json);
+      importedMenuData = JSON.parse(e.target.result);
+      renderImportPreview(importedMenuData);
       document.getElementById('impBtn').disabled = false;
-      showImpMsg('✓ JSON inläst och redo att importera', 'var(--green)');
-    } catch(err) {
-      showImpMsg('❌ Ogiltig JSON-fil: ' + err.message, 'var(--red)');
-      importedMenuData = null;
-      document.getElementById('impBtn').disabled = true;
-    }
+      showImpMsg('✓ JSON inläst och redo att importera','var(--green)');
+    } catch(err) { showImpMsg('❌ Ogiltig JSON: '+err.message,'var(--red)'); importedMenuData=null; document.getElementById('impBtn').disabled=true; }
   };
   reader.readAsText(file);
 }
 
 function renderImportPreview(json) {
   const preview = document.getElementById('impPreview');
-  const categories = json.menu || (Array.isArray(json) ? json : []);
-  let html = '';
-  let totalItems = 0;
-
-  categories.forEach(cat => {
-    html += `<div class="imp-cat">${cat.category} (${cat.description ? cat.description.slice(0,40) : ''})</div>`;
-    if (cat.subcategories) {
-      cat.subcategories.forEach(sub => {
-        (sub.items || []).forEach(item => {
-          const price = item.price || sub.price || sub.priceSmall || '—';
-          html += `<div class="imp-item">${item.name} <span style="color:var(--orange)">${price} kr</span></div>`;
-          totalItems++;
-        });
-      });
-    } else {
-      (cat.items || []).forEach(item => {
-        const price = item.price || item.priceTallrik || '—';
-        html += `<div class="imp-item">${item.name} <span style="color:var(--orange)">${price} kr</span></div>`;
-        totalItems++;
-      });
-    }
+  const categories = json.menu||(Array.isArray(json)?json:[]);
+  let html='', totalItems=0;
+  categories.forEach(cat=>{
+    html+=`<div class="imp-cat">${cat.category}</div>`;
+    if(cat.subcategories){cat.subcategories.forEach(sub=>{(sub.items||[]).forEach(item=>{html+=`<div class="imp-item">${item.name} <span style="color:var(--orange)">${item.price||sub.price||'—'} kr</span></div>`;totalItems++;});});}
+    else{(cat.items||[]).forEach(item=>{html+=`<div class="imp-item">${item.name} <span style="color:var(--orange)">${item.price||item.priceTallrik||'—'} kr</span></div>`;totalItems++;});}
   });
-
-  preview.innerHTML = html || '<div class="empty" style="font-size:11px;">Inga rätter hittades</div>';
+  preview.innerHTML = html||'<div class="empty" style="font-size:10px;">Inga rätter hittades</div>';
   document.getElementById('impCatCount').textContent = categories.length;
   document.getElementById('impItemCount').textContent = totalItems;
 }
 
 function convertJsonToMenuItems(json) {
-  const categories = json.menu || (Array.isArray(json) ? json : []);
-  const menuItems = [];
-  let autoId = Date.now();
-
-  categories.forEach(cat => {
-    if (cat.subcategories) {
-      cat.subcategories.forEach(sub => {
-        (sub.items || []).forEach(item => {
-          menuItems.push({
-            id: autoId++,
-            name: item.name,
-            description: item.ingredients || '',
-            price: item.price || sub.price || 0,
-            priceFamily: item.familyPrice || sub.familyPrice || null,
-            priceSmall: item.priceSmall || sub.priceSmall || null,
-            priceMedium: item.priceMedium || sub.priceMedium || null,
-            priceBrod: item.priceBrod || null,
-            priceRulle: item.priceRulle || null,
-            priceTallrik: item.priceTallrik || null,
-            cat: cat.category,
-            category: cat.category,
-            subcategory: sub.name || '',
-            available: true
-          });
-        });
-      });
-    } else {
-      (cat.items || []).forEach(item => {
-        menuItems.push({
-          id: autoId++,
-          name: item.name,
-          description: item.ingredients || '',
-          price: item.price || item.priceTallrik || 0,
-          priceBrod: item.priceBrod || null,
-          priceRulle: item.priceRulle || null,
-          priceTallrik: item.priceTallrik || null,
-          cat: cat.category,
-          category: cat.category,
-          subcategory: '',
-          available: true
-        });
-      });
-    }
+  const categories = json.menu||(Array.isArray(json)?json:[]);
+  const items=[]; let autoId=Date.now();
+  categories.forEach(cat=>{
+    if(cat.subcategories){cat.subcategories.forEach(sub=>{(sub.items||[]).forEach(item=>{items.push({id:autoId++,name:item.name,description:item.ingredients||'',price:item.price||sub.price||0,priceFamily:item.familyPrice||sub.familyPrice||null,priceSmall:item.priceSmall||sub.priceSmall||null,priceMedium:item.priceMedium||sub.priceMedium||null,priceBrod:item.priceBrod||null,priceRulle:item.priceRulle||null,priceTallrik:item.priceTallrik||null,cat:cat.category,category:cat.category,subcategory:sub.name||'',available:true});});});}
+    else{(cat.items||[]).forEach(item=>{items.push({id:autoId++,name:item.name,description:item.ingredients||'',price:item.price||item.priceTallrik||0,priceBrod:item.priceBrod||null,priceRulle:item.priceRulle||null,priceTallrik:item.priceTallrik||null,cat:cat.category,category:cat.category,subcategory:'',available:true});});}
   });
-  return menuItems;
+  return items;
 }
 
 async function importMenu() {
   const restId = document.getElementById('impRestSel').value;
-  if (!restId) { showImpMsg('⚠️ Välj en restaurang först', 'var(--red)'); return; }
-  if (!importedMenuData) { showImpMsg('⚠️ Ladda upp en JSON-fil först', 'var(--red)'); return; }
-
-  const btn = document.getElementById('impBtn');
-  btn.disabled = true;
-  btn.textContent = 'IMPORTERAR...';
-  showImpMsg('Hämtar befintlig meny...', 'var(--mt)');
-
+  if(!restId){showImpMsg('⚠️ Välj en restaurang först','var(--red)');return;}
+  if(!importedMenuData){showImpMsg('⚠️ Ladda upp en JSON-fil först','var(--red)');return;}
+  const btn=document.getElementById('impBtn'); btn.disabled=true; btn.textContent='IMPORTERAR...';
+  showImpMsg('Hämtar befintlig meny...','var(--mt)');
   try {
-    // Hämta befintlig meny
-    const existing = await sbFetch(`restaurants?id=eq.${restId}&select=menu`);
-    const currentMenu = (existing && existing[0]?.menu) || [];
-
-    // Konvertera ny JSON till menyrätter
-    const newItems = convertJsonToMenuItems(importedMenuData);
-
-    // Lägg till ovanpå — undvik dubbletter baserat på name+category
-    const existingKeys = new Set(currentMenu.map(i => `${i.name}-${i.cat||i.category}`));
-    const toAdd = newItems.filter(i => !existingKeys.has(`${i.name}-${i.cat||i.category}`));
-    const merged = [...currentMenu, ...toAdd];
-
-    // Spara tillbaka
-    await sbFetch(`restaurants?id=eq.${restId}`, {
-      method: 'PATCH',
-      prefer: 'return=minimal',
-      body: JSON.stringify({ menu: merged })
-    });
-
-    const rest = restaurants.find(r => r.id === restId);
-    showImpMsg(`✅ ${toAdd.length} rätter importerade till ${rest?.name || 'restaurangen'}! (${newItems.length - toAdd.length} dubbletter hoppades över)`, 'var(--green)');
-    btn.textContent = '✓ IMPORTERAT';
-    setTimeout(() => {
-      btn.textContent = '⬆ IMPORTERA TILL SUPABASE';
-      btn.disabled = false;
-    }, 3000);
-
-    // Uppdatera listan
-    restaurants = await window.__sb.getAllRestaurants();
-    populateImportRestaurantSelector();
-
-  } catch(e) {
-    showImpMsg('❌ Fel: ' + e.message, 'var(--red)');
-    btn.textContent = '⬆ IMPORTERA TILL SUPABASE';
-    btn.disabled = false;
-  }
+    const existing=await sbFetch(`restaurants?id=eq.${restId}&select=menu`);
+    const currentMenu=(existing&&existing[0]?.menu)||[];
+    const newItems=convertJsonToMenuItems(importedMenuData);
+    const existingKeys=new Set(currentMenu.map(i=>`${i.name}-${i.cat||i.category}`));
+    const toAdd=newItems.filter(i=>!existingKeys.has(`${i.name}-${i.cat||i.category}`));
+    await sbFetch(`restaurants?id=eq.${restId}`,{method:'PATCH',prefer:'return=minimal',body:JSON.stringify({menu:[...currentMenu,...toAdd]})});
+    const rest=restaurants.find(r=>r.id===restId);
+    showImpMsg(`✅ ${toAdd.length} rätter importerade till ${rest?.name||'restaurangen'}! (${newItems.length-toAdd.length} dubbletter hoppades över)`,'var(--green)');
+    btn.textContent='✓ IMPORTERAT';
+    setTimeout(()=>{btn.textContent='⬆ IMPORTERA MENY';btn.disabled=false;},3000);
+    restaurants=await window.__sb.getAllRestaurants(); populateImportRestaurantSelector();
+  } catch(e){showImpMsg('❌ Fel: '+e.message,'var(--red)');btn.textContent='⬆ IMPORTERA MENY';btn.disabled=false;}
 }
 
-// ── TILLVAL IMPORT ──────────────────────────────────────────
 let importedTvData = null;
 
 function handleTvFile(file) {
-  if (!file || !file.name.endsWith('.json')) {
-    showImpMsgTv('⚠️ Välj en giltig .json-fil', 'var(--red)');
-    return;
-  }
-  document.getElementById('impFileNameTv').textContent = file.name;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const json = JSON.parse(e.target.result);
-      // Stödjer både { extras: {...} } och direkt { pizza: [...], ... }
-      importedTvData = json.extras || json;
-      const catCount = Object.keys(importedTvData).length;
-      const optCount = Object.values(importedTvData).reduce((s, groups) =>
-        s + groups.reduce((s2, g) => s2 + g.options.length, 0), 0);
-      showImpMsgTv(`✓ ${catCount} kategorier, ${optCount} tillval redo`, 'var(--green)');
-      document.getElementById('impBtnTv').disabled = false;
-    } catch(err) {
-      showImpMsgTv('❌ Ogiltig JSON: ' + err.message, 'var(--red)');
-      importedTvData = null;
-      document.getElementById('impBtnTv').disabled = true;
-    }
+  if(!file||!file.name.endsWith('.json')){showImpMsgTv('⚠️ Välj en giltig .json-fil','var(--red)');return;}
+  document.getElementById('impFileNameTv').textContent=file.name;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      importedTvData=(JSON.parse(e.target.result).extras)||JSON.parse(e.target.result);
+      const catCount=Object.keys(importedTvData).length;
+      const optCount=Object.values(importedTvData).reduce((s,g)=>s+g.reduce((s2,x)=>s2+x.options.length,0),0);
+      showImpMsgTv(`✓ ${catCount} kategorier, ${optCount} tillval redo`,'var(--green)');
+      document.getElementById('impBtnTv').disabled=false;
+    }catch(err){showImpMsgTv('❌ Ogiltig JSON: '+err.message,'var(--red)');importedTvData=null;document.getElementById('impBtnTv').disabled=true;}
   };
   reader.readAsText(file);
 }
 
 async function importTillval() {
-  const restId = document.getElementById('impRestSel').value;
-  if (!restId) { showImpMsgTv('⚠️ Välj en restaurang först', 'var(--red)'); return; }
-  if (!importedTvData) { showImpMsgTv('⚠️ Ladda upp en tillvals-JSON först', 'var(--red)'); return; }
-
-  const btn = document.getElementById('impBtnTv');
-  btn.disabled = true; btn.textContent = 'IMPORTERAR...';
-
-  try {
-    // Hämta befintliga settings
-    const existing = await sbFetch(`restaurants?id=eq.${restId}&select=settings`);
-    const currentSettings = (existing && existing[0]?.settings) || {};
-    const currentExtras = currentSettings.extras || {};
-
-    // Merge — ny data skriver över per kategori
-    const merged = { ...currentExtras, ...importedTvData };
-
-    await sbFetch(`restaurants?id=eq.${restId}`, {
-      method: 'PATCH',
-      prefer: 'return=minimal',
-      body: JSON.stringify({ settings: { ...currentSettings, extras: merged } })
-    });
-
-    const rest = restaurants.find(r => r.id === restId);
-    const catCount = Object.keys(importedTvData).length;
-    showImpMsgTv(`✅ ${catCount} tillvalskategorier importerade till ${rest?.name}!`, 'var(--green)');
-    btn.textContent = '✓ IMPORTERAT';
-    setTimeout(() => { btn.textContent = '⬆ IMPORTERA TILLVAL'; btn.disabled = false; }, 3000);
-  } catch(e) {
-    showImpMsgTv('❌ Fel: ' + e.message, 'var(--red)');
-    btn.textContent = '⬆ IMPORTERA TILLVAL'; btn.disabled = false;
-  }
+  const restId=document.getElementById('impRestSel').value;
+  if(!restId){showImpMsgTv('⚠️ Välj en restaurang först','var(--red)');return;}
+  if(!importedTvData){showImpMsgTv('⚠️ Ladda upp en tillvals-JSON först','var(--red)');return;}
+  const btn=document.getElementById('impBtnTv'); btn.disabled=true; btn.textContent='IMPORTERAR...';
+  try{
+    const existing=await sbFetch(`restaurants?id=eq.${restId}&select=settings`);
+    const currentSettings=(existing&&existing[0]?.settings)||{};
+    const merged={...currentSettings,extras:{...(currentSettings.extras||{}),...importedTvData}};
+    await sbFetch(`restaurants?id=eq.${restId}`,{method:'PATCH',prefer:'return=minimal',body:JSON.stringify({settings:merged})});
+    const rest=restaurants.find(r=>r.id===restId);
+    showImpMsgTv(`✅ ${Object.keys(importedTvData).length} tillvalskategorier importerade till ${rest?.name}!`,'var(--green)');
+    btn.textContent='✓ IMPORTERAT';
+    setTimeout(()=>{btn.textContent='⬆ IMPORTERA TILLVAL';btn.disabled=false;},3000);
+  }catch(e){showImpMsgTv('❌ Fel: '+e.message,'var(--red)');btn.textContent='⬆ IMPORTERA TILLVAL';btn.disabled=false;}
 }
 
-function showImpMsgTv(msg, color='var(--mt)') {
-  const el = document.getElementById('impMsgTv');
-  if (el) { el.textContent = msg; el.style.color = color; }
-}
-
-function showImpMsg(msg, color='var(--mt)') {
-  const el = document.getElementById('impMsg');
-  if (el) { el.textContent = msg; el.style.color = color; }
-}
+function showImpMsg(msg,color='var(--mt)'){const el=document.getElementById('impMsg');if(el){el.textContent=msg;el.style.color=color;}}
+function showImpMsgTv(msg,color='var(--mt)'){const el=document.getElementById('impMsgTv');if(el){el.textContent=msg;el.style.color=color;}}
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Kolla om admin redan är inloggad
-  const savedToken = sessionStorage.getItem('crustly_admin_token');
+  const savedToken   = sessionStorage.getItem('crustly_admin_token');
   const savedExpires = sessionStorage.getItem('crustly_admin_expires');
+  _adminEmail = sessionStorage.getItem('crustly_admin_email') || '';
+
   if (savedToken && savedExpires && savedExpires > Date.now()/1000) {
     _authToken = savedToken;
     const isAdmin = await checkAdminRole();
