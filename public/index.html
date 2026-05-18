@@ -4,528 +4,979 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Crustly — Kontrollcenter</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="crustly-config.js"></script>
 <style>
-:root{
-  --bg:#0b0a08;--surf:#131210;--surf2:#1a1815;--surf3:#222019;
-  --bdr:#252320;--bdr2:#2e2b24;--bdr3:#3a362d;
-  --orange:#f05a1a;--odim:#f05a1a12;--odim2:#f05a1a22;
-  --green:#3db870;--gdim:#3db87012;--gdim2:#3db87022;
-  --red:#e84040;--rdim:#e8404012;--rdim2:#e8404022;
-  --yellow:#f0b429;--ydim:#f0b42912;--ydim2:#f0b42922;
-  --blue:#4e9eff;--bdim:#4e9eff12;--bdim2:#4e9eff22;
-  --purple:#a78bfa;--pdim:#a78bfa12;--pdim2:#a78bfa22;
-  --gold:#c8920a;--goldim:#c8920a12;
-  --tx:#ede9e0;--tx2:#b8b3a4;--mt:#5a5650;
-  --fd:'Bebas Neue',sans-serif;
-  --fl:'Cormorant Garamond',serif;
-  --fm:'DM Mono',monospace;
-  --fb:'DM Sans',sans-serif;
+:root {
+  --bg: #08070a;
+  --surf: #0f0e13;
+  --surf2: #16151c;
+  --surf3: #1e1d26;
+  --bdr: #1e1d26;
+  --bdr2: #2a2836;
+  --bdr3: #38364a;
+  --orange: #f97316;
+  --orange-dim: rgba(249,115,22,.1);
+  --orange-dim2: rgba(249,115,22,.18);
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,.1);
+  --green-dim2: rgba(34,197,94,.18);
+  --blue: #3b82f6;
+  --blue-dim: rgba(59,130,246,.1);
+  --blue-dim2: rgba(59,130,246,.18);
+  --purple: #a855f7;
+  --purple-dim: rgba(168,85,247,.1);
+  --purple-dim2: rgba(168,85,247,.18);
+  --yellow: #eab308;
+  --yellow-dim: rgba(234,179,8,.1);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,.1);
+  --rose: #f43f5e;
+  --rose-dim: rgba(244,63,94,.1);
+  --sky: #0ea5e9;
+  --sky-dim: rgba(14,165,233,.1);
+  --teal: #14b8a6;
+  --teal-dim: rgba(20,184,166,.1);
+  --tx: #f1f0f5;
+  --tx2: #9997aa;
+  --tx3: #5c5a6e;
+  --fm: 'DM Mono', monospace;
+  --fb: 'Inter', sans-serif;
+  --fd: 'Bebas Neue', sans-serif;
+  --r: 12px;
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-html,body{min-height:100vh;}
-body{background:var(--bg);color:var(--tx);font-family:var(--fb);position:relative;overflow-x:hidden;}
 
-body::before{content:'';position:fixed;inset:0;
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { min-height: 100vh; }
+
+body {
+  background: var(--bg);
+  color: var(--tx);
+  font-family: var(--fb);
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Subtle noise/grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
   background:
-    radial-gradient(ellipse 60% 40% at 12% 30%,rgba(240,90,26,0.06) 0%,transparent 60%),
-    radial-gradient(ellipse 50% 50% at 92% 8%,rgba(61,184,112,0.04) 0%,transparent 60%);
-  pointer-events:none;z-index:0;}
-body::after{content:'';position:fixed;inset:0;
-  background-image:linear-gradient(var(--bdr) 1px,transparent 1px),linear-gradient(90deg,var(--bdr) 1px,transparent 1px);
-  background-size:48px 48px;opacity:.16;pointer-events:none;z-index:0;mask-image:radial-gradient(ellipse at center,#000 30%,transparent 90%);}
+    radial-gradient(ellipse 70% 50% at 20% 0%, rgba(249,115,22,.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 60% at 80% 100%, rgba(59,130,246,.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
 
-.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:42px 28px 70px;}
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 40px 28px 72px;
+}
 
-/* ── HEADER ── */
-.header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap;animation:fadeUp .5s ease both;}
-.brand{display:flex;flex-direction:column;}
-.logo{font-family:var(--fl);font-size:62px;font-style:italic;font-weight:600;color:var(--orange);line-height:1;letter-spacing:-1px;}
-.logo-sub{font-family:var(--fm);font-size:9px;color:var(--mt);letter-spacing:3px;margin-top:6px;}
-.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
-.host-tag{font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--mt);background:var(--surf);border:1px solid var(--bdr);padding:5px 12px;border-radius:16px;}
-.live-time{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--tx2);display:flex;align-items:center;gap:7px;}
-.live-time .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);}
+/* ── TOPBAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  gap: 20px;
+}
 
-/* ── STATUS BAR ── */
-.status-bar{background:var(--surf);border:1.5px solid var(--bdr);border-radius:14px;padding:14px 18px;margin-bottom:14px;animation:fadeUp .4s ease .05s both;display:grid;grid-template-columns:repeat(3,1fr) auto;gap:0;}
-.status-cell{padding:0 18px;display:flex;align-items:center;gap:11px;}
-.status-cell+.status-cell{border-left:1px solid var(--bdr);}
-.status-cell:first-child{padding-left:6px;}
-.status-cell .sd{width:8px;height:8px;border-radius:50%;background:var(--mt);flex-shrink:0;transition:background .3s;}
-.status-cell .sd.ok{background:var(--green);box-shadow:0 0 6px var(--green);}
-.status-cell .sd.err{background:var(--red);}
-.status-cell .sd.warn{background:var(--yellow);}
-.status-cell .sd.loading{background:var(--blue);animation:blink 1.2s ease-in-out infinite;}
-@keyframes blink{0%,100%{opacity:.4}50%{opacity:1}}
-.status-name{font-family:var(--fm);font-size:9.5px;letter-spacing:1.5px;color:var(--tx2);}
-.status-val{font-family:var(--fm);font-size:9px;letter-spacing:.5px;color:var(--mt);margin-top:2px;}
-.status-val.ok{color:var(--green);}
-.status-val.err{color:var(--red);}
-.status-val.warn{color:var(--yellow);}
-.test-btn{background:var(--surf2);border:1.5px solid var(--bdr);border-radius:8px;padding:7px 14px;font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--mt);cursor:pointer;transition:all .15s;margin-left:14px;align-self:center;white-space:nowrap;}
-.test-btn:hover{border-color:var(--orange);color:var(--orange);}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.logo {
+  font-family: var(--fd);
+  font-size: 32px;
+  letter-spacing: 3px;
+  color: var(--orange);
+  line-height: 1;
+}
+
+.brand-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--bdr2);
+  flex-shrink: 0;
+}
+
+.brand-sub {
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  color: var(--tx3);
+  text-transform: uppercase;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pill {
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--tx3);
+  background: var(--surf);
+  border: 1px solid var(--bdr2);
+  padding: 5px 12px;
+  border-radius: 99px;
+}
+
+.pill.status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tx3);
+  flex-shrink: 0;
+}
+.dot.ok    { background: var(--green); box-shadow: 0 0 6px rgba(34,197,94,.5); animation: pulse-dot 2.5s infinite; }
+.dot.err   { background: var(--red); }
+.dot.warn  { background: var(--yellow); }
+.dot.spin  { background: var(--blue); opacity: .7; animation: blink-dot 1s infinite; }
+
+@keyframes pulse-dot  { 0%,100%{opacity:1} 50%{opacity:.6} }
+@keyframes blink-dot  { 0%,100%{opacity:.3} 50%{opacity:1} }
+
+/* ── SYSTEM STATUS ROW ── */
+.sys-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 0;
+  background: var(--surf);
+  border: 1px solid var(--bdr2);
+  border-radius: var(--r);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.sys-cell {
+  padding: 13px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-right: 1px solid var(--bdr);
+}
+
+.sys-cell:last-child { border-right: none; }
+
+.sys-info { display: flex; flex-direction: column; gap: 2px; }
+.sys-name { font-family: var(--fm); font-size: 9px; letter-spacing: 1.5px; color: var(--tx2); text-transform: uppercase; }
+.sys-val  { font-family: var(--fm); font-size: 9px; color: var(--tx3); }
+.sys-val.ok   { color: var(--green); }
+.sys-val.err  { color: var(--red); }
+.sys-val.warn { color: var(--yellow); }
+
+.recheck-btn {
+  margin: 10px 14px;
+  align-self: center;
+  background: var(--surf2);
+  border: 1px solid var(--bdr2);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--tx3);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.recheck-btn:hover { border-color: var(--orange); color: var(--orange); }
 
 /* ── KPI STRIP ── */
-.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:30px;animation:fadeUp .4s ease .1s both;}
-.kpi{background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;}
-.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
-.kpi.o::before{background:linear-gradient(90deg,var(--orange),#ff8c42);}
-.kpi.g::before{background:linear-gradient(90deg,var(--green),#5de898);}
-.kpi.b::before{background:linear-gradient(90deg,var(--blue),#7db8ff);}
-.kpi.p::before{background:linear-gradient(90deg,var(--purple),#c4b5fd);}
-.kpi-lbl{font-family:var(--fm);font-size:7.5px;letter-spacing:2px;color:var(--mt);margin-bottom:7px;text-transform:uppercase;}
-.kpi-val{font-family:var(--fd);font-size:34px;line-height:1;letter-spacing:.5px;}
-.kpi-val.o{color:var(--orange);}
-.kpi-val.g{color:var(--green);}
-.kpi-val.b{color:var(--blue);}
-.kpi-val.p{color:var(--purple);}
-.kpi-sub{font-family:var(--fm);font-size:8px;color:var(--mt);margin-top:5px;letter-spacing:.5px;}
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 36px;
+}
 
-/* ── SECTION LABEL ── */
-.sec{font-family:var(--fm);font-size:9px;letter-spacing:3px;color:var(--mt);margin:24px 0 12px;display:flex;align-items:center;gap:12px;animation:fadeUp .4s ease both;}
-.sec::after{content:'';flex:1;height:1px;background:var(--bdr);}
+.kpi-card {
+  background: var(--surf);
+  border: 1px solid var(--bdr2);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.kpi-card:hover { border-color: var(--bdr3); }
 
-/* ── GRIDS ── */
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;}
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  opacity: .8;
+}
+.kpi-card.kpi-g::after { background: linear-gradient(90deg,var(--green),transparent); }
+.kpi-card.kpi-o::after { background: linear-gradient(90deg,var(--orange),transparent); }
+.kpi-card.kpi-b::after { background: linear-gradient(90deg,var(--blue),transparent); }
+.kpi-card.kpi-p::after { background: linear-gradient(90deg,var(--purple),transparent); }
+
+.kpi-label {
+  font-family: var(--fm);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--tx3);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.kpi-value {
+  font-family: var(--fd);
+  font-size: 30px;
+  letter-spacing: .5px;
+  line-height: 1;
+}
+.kpi-card.kpi-g .kpi-value { color: var(--green); }
+.kpi-card.kpi-o .kpi-value { color: var(--orange); }
+.kpi-card.kpi-b .kpi-value { color: var(--blue); }
+.kpi-card.kpi-p .kpi-value { color: var(--purple); }
+
+.kpi-sub {
+  font-family: var(--fm);
+  font-size: 8.5px;
+  color: var(--tx3);
+  margin-top: 5px;
+  letter-spacing: .3px;
+}
+
+/* ── SECTION HEADER ── */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 12px;
+}
+.section-head-label {
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  color: var(--tx3);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.section-head-line {
+  flex: 1;
+  height: 1px;
+  background: var(--bdr);
+}
+
+/* ── GRID ── */
+.grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
 
 /* ── CARD ── */
-.card{background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;padding:18px;text-decoration:none;color:var(--tx);display:flex;flex-direction:column;gap:11px;transition:border-color .2s,transform .15s,box-shadow .2s;position:relative;overflow:hidden;animation:fadeUp .4s ease both;}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--cc,var(--orange));transform:scaleX(0);transition:transform .25s ease;transform-origin:left;}
-.card:hover{border-color:var(--cc,var(--bdr3));transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,0.35);}
-.card:hover::before{transform:scaleX(1);}
-.card-top{display:flex;align-items:flex-start;justify-content:space-between;}
-.card-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--cd,var(--odim));border:1px solid var(--cc,var(--bdr));flex-shrink:0;}
-.badge{font-family:var(--fm);font-size:7px;letter-spacing:1.5px;padding:3px 7px;border-radius:4px;text-transform:uppercase;border:1px solid transparent;}
-.badge-live{background:var(--gdim);color:var(--green);border-color:#3db87030;}
-.badge-auto{background:var(--ydim);color:var(--yellow);border-color:#f0b42930;}
-.badge-tool{background:var(--bdim);color:var(--blue);border-color:#4e9eff30;}
-.badge-new{background:var(--odim);color:var(--orange);border-color:#f05a1a30;}
-.badge-ext{background:var(--surf2);color:var(--mt);border-color:var(--bdr);}
-.badge-warn{background:var(--rdim);color:var(--red);border-color:#e8404030;}
-.card-title{font-family:var(--fl);font-size:22px;font-style:italic;font-weight:600;line-height:1;margin-bottom:4px;letter-spacing:-.2px;}
-.card-desc{font-family:var(--fb);font-size:11.5px;color:var(--tx2);line-height:1.5;letter-spacing:.1px;}
-.card-foot{display:flex;align-items:center;justify-content:space-between;padding-top:11px;border-top:1px solid var(--bdr);margin-top:auto;}
-.card-url{font-family:var(--fm);font-size:8.5px;color:var(--mt);letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;}
-.card-arrow{font-size:14px;color:var(--mt);transition:transform .2s,color .2s;}
-.card:hover .card-arrow{transform:translateX(4px);color:var(--cc,var(--orange));}
+.card {
+  background: var(--surf);
+  border: 1px solid var(--bdr2);
+  border-radius: var(--r);
+  padding: 16px;
+  text-decoration: none;
+  color: var(--tx);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .18s, transform .15s, box-shadow .18s;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--card-accent, var(--bdr3));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 0 1px var(--card-accent, transparent);
+}
+
+/* Glow on hover */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--card-glow, transparent) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.card:hover::before { opacity: 1; }
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+  background: var(--card-icon-bg, var(--surf2));
+  border: 1px solid var(--bdr2);
+}
+
+.badge {
+  font-family: var(--fm);
+  font-size: 7.5px;
+  letter-spacing: 1.2px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge-live   { background: var(--green-dim); color: var(--green); border-color: rgba(34,197,94,.2); }
+.badge-auto   { background: var(--yellow-dim); color: var(--yellow); border-color: rgba(234,179,8,.2); }
+.badge-setup  { background: var(--blue-dim); color: var(--blue); border-color: rgba(59,130,246,.2); }
+.badge-ext    { background: var(--surf2); color: var(--tx3); border-color: var(--bdr2); }
+.badge-portal { background: var(--purple-dim); color: var(--purple); border-color: rgba(168,85,247,.2); }
+.badge-warn   { background: var(--red-dim); color: var(--red); border-color: rgba(239,68,68,.2); }
+.badge-auth   { background: var(--orange-dim); color: var(--orange); border-color: rgba(249,115,22,.2); }
+.badge-market { background: var(--teal-dim); color: var(--teal); border-color: rgba(20,184,166,.2); }
+
+.card-body { flex: 1; }
+.card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--tx);
+  margin-bottom: 4px;
+  line-height: 1.2;
+  letter-spacing: -.1px;
+}
+.card-desc {
+  font-size: 11.5px;
+  color: var(--tx2);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--bdr);
+  margin-top: auto;
+}
+.card-url {
+  font-family: var(--fm);
+  font-size: 8.5px;
+  color: var(--tx3);
+  letter-spacing: .3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+.card-arrow {
+  font-size: 13px;
+  color: var(--tx3);
+  transition: transform .18s, color .18s;
+  flex-shrink: 0;
+}
+.card:hover .card-arrow {
+  transform: translateX(3px);
+  color: var(--card-accent, var(--orange));
+}
 
 /* ── FOOTER ── */
-.footer{text-align:center;font-family:var(--fm);font-size:9px;color:var(--mt);letter-spacing:2.5px;margin-top:40px;padding-top:24px;border-top:1px solid var(--bdr);}
-.footer span{color:var(--orange);}
+.footer {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--bdr);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.footer-left {
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--tx3);
+}
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.footer-tag {
+  font-family: var(--fm);
+  font-size: 8.5px;
+  color: var(--tx3);
+  background: var(--surf);
+  border: 1px solid var(--bdr2);
+  padding: 3px 9px;
+  border-radius: 5px;
+}
 
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-
-/* Smaller screens */
-@media (max-width: 900px) {
-  .grid4{grid-template-columns:repeat(2,1fr);}
-  .grid3{grid-template-columns:repeat(2,1fr);}
-  .kpi-strip{grid-template-columns:repeat(2,1fr);}
-  .status-bar{grid-template-columns:1fr;}
-  .status-cell+.status-cell{border-left:none;border-top:1px solid var(--bdr);padding-top:12px;margin-top:12px;}
-  .test-btn{margin:12px 0 0;}
+@media (max-width:1000px) {
+  .grid4 { grid-template-columns:repeat(2,1fr); }
+  .grid3 { grid-template-columns:repeat(2,1fr); }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .sys-row { grid-template-columns:1fr; }
+  .sys-cell { border-right:none; border-bottom:1px solid var(--bdr); }
+  .sys-cell:last-child { border-bottom:none; }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- HEADER -->
-  <div class="header">
+  <!-- TOPBAR -->
+  <div class="topbar">
     <div class="brand">
-      <div class="logo">Crustly</div>
-      <div class="logo-sub">KONTROLLCENTER · SYSTEMÖVERSIKT</div>
+      <div class="logo">CRUSTLY</div>
+      <div class="brand-sep"></div>
+      <div class="brand-sub">Kontrollcenter</div>
     </div>
-    <div class="header-right">
-      <div class="host-tag" id="hostTag">damp-violet-0f15.burrebarca.workers.dev</div>
-      <div class="live-time"><div class="dot"></div><span id="liveTime">—</span></div>
+    <div class="topbar-right">
+      <div class="pill status"><div class="dot spin" id="topDot"></div><span id="topStatus">Ansluter...</span></div>
+      <div class="pill" id="topTime">—</div>
     </div>
   </div>
 
-  <!-- SYSTEM STATUS BAR -->
-  <div class="status-bar">
-    <div class="status-cell">
-      <div class="sd loading" id="sdSupa"></div>
-      <div>
-        <div class="status-name">SUPABASE DATABASE</div>
-        <div class="status-val" id="svSupa">KONTROLLERAR...</div>
+  <!-- SYSTEM STATUS ROW -->
+  <div class="sys-row">
+    <div class="sys-cell">
+      <div class="dot spin" id="sdSupa"></div>
+      <div class="sys-info">
+        <div class="sys-name">Supabase</div>
+        <div class="sys-val" id="svSupa">Kontrollerar...</div>
       </div>
     </div>
-    <div class="status-cell">
-      <div class="sd loading" id="sdStripe"></div>
-      <div>
-        <div class="status-name">STRIPE BETALNINGAR</div>
-        <div class="status-val" id="svStripe">KONTROLLERAR...</div>
+    <div class="sys-cell">
+      <div class="dot spin" id="sdStripe"></div>
+      <div class="sys-info">
+        <div class="sys-name">Stripe</div>
+        <div class="sys-val" id="svStripe">Kontrollerar...</div>
       </div>
     </div>
-    <div class="status-cell">
-      <div class="sd loading" id="sdWorker"></div>
-      <div>
-        <div class="status-name">CLOUDFLARE WORKER</div>
-        <div class="status-val" id="svWorker">KONTROLLERAR...</div>
+    <div class="sys-cell">
+      <div class="dot spin" id="sdWorker"></div>
+      <div class="sys-info">
+        <div class="sys-name">Cloudflare Worker</div>
+        <div class="sys-val" id="svWorker">Kontrollerar...</div>
       </div>
     </div>
-    <button class="test-btn" onclick="runHealthCheck()">↻ TESTA OM</button>
+    <button class="recheck-btn" onclick="runHealthCheck()">↻ Kontrollera igen</button>
   </div>
 
-  <!-- KPI STRIP -->
+  <!-- KPIs -->
   <div class="kpi-strip">
-    <div class="kpi g">
-      <div class="kpi-lbl">AKTIVA RESTAURANGER</div>
-      <div class="kpi-val g" id="kpiRest">—</div>
-      <div class="kpi-sub" id="kpiRestSub">LADDAR...</div>
+    <div class="kpi-card kpi-g">
+      <div class="kpi-label">Aktiva restauranger</div>
+      <div class="kpi-value" id="kpiRest">—</div>
+      <div class="kpi-sub" id="kpiRestSub">Laddar...</div>
     </div>
-    <div class="kpi b">
-      <div class="kpi-lbl">ORDERS IDAG</div>
-      <div class="kpi-val b" id="kpiToday">—</div>
-      <div class="kpi-sub" id="kpiTodaySub">LADDAR...</div>
+    <div class="kpi-card kpi-b">
+      <div class="kpi-label">Orders idag</div>
+      <div class="kpi-value" id="kpiToday">—</div>
+      <div class="kpi-sub" id="kpiTodaySub">Laddar...</div>
     </div>
-    <div class="kpi o">
-      <div class="kpi-lbl">MÅNADSINTÄKT (MRR)</div>
-      <div class="kpi-val o" id="kpiMrr">—</div>
-      <div class="kpi-sub" id="kpiMrrSub">LADDAR...</div>
+    <div class="kpi-card kpi-o">
+      <div class="kpi-label">Månadsintäkt (MRR)</div>
+      <div class="kpi-value" id="kpiMrr">—</div>
+      <div class="kpi-sub" id="kpiMrrSub">Laddar...</div>
     </div>
-    <div class="kpi p">
-      <div class="kpi-lbl">TOTAL ORDERVOLYM · MÅN.</div>
-      <div class="kpi-val p" id="kpiVol">—</div>
-      <div class="kpi-sub" id="kpiVolSub">LADDAR...</div>
+    <div class="kpi-card kpi-p">
+      <div class="kpi-label">Ordervolym denna månad</div>
+      <div class="kpi-value" id="kpiVol">—</div>
+      <div class="kpi-sub" id="kpiVolSub">Laddar...</div>
     </div>
   </div>
 
   <!-- ADMIN -->
-  <div class="sec">ADMIN — HUVUDVERKTYG</div>
+  <div class="section-head">
+    <div class="section-head-label">Administration</div>
+    <div class="section-head-line"></div>
+  </div>
   <div class="grid4">
-    <a class="card" href="crustly-dashboard.html" style="--cc:var(--orange);--cd:var(--odim);">
-      <div class="card-top"><div class="card-icon">◈</div><span class="badge badge-live">LIVE DATA</span></div>
-      <div>
-        <div class="card-title">Kontrollcenter</div>
-        <div class="card-desc">Intäkt, restauranger, orders och Stripe-data — i realtid.</div>
+
+    <a class="card" href="crustly-dashboard.html" style="--card-accent:var(--orange);--card-glow:var(--orange-dim);--card-icon-bg:var(--orange-dim);">
+      <div class="card-top">
+        <div class="card-icon">📊</div>
+        <span class="badge badge-live">Live data</span>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-dashboard.html</div><div class="card-arrow">→</div></div>
+      <div class="card-body">
+        <div class="card-title">Kontrollcenter</div>
+        <div class="card-desc">Intäkt, restauranger, orders och Stripe-data i realtid.</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-url">crustly-dashboard.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="crustly-onboarding.html" style="--cc:var(--green);--cd:var(--gdim);">
-      <div class="card-top"><div class="card-icon">＋</div><span class="badge badge-tool">SETUP</span></div>
-      <div>
+    <a class="card" href="crustly-onboarding.html" style="--card-accent:var(--green);--card-glow:var(--green-dim);--card-icon-bg:var(--green-dim);">
+      <div class="card-top">
+        <div class="card-icon">➕</div>
+        <span class="badge badge-setup">Setup</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Onboarding</div>
         <div class="card-desc">Lägg till ny restaurang i 4 steg, sparas direkt i Supabase.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-onboarding.html</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">crustly-onboarding.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="crustly-invoice.html" style="--cc:var(--green);--cd:var(--gdim);">
-      <div class="card-top"><div class="card-icon">◻</div><span class="badge badge-tool">FAKTURERING</span></div>
-      <div>
+    <a class="card" href="crustly-invoice.html" style="--card-accent:var(--blue);--card-glow:var(--blue-dim);--card-icon-bg:var(--blue-dim);">
+      <div class="card-top">
+        <div class="card-icon">🧾</div>
+        <span class="badge badge-setup">Fakturering</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Fakturor</div>
         <div class="card-desc">Skapa och ladda ner PDF-fakturor till restaurangerna.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-invoice.html</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">crustly-invoice.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="crustly-settings.html" style="--cc:var(--yellow);--cd:var(--ydim);">
-      <div class="card-top"><div class="card-icon">⚙</div><span class="badge badge-tool">KONFIG</span></div>
-      <div>
-        <div class="card-title">Inställningar</div>
-        <div class="card-desc">SMS-leverantörer, Claude API-nyckel och integrationer.</div>
+    <a class="card" href="crustly-settings.html" style="--card-accent:var(--yellow);--card-glow:var(--yellow-dim);--card-icon-bg:var(--yellow-dim);">
+      <div class="card-top">
+        <div class="card-icon">⚙️</div>
+        <span class="badge badge-setup">Konfig</span>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-settings.html</div><div class="card-arrow">→</div></div>
+      <div class="card-body">
+        <div class="card-title">Inställningar</div>
+        <div class="card-desc">SMS-leverantörer, API-nycklar och integrationer.</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-url">crustly-settings.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
+
   </div>
 
-  <!-- KUNDAUTOMATISERING -->
-  <div class="sec">KUNDAUTOMATISERING &amp; LOJALITET</div>
+  <!-- AUTOMATISERING -->
+  <div class="section-head">
+    <div class="section-head-label">Kundautomatisering &amp; lojalitet</div>
+    <div class="section-head-line"></div>
+  </div>
   <div class="grid4">
-    <a class="card" href="crustly-birthday.html" style="--cc:var(--gold);--cd:var(--goldim);">
-      <div class="card-top"><div class="card-icon">◇</div><span class="badge badge-auto">AUTOMATION</span></div>
-      <div>
+
+    <a class="card" href="crustly-birthday.html" style="--card-accent:var(--yellow);--card-glow:var(--yellow-dim);--card-icon-bg:var(--yellow-dim);">
+      <div class="card-top">
+        <div class="card-icon">🎂</div>
+        <span class="badge badge-auto">Automation</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Födelsedag-SMS</div>
         <div class="card-desc">Erbjudanden 7 dagar innan kundernas födelsedag.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-birthday.html</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">crustly-birthday.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="crustly-reengagement.html" style="--cc:var(--blue);--cd:var(--bdim);">
-      <div class="card-top"><div class="card-icon">◈</div><span class="badge badge-auto">AUTOMATION</span></div>
-      <div>
+    <a class="card" href="crustly-reengagement.html" style="--card-accent:var(--blue);--card-glow:var(--blue-dim);--card-icon-bg:var(--blue-dim);">
+      <div class="card-top">
+        <div class="card-icon">📣</div>
+        <span class="badge badge-auto">Automation</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Återaktivering</div>
         <div class="card-desc">Win-back SMS till kunder inaktiva 14+ dagar med AI-text.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-reengagement.html</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">crustly-reengagement.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="crustly-loyalty.html" style="--cc:var(--gold);--cd:var(--goldim);">
-      <div class="card-top"><div class="card-icon">◇</div><span class="badge badge-auto">LOJALITET</span></div>
-      <div>
+    <a class="card" href="crustly-loyalty.html" style="--card-accent:var(--yellow);--card-glow:var(--yellow-dim);--card-icon-bg:var(--yellow-dim);">
+      <div class="card-top">
+        <div class="card-icon">⭐</div>
+        <span class="badge badge-auto">Lojalitet</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Lojalitetsprogram</div>
         <div class="card-desc">Poäng, nivåer, belöningar och regler per restaurang.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-loyalty.html</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">crustly-loyalty.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="crustly-loyalty-customer.html" style="--cc:var(--gold);--cd:var(--goldim);">
-      <div class="card-top"><div class="card-icon">◈</div><span class="badge badge-live">KUNDSIDA</span></div>
-      <div>
+    <a class="card" href="crustly-loyalty-customer.html" style="--card-accent:var(--rose);--card-glow:var(--rose-dim);--card-icon-bg:var(--rose-dim);">
+      <div class="card-top">
+        <div class="card-icon">🎁</div>
+        <span class="badge badge-live">Kundsida</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Poängportal</div>
         <div class="card-desc">Kundens inloggade vy — poäng, belöningar och historik.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-loyalty-customer.html</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">crustly-loyalty-customer.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
+
   </div>
 
   <!-- DRIFT -->
-  <div class="sec">DRIFT &amp; RESTAURANGVERKTYG</div>
+  <div class="section-head">
+    <div class="section-head-label">Drift &amp; restaurangverktyg</div>
+    <div class="section-head-line"></div>
+  </div>
   <div class="grid4">
-    <a class="card" href="crustly-kitchen.html" style="--cc:var(--red);--cd:var(--rdim);">
-      <div class="card-top"><div class="card-icon">◈</div><span class="badge badge-live">LIVE</span></div>
-      <div>
+
+    <a class="card" href="crustly-kitchen.html" style="--card-accent:var(--red);--card-glow:var(--red-dim);--card-icon-bg:var(--red-dim);">
+      <div class="card-top">
+        <div class="card-icon">🖥️</div>
+        <span class="badge badge-live">Live</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Köksskärm</div>
         <div class="card-desc">Surfplatta i köket — orders dyker upp direkt i realtid.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-kitchen.html</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">crustly-kitchen.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="crustly-owner.html" style="--cc:var(--purple);--cd:var(--pdim);">
-      <div class="card-top"><div class="card-icon">◻</div><span class="badge" style="background:var(--pdim);color:var(--purple);border-color:#a78bfa30;">PORTAL</span></div>
-      <div>
+    <a class="card" href="crustly-owner.html" style="--card-accent:var(--purple);--card-glow:var(--purple-dim);--card-icon-bg:var(--purple-dim);">
+      <div class="card-top">
+        <div class="card-icon">🏪</div>
+        <span class="badge badge-portal">Portal</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Ägarportal</div>
         <div class="card-desc">Ägarens inloggning — orders, meny, tillval och kunder.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-owner.html</div><div class="card-arrow">→</div></div>
-    </a>
-
-    <a class="card" href="crustly-order.html" style="--cc:var(--green);--cd:var(--gdim);">
-      <div class="card-top"><div class="card-icon">◈</div><span class="badge badge-live">KUNDSIDA</span></div>
-      <div>
-        <div class="card-title">Beställningssida</div>
-        <div class="card-desc">Kundens vy — meny, varukorg, Stripe-betalning och tracking.</div>
+      <div class="card-footer">
+        <div class="card-url">crustly-owner.html</div>
+        <div class="card-arrow">→</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-order.html</div><div class="card-arrow">→</div></div>
     </a>
 
-    <a class="card" href="crustly-landing.html" style="--cc:var(--orange);--cd:var(--odim);">
-      <div class="card-top"><div class="card-icon">◇</div><span class="badge badge-new">MARKNAD</span></div>
-      <div>
+    <a class="card" href="crustly-order.html" style="--card-accent:var(--green);--card-glow:var(--green-dim);--card-icon-bg:var(--green-dim);">
+      <div class="card-top">
+        <div class="card-icon">🛒</div>
+        <span class="badge badge-live">Kundsida</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Beställningssida</div>
+        <div class="card-desc">Kundens vy — meny, varukorg, Stripe och ordertracking.</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-url">crustly-order.html</div>
+        <div class="card-arrow">→</div>
+      </div>
+    </a>
+
+    <a class="card" href="crustly-landing.html" style="--card-accent:var(--teal);--card-glow:var(--teal-dim);--card-icon-bg:var(--teal-dim);">
+      <div class="card-top">
+        <div class="card-icon">🌐</div>
+        <span class="badge badge-market">Marknad</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Landningssida</div>
         <div class="card-desc">Marknadsföringssida — sälj Crustly med priskalkylator.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-landing.html</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">crustly-landing.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
+
   </div>
 
   <!-- DATA & SÄKERHET -->
-  <div class="sec">DATA &amp; SÄKERHET</div>
+  <div class="section-head">
+    <div class="section-head-label">Data &amp; säkerhet</div>
+    <div class="section-head-line"></div>
+  </div>
   <div class="grid4">
-    <a class="card" href="crustly-login.html" style="--cc:var(--orange);--cd:var(--odim);">
-      <div class="card-top"><div class="card-icon">◇</div><span class="badge badge-new">AUTH</span></div>
-      <div>
-        <div class="card-title">Inloggning</div>
-        <div class="card-desc">Ägarinloggning via Supabase Auth — email + lösenord.</div>
+
+    <a class="card" href="crustly-login.html" style="--card-accent:var(--orange);--card-glow:var(--orange-dim);--card-icon-bg:var(--orange-dim);">
+      <div class="card-top">
+        <div class="card-icon">🔐</div>
+        <span class="badge badge-auth">Auth</span>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-login.html</div><div class="card-arrow">→</div></div>
+      <div class="card-body">
+        <div class="card-title">Inloggning</div>
+        <div class="card-desc">Ägarinloggning via Supabase Auth — email och lösenord.</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-url">crustly-login.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte" target="_blank" rel="noopener" style="--cc:var(--green);--cd:var(--gdim);">
-      <div class="card-top"><div class="card-icon">◻</div><span class="badge badge-ext">EXTERN</span></div>
-      <div>
+    <a class="card" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte" target="_blank" rel="noopener" style="--card-accent:var(--green);--card-glow:var(--green-dim);--card-icon-bg:var(--green-dim);">
+      <div class="card-top">
+        <div class="card-icon">⚡</div>
+        <span class="badge badge-ext">Extern</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Supabase</div>
         <div class="card-desc">Databaskonsol — tabeller, Auth och RLS-policies.</div>
       </div>
-      <div class="card-foot"><div class="card-url">supabase.com/dashboard</div><div class="card-arrow">↗</div></div>
+      <div class="card-footer">
+        <div class="card-url">supabase.com/dashboard</div>
+        <div class="card-arrow">↗</div>
+      </div>
     </a>
 
-    <a class="card" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte/auth/policies" target="_blank" rel="noopener" style="--cc:var(--red);--cd:var(--rdim);">
-      <div class="card-top"><div class="card-icon">◈</div><span class="badge badge-warn">RLS</span></div>
-      <div>
+    <a class="card" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte/auth/policies" target="_blank" rel="noopener" style="--card-accent:var(--red);--card-glow:var(--red-dim);--card-icon-bg:var(--red-dim);">
+      <div class="card-top">
+        <div class="card-icon">🛡️</div>
+        <span class="badge badge-warn">RLS</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">RLS Policies</div>
-        <div class="card-desc">Row Level Security — styr läs/skriv per roll och tabell.</div>
+        <div class="card-desc">Row Level Security — styr läs- och skrivrättigheter.</div>
       </div>
-      <div class="card-foot"><div class="card-url">.../auth/policies</div><div class="card-arrow">↗</div></div>
+      <div class="card-footer">
+        <div class="card-url">.../auth/policies</div>
+        <div class="card-arrow">↗</div>
+      </div>
     </a>
 
-    <a class="card" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte/editor" target="_blank" rel="noopener" style="--cc:var(--yellow);--cd:var(--ydim);">
-      <div class="card-top"><div class="card-icon">◻</div><span class="badge badge-tool">SQL</span></div>
-      <div>
-        <div class="card-title">SQL Editor</div>
-        <div class="card-desc">Kör SQL direkt — vyer, queries och data-fixes.</div>
+    <a class="card" href="https://supabase.com/dashboard/project/febybrpterkybwzhigte/editor" target="_blank" rel="noopener" style="--card-accent:var(--yellow);--card-glow:var(--yellow-dim);--card-icon-bg:var(--yellow-dim);">
+      <div class="card-top">
+        <div class="card-icon">🗄️</div>
+        <span class="badge badge-setup">SQL</span>
       </div>
-      <div class="card-foot"><div class="card-url">.../editor</div><div class="card-arrow">↗</div></div>
+      <div class="card-body">
+        <div class="card-title">SQL Editor</div>
+        <div class="card-desc">Kör SQL direkt mot databasen — vyer, queries och fixes.</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-url">.../editor</div>
+        <div class="card-arrow">↗</div>
+      </div>
     </a>
+
   </div>
 
   <!-- TESTRESTAURANG -->
-  <div class="sec">TESTRESTAURANG · LA FAVORITA</div>
+  <div class="section-head">
+    <div class="section-head-label">Testrestaurang · La Favorita</div>
+    <div class="section-head-line"></div>
+  </div>
   <div class="grid3">
-    <a class="card" href="crustly-order.html?r=la-favorita" style="--cc:var(--green);--cd:var(--gdim);">
-      <div class="card-top"><div class="card-icon">◈</div><span class="badge badge-live">KUND</span></div>
-      <div>
+
+    <a class="card" href="crustly-order.html?r=la-favorita" style="--card-accent:var(--green);--card-glow:var(--green-dim);--card-icon-bg:var(--green-dim);">
+      <div class="card-top">
+        <div class="card-icon">🛒</div>
+        <span class="badge badge-live">Kund</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Beställ</div>
         <div class="card-desc">La Favoritas beställningssida med meny och tillval.</div>
       </div>
-      <div class="card-foot"><div class="card-url">?r=la-favorita</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">?r=la-favorita</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="crustly-kitchen.html?r=07d3dbf9-d519-4de7-b329-06c845a85b09" style="--cc:var(--red);--cd:var(--rdim);">
-      <div class="card-top"><div class="card-icon">◈</div><span class="badge badge-live">LIVE</span></div>
-      <div>
+    <a class="card" href="crustly-kitchen.html?r=07d3dbf9-d519-4de7-b329-06c845a85b09" style="--card-accent:var(--red);--card-glow:var(--red-dim);--card-icon-bg:var(--red-dim);">
+      <div class="card-top">
+        <div class="card-icon">🖥️</div>
+        <span class="badge badge-live">Live</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Köket</div>
         <div class="card-desc">La Favoritas köksskärm — hantera inkommande orders.</div>
       </div>
-      <div class="card-foot"><div class="card-url">?r=07d3dbf9...</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">?r=07d3dbf9...</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
 
-    <a class="card" href="crustly-owner.html" style="--cc:var(--purple);--cd:var(--pdim);">
-      <div class="card-top"><div class="card-icon">◻</div><span class="badge" style="background:var(--pdim);color:var(--purple);border-color:#a78bfa30;">ÄGARE</span></div>
-      <div>
+    <a class="card" href="crustly-owner.html" style="--card-accent:var(--purple);--card-glow:var(--purple-dim);--card-icon-bg:var(--purple-dim);">
+      <div class="card-top">
+        <div class="card-icon">🏪</div>
+        <span class="badge badge-portal">Ägare</span>
+      </div>
+      <div class="card-body">
         <div class="card-title">Ägarportal</div>
         <div class="card-desc">Logga in som La Favorita — meny, orders och kunder.</div>
       </div>
-      <div class="card-foot"><div class="card-url">crustly-owner.html</div><div class="card-arrow">→</div></div>
+      <div class="card-footer">
+        <div class="card-url">crustly-owner.html</div>
+        <div class="card-arrow">→</div>
+      </div>
     </a>
+
   </div>
 
-  <div class="footer">CRUSTLY · BYGGT MED <span>CLOUDFLARE</span> + <span>SUPABASE</span> + <span>STRIPE</span></div>
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-left">CRUSTLY · KONTROLLCENTER</div>
+    <div class="footer-right">
+      <div class="footer-tag">Cloudflare Workers</div>
+      <div class="footer-tag">Supabase</div>
+      <div class="footer-tag">Stripe</div>
+    </div>
+  </div>
 
 </div>
 
 <script>
 const sek = n => Math.round(n).toLocaleString('sv-SE') + ' kr';
 
-function setStatus(service, state, msg) {
-  const dot = document.getElementById('sd'+service);
-  const val = document.getElementById('sv'+service);
-  if (!dot || !val) return;
-  dot.className = 'sd ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : state === 'warn' ? 'warn' : 'loading');
-  val.className = 'status-val ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : state === 'warn' ? 'warn' : '');
-  val.textContent = msg || (state === 'ok' ? 'OK' : state === 'err' ? 'FEL' : 'KONTROLLERAR...');
-}
-
 function updateClock() {
   const t = new Date();
-  const el = document.getElementById('liveTime');
-  if (el) el.textContent = t.toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'}).toUpperCase() + ' · ' + t.toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
+  const el = document.getElementById('topTime');
+  if (el) el.textContent = t.toLocaleDateString('sv-SE', { weekday:'short', day:'numeric', month:'short' }) + ' · ' + t.toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' });
 }
-updateClock(); setInterval(updateClock, 30000);
+updateClock();
+setInterval(updateClock, 30000);
 
-// Set host tag from actual location
-document.getElementById('hostTag').textContent = location.hostname || 'localhost';
+function setSvc(id, state, msg) {
+  const dot = document.getElementById('sd' + id);
+  const val = document.getElementById('sv' + id);
+  if (!dot || !val) return;
+  dot.className = 'dot ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : state === 'warn' ? 'warn' : 'spin');
+  val.className = 'sys-val ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : state === 'warn' ? 'warn' : '');
+  val.textContent = msg;
+}
+
+function setTop(state, msg) {
+  const dot = document.getElementById('topDot');
+  const lbl = document.getElementById('topStatus');
+  if (dot) dot.className = 'dot ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : 'spin');
+  if (lbl) lbl.textContent = msg;
+}
 
 async function checkSupabase() {
-  setStatus('Supa', 'loading');
+  setSvc('Supa', 'spin', 'Kontrollerar...');
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/restaurants?select=id,name,status&limit=50', {
-      headers: { 'apikey': SUPA_KEY }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    const live = data.filter(r => r.status !== 'demo').length;
-    setStatus('Supa', 'ok', `${data.length} restaurang${data.length===1?'':'er'} · ${live} live`);
+    const r = await fetch(SUPA_URL + '/rest/v1/restaurants?select=id,name,status&limit=50', { headers: { 'apikey': SUPA_KEY } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    const live = data.filter(x => x.status !== 'demo').length;
+    setSvc('Supa', 'ok', `${data.length} restauranger · ${live} live`);
     return data;
   } catch(e) {
-    setStatus('Supa', 'err', 'OFFLINE — projektet kan vara pausat');
+    setSvc('Supa', 'err', 'Offline — projektet kan vara pausat');
     return null;
   }
 }
 
-async function checkOrders() {
-  try {
-    const start = new Date();
-    start.setHours(0,0,0,0);
-    const res = await fetch(SUPA_URL + '/rest/v1/orders?select=total,created_at&created_at=gte.' + start.toISOString() + '&limit=500', {
-      headers: { 'apikey': SUPA_KEY }
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch(e) { return null; }
-}
-
-async function checkMonthlyOrders() {
-  try {
-    const start = new Date();
-    start.setDate(1); start.setHours(0,0,0,0);
-    const res = await fetch(SUPA_URL + '/rest/v1/orders?select=total,created_at&created_at=gte.' + start.toISOString() + '&limit=2000', {
-      headers: { 'apikey': SUPA_KEY }
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch(e) { return null; }
-}
-
 async function checkStripe() {
-  setStatus('Stripe', 'loading');
+  setSvc('Stripe', 'spin', 'Kontrollerar...');
   try {
-    const res = await fetch('/stripe/fees');
-    if (!res.ok) { setStatus('Stripe', 'warn', 'EJ KONFIGURERAT'); return; }
-    const d = await res.json();
-    if (d.error) {
-      setStatus('Stripe', 'warn', 'EJ KONFIGURERAT');
-    } else {
-      setStatus('Stripe', 'ok', `${d.charge_count||0} betalningar denna mån.`);
-    }
-  } catch(e) { setStatus('Stripe', 'err', 'KAN INTE NÅS'); }
+    const r = await fetch('/stripe/fees');
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    if (d.error) { setSvc('Stripe', 'warn', 'Ej konfigurerat'); }
+    else { setSvc('Stripe', 'ok', `${d.charge_count || 0} betalningar denna mån.`); }
+  } catch(e) { setSvc('Stripe', 'err', 'Kan inte nås'); }
 }
 
 async function checkWorker() {
-  setStatus('Worker', 'loading');
+  setSvc('Worker', 'spin', 'Kontrollerar...');
   try {
-    const res = await fetch('/stripe/fees', { method: 'GET' });
-    if (res.status >= 500) throw new Error('worker error');
-    setStatus('Worker', 'ok', location.hostname);
-  } catch(e) { setStatus('Worker', 'err', 'KAN INTE NÅS'); }
+    const r = await fetch('/stripe/fees');
+    if (r.status >= 500) throw new Error();
+    setSvc('Worker', 'ok', location.hostname);
+  } catch(e) { setSvc('Worker', 'err', 'Kan inte nås'); }
 }
 
-async function loadKPIs() {
-  const [restaurants, todayOrders, monthOrders] = await Promise.all([
-    checkSupabase(),
-    checkOrders(),
-    checkMonthlyOrders()
-  ]);
-
-  // Restaurants
-  if (restaurants) {
-    const live = restaurants.filter(r => r.status !== 'demo').length;
-    document.getElementById('kpiRest').textContent = restaurants.length;
-    document.getElementById('kpiRestSub').textContent = `${live} LIVE · ${restaurants.length - live} DEMO`;
-  } else {
-    document.getElementById('kpiRest').textContent = '—';
-    document.getElementById('kpiRestSub').textContent = 'KAN INTE LÄSAS';
-  }
-
-  // Orders today
-  if (todayOrders) {
-    const rev = todayOrders.reduce((s,o)=>s+(o.total||0),0);
-    document.getElementById('kpiToday').textContent = todayOrders.length;
-    document.getElementById('kpiTodaySub').textContent = todayOrders.length > 0 ? sek(rev) + ' IDAG' : 'INGA ÄNNU IDAG';
-  } else {
+async function loadKPIs(restaurants) {
+  // Today orders
+  try {
+    const start = new Date(); start.setHours(0,0,0,0);
+    const r = await fetch(SUPA_URL + '/rest/v1/orders?select=total,created_at&created_at=gte.' + start.toISOString() + '&limit=500', { headers: { 'apikey': SUPA_KEY } });
+    const todayOrds = r.ok ? await r.json() : [];
+    const rev = todayOrds.reduce((s,o)=>s+(o.total||0),0);
+    document.getElementById('kpiToday').textContent = todayOrds.length;
+    document.getElementById('kpiTodaySub').textContent = todayOrds.length > 0 ? sek(rev) + ' idag' : 'Inga orders ännu idag';
+  } catch(e) {
     document.getElementById('kpiToday').textContent = '—';
-    document.getElementById('kpiTodaySub').textContent = 'KAN INTE LÄSAS';
+    document.getElementById('kpiTodaySub').textContent = 'Kan inte läsas';
   }
 
-  // MRR & Volume
-  if (restaurants && monthOrders) {
-    const activeRest = restaurants.filter(r => r.status !== 'demo').length;
-    const MRR = activeRest * 2000 + monthOrders.length * 7;
-    const volume = monthOrders.reduce((s,o)=>s+(o.total||0),0);
-    document.getElementById('kpiMrr').textContent = sek(MRR);
-    document.getElementById('kpiMrrSub').textContent = `${activeRest}×2000 + ${monthOrders.length}×7`;
-    document.getElementById('kpiVol').textContent = sek(volume);
-    document.getElementById('kpiVolSub').textContent = `${monthOrders.length} ORDERS DENNA MÅNAD`;
-  } else {
-    ['kpiMrr','kpiVol'].forEach(id=>document.getElementById(id).textContent='—');
-    ['kpiMrrSub','kpiVolSub'].forEach(id=>document.getElementById(id).textContent='KAN INTE LÄSAS');
+  // Monthly orders
+  try {
+    const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
+    const r = await fetch(SUPA_URL + '/rest/v1/orders?select=total,created_at&created_at=gte.' + mStart.toISOString() + '&limit=2000', { headers: { 'apikey': SUPA_KEY } });
+    const monthOrds = r.ok ? await r.json() : [];
+    const vol = monthOrds.reduce((s,o)=>s+(o.total||0),0);
+    const activeRest = restaurants ? restaurants.filter(x=>x.status!=='demo').length : 0;
+    const mrr = activeRest * 2000 + monthOrds.length * 7;
+
+    document.getElementById('kpiMrr').textContent = sek(mrr);
+    document.getElementById('kpiMrrSub').textContent = `${activeRest}×2 000 kr + ${monthOrds.length}×7 kr`;
+    document.getElementById('kpiVol').textContent = sek(vol);
+    document.getElementById('kpiVolSub').textContent = `${monthOrds.length} orders denna månad`;
+  } catch(e) {
+    ['kpiMrr','kpiVol'].forEach(id => { document.getElementById(id).textContent = '—'; });
+    ['kpiMrrSub','kpiVolSub'].forEach(id => { document.getElementById(id).textContent = 'Kan inte läsas'; });
   }
 }
 
 async function runHealthCheck() {
-  const btn = document.querySelector('.test-btn');
-  if (btn) { btn.textContent = '↻ ...'; btn.disabled = true; }
-  await Promise.all([loadKPIs(), checkStripe(), checkWorker()]);
-  if (btn) { btn.textContent = '↻ TESTA OM'; btn.disabled = false; }
+  const btn = document.querySelector('.recheck-btn');
+  if (btn) { btn.textContent = '↻ Kontrollerar...'; btn.disabled = true; }
+  setTop('spin', 'Kontrollerar...');
+
+  const [restaurants] = await Promise.all([
+    checkSupabase(),
+    checkStripe(),
+    checkWorker()
+  ]);
+
+  if (restaurants !== null) {
+    const live = restaurants ? restaurants.filter(x=>x.status!=='demo').length : 0;
+    document.getElementById('kpiRest').textContent = restaurants ? restaurants.length : '—';
+    document.getElementById('kpiRestSub').textContent = restaurants ? `${live} live · ${restaurants.length - live} demo` : 'Kan inte läsas';
+    await loadKPIs(restaurants);
+    setTop('ok', 'Allt OK');
+  } else {
+    document.getElementById('kpiRest').textContent = '—';
+    document.getElementById('kpiRestSub').textContent = 'Kan inte ansluta';
+    setTop('err', 'Anslutningsfel');
+  }
+
+  if (btn) { btn.textContent = '↻ Kontrollera igen'; btn.disabled = false; }
 }
 
 runHealthCheck();
-setInterval(runHealthCheck, 60000); // refresh every minute
+setInterval(runHealthCheck, 60000);
 </script>
 </body>
 </html>
